@@ -1,0 +1,103 @@
+# CLAUDE.md
+
+Project context for Claude Code. Read this before doing anything in this repo.
+
+## What this is
+
+Clyde Culture is Glasgow's shared cultural noticeboard: a low-maintenance platform
+that aggregates "what's on" from APIs, feeds, and scrapers into one structured,
+searchable index, and links back out to the original source. It is a discovery and
+routing layer, **not** a publisher. Run as a non-profit community collective.
+
+Full brief: `docs/reference/SPEC.md`. Brand and voice: `docs/BRAND_VOICE.md`.
+
+## Status
+
+Greenfield. **The public frontend is not yet decided** (Webflow vs. coded Next.js).
+That decision is tracked in `docs/decisions/0001-frontend-architecture.md`. Until it
+is resolved, build nothing that assumes a specific frontend. The engine is designed
+to be frontend-agnostic.
+
+## Development workflow
+
+Before editing:
+1. Read CLAUDE.md and the relevant docs.
+2. Summarise the task and affected files.
+3. Identify open questions or blockers.
+4. Propose a plan.
+5. Wait for approval before editing unless explicitly told otherwise.
+
+For implementation:
+1. Write or update tests first where practical.
+2. Make the smallest useful change.
+3. Run lint, typecheck, and tests.
+4. Report changed files, commands run, test results, and remaining risks.
+
+Never:
+- Make schema changes outside `supabase/migrations/`
+- Add dependencies without asking
+- Store secrets in committed files
+- Populate `apps/web` before ADR 0001 is resolved
+- Implement frontend-specific publishing before ADR 0001 is resolved
+
+## Architecture (engine-first)
+
+The bulk of the work is a backend engine that does not care what the frontend is:
+
+- **Source of truth:** Supabase (Postgres). The frontend is a presentation layer only.
+- **Ingestion:** scheduled jobs pull from four source types — API, RSS, iCal, HTML —
+  store raw payloads, then normalise into canonical `events`.
+- **Publishing:** approved, high-confidence events are pushed to the frontend
+  (a Webflow sync job, OR direct reads if the frontend is coded — depends on ADR 0001).
+
+Monorepo layout (pnpm workspaces):
+
+```
+packages/shared       types, taxonomy enums, config, db client
+packages/core         normalisation, deduplication, festival detection
+packages/connectors   modular connector library (api/ rss/ ical/ html/)
+packages/ingestion    orchestration, run logging, break detection
+packages/publishing   frontend sync adapter (Webflow or other)
+apps/web              frontend placeholder — do not populate until ADR 0001 is decided
+supabase/             migrations, edge functions, seed
+docs/                 all project documentation + decision records
+```
+
+## Stack
+
+TypeScript (strict). Node. Supabase/Postgres. pnpm workspaces. Connectors are plain
+TypeScript modules behind a shared interface (see `packages/connectors/src/connector.ts`).
+
+## Hard rules — do not violate these
+
+1. **Link-first.** Clyde Culture routes to sources; it does not republish them. Store
+   a short summary at most. Never store full descriptions or images from link-only
+   sources (Resident Advisor, Instagram). Respect each source's terms of service.
+2. **Source of truth is Supabase**, never the frontend. The frontend is disposable.
+3. **Within-source dedup** = upsert by `(source_id, external_id)`. **Cross-source dedup**
+   = SHA-256 of `venue_id | start_bucket | normalised_title`. Prefer the
+   API-sourced record as canonical over scraped records.
+4. **Only `visibility = 'published'` events above the confidence threshold** are eligible
+   for the frontend. Everything else stays internal.
+5. **Connectors are modular and isolated.** A broken connector must never affect others.
+   Every run logs to `ingest_runs`; break detection flags a connector when parsed count
+   drops >70% below its 14-day median.
+6. **Brand voice applies to editorial and navigational copy only** — not to individual
+   community listings, which keep the contributor's voice. See `docs/BRAND_VOICE.md`.
+   No hype adjectives, no ranking language ("unmissable", "cutting-edge", "emerging").
+7. **No language that ranks events.** A free zine fair sits at the same visual and
+   editorial weight as a ticketed opera.
+
+## Conventions
+
+- New connector? Read `docs/CONNECTOR_GUIDE.md` first and implement the shared interface.
+- Schema changes go through `supabase/migrations/` — never edit the DB out of band.
+- Secrets live in env / Supabase Vault, never in `config` JSON or committed files.
+- Keep `description` storage minimal even for permitted sources (link-first).
+- Ask before introducing a new dependency or a new external service.
+
+## Useful references in this repo
+
+- `docs/PROMPTS_FOR_CLAUDE_CODE.md` — the prompt sequence used to build the docs set.
+- `docs/reference/SPEC.md` — the full platform specification (paste it in if missing).
+- `docs/reference/SCHEMA_v5.sql` — the existing v5 schema (paste it in if missing).

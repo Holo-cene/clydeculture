@@ -1,0 +1,25 @@
+# macOS
+.DS_Store
+
+# Claude Code local settings (project-level — user-specific)
+.claude/settings.local.json
+
+# Environment secrets — never commit
+.env
+.env.local
+.env.*.local
+
+# Local scratch files used for connector smoke tests (see docs/CONNECTOR_GUIDE.md)
+# The scratch/ directory itself is tracked (via .gitkeep); test files within it are not.
+scratch/**
+!scratch/.gitkeep
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+.next/
+
+# Supabase local state
+supabase/.temp/

@@ -1,0 +1,15 @@
+{
+  "name": "clyde-culture",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Glasgow's shared cultural noticeboard — engine and documentation",
+  "engines": { "node": ">=20" },
+  "packageManager": "pnpm@9",
+  "scripts": {
+    "build": "echo \"TODO: wire up per-package builds\"",
+    "test": "echo \"TODO: wire up tests\"",
+    "lint": "echo \"TODO: wire up lint\"",
+    "db:migrate": "supabase db push",
+    "ingest": "echo \"TODO: run ingestion orchestrator\""
+  }
+}
