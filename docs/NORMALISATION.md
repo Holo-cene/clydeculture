@@ -197,9 +197,11 @@ in `events.confidence` and its breakdown stored in `events.confidence_inputs` (J
 | ≥ 60 | `visibility = 'draft'`; eligible for auto-publish if `needs_review = false` |
 | < 60 | `visibility = 'draft'`; `needs_review = true` (stays in moderation queue) |
 
-The publishing threshold (currently 60) is stored in `sources.config` at the
-platform level and is applied by the publishing query, not hardcoded in
-normalisation code. See BE-19.
+The publishing threshold is `60`, hardcoded as a literal in the RLS policy on
+`events` (`confidence >= 60`). It is not stored in `sources.config`. The normaliser
+uses this same value when deciding the auto-publish path in Step 8. Changing the
+threshold requires a migration that alters the policy. BE-19 tracks the future work
+to externalise this into `platform_config` with per-source overrides.
 
 ### confidence_inputs JSON structure
 

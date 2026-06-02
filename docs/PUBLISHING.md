@@ -20,16 +20,19 @@ An event may only be visible on the frontend if two conditions are both true:
 Both conditions are enforced at the database layer by the RLS policy on `events`:
 
 ```sql
--- Public read: visibility = 'published', confidence >= threshold
+-- Public read: visibility = 'published', confidence >= 60
 create policy "Public read events"
   on events for select
   to anon
   using (visibility = 'published' and confidence >= 60);
 ```
 
-The threshold (currently 60) is the configured minimum. See BE-19 for externalising
-this value. No other record states (`draft`, `hidden`, `archived`) are visible
-through the anon key.
+The threshold value `60` is hardcoded as a literal integer in the RLS policy.
+Changing it requires a migration that alters the policy — this is intentional for
+Phase 1, where threshold changes are deliberate policy decisions that should be
+change-controlled. BE-19 tracks the future work to externalise this into a
+`platform_config` table with per-source overrides via `sources.confidence_threshold`.
+No other record states (`draft`, `hidden`, `archived`) are visible through the anon key.
 
 ---
 
