@@ -14,6 +14,9 @@
 scratch/**
 !scratch/.gitkeep
 
+# Generated files
+packages/shared/src/database.types.ts
+
 # Dependencies
 node_modules/
 
