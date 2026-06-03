@@ -524,11 +524,15 @@ create table event_merge_candidates (
                   check (status in ('pending', 'merged', 'rejected')),
   resolved_at     timestamptz,
   merge_group_id  uuid,
-  created_at      timestamptz not null default now(),
-  constraint uq_merge_pair unique (
-    least(event_a_id, event_b_id),
-    greatest(event_a_id, event_b_id)
-  )
+  created_at      timestamptz not null default now()
+);
+
+-- PostgreSQL does not support expression-based UNIQUE constraints; use a
+-- unique index instead. LEAST/GREATEST ensure the pair is stored in canonical
+-- order so (a,b) and (b,a) are treated as duplicates.
+create unique index uq_merge_pair on event_merge_candidates (
+  least(event_a_id, event_b_id),
+  greatest(event_a_id, event_b_id)
 );
 
 create index idx_merge_candidates_group on event_merge_candidates (merge_group_id)
