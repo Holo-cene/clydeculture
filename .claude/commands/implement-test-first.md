@@ -10,7 +10,16 @@ $ARGUMENTS
 
 Do not implement production code yet.
 
-First:
+## Constraints
+
+- Do not weaken existing tests to make implementation easier.
+- Do not remove failing assertions without explaining why they are invalid.
+- Do not mock away the behaviour under test.
+- Do not mark tests as skipped or todo to claim completion.
+- If the contract for this behaviour is missing, stop and propose the contract instead of guessing.
+- If no test framework is configured in the target package, configure Vitest (the project standard) before writing the test.
+
+## Steps
 1. Identify the behaviours affected by the task.
 2. Identify existing tests that may be impacted.
 3. Choose the smallest useful test target (file path).

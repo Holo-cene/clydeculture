@@ -6,6 +6,8 @@ for each package.
 
 See `CLAUDE.md` for the two-step test-first policy that governs all implementation work.
 
+**Test framework: Vitest v2.** All packages use `vitest run`. Test files use the `.test.ts` suffix and live alongside (or in subdirectories of) the source they test.
+
 ---
 
 ## Principles
@@ -27,15 +29,15 @@ A regression here silently corrupts the canonical event index.
 
 ### Functions to develop test-first
 
-| Function | File | Why it matters |
-|---|---|---|
-| `normaliseTitle()` | `normalise/` | Title normalisation feeds the dedupe key — silent drift corrupts cross-source dedup |
-| `normaliseVenueName()` | `normalise/` | Venue matching across sources depends on consistent output |
-| `deriveDedupeKey()` | `dedupe/` | The SHA-256 key is the cross-source dedup contract — any change breaks dedup silently |
-| `mapSourceCategoryToEventType()` | `normalise/` | Category mapping governs taxonomy; wrong mappings misclassify events permanently |
-| `calculateConfidence()` | `normalise/` | Confidence gates frontend visibility — an off-by-one here hides or shows the wrong events |
-| `detectFestival()` | `festivals/` | Festival detection affects grouping and display |
-| `mergeExternalEventIntoCanonicalEvent()` | `dedupe/` | Merge logic governs which source wins when records collide — must prefer API over scrape |
+| Function | Production file | Test file | Why it matters |
+|---|---|---|---|
+| `normaliseTitle()` | `packages/core/src/normalise/normalise.ts` | `packages/core/src/normalise/normalise.test.ts` | Title normalisation feeds the dedupe key — silent drift corrupts cross-source dedup |
+| `normaliseVenueName()` | `packages/core/src/normalise/normalise.ts` | `packages/core/src/normalise/normalise.test.ts` | Venue matching across sources depends on consistent output |
+| `deriveDedupeKey()` | `packages/core/src/dedupe/dedupe.ts` | `packages/core/src/dedupe/dedupe.test.ts` | The SHA-256 key is the cross-source dedup contract — any change breaks dedup silently |
+| `mapSourceCategoryToEventType()` | `packages/core/src/normalise/normalise.ts` | `packages/core/src/normalise/normalise.test.ts` | Category mapping governs taxonomy; wrong mappings misclassify events permanently |
+| `calculateConfidence()` | `packages/core/src/normalise/normalise.ts` | `packages/core/src/normalise/normalise.test.ts` | Confidence gates frontend visibility — an off-by-one here hides or shows the wrong events |
+| `detectFestival()` | `packages/core/src/festivals/festivals.ts` | `packages/core/src/festivals/festivals.test.ts` | Festival detection affects grouping and display |
+| `mergeExternalEventIntoCanonicalEvent()` | `packages/core/src/dedupe/dedupe.ts` | `packages/core/src/dedupe/dedupe.test.ts` | Merge logic governs which source wins when records collide — must prefer API over scrape |
 
 ### Example Step 1 prompt — `deriveDedupeKey`
 
@@ -106,39 +108,29 @@ After writing the test, stop and show me the test file with code analysis.
 
 ## trigger/ (ingestion tasks)
 
-The Trigger.dev tasks in `trigger/` orchestrate connectors and write to Supabase.
-Tests here cover orchestration logic and idempotency, not external network calls.
-Use fixture connectors and a test database or mocked Supabase client.
+`trigger/` is a **Trigger.dev v3 project**, not a pnpm workspace package.
+`pnpm-workspace.yaml` does not include it, so `pnpm test` and `pnpm --filter` do not
+reach it. Trigger tasks cannot be unit-tested with the standard vitest setup.
 
-### Behaviours to develop test-first
+**How to test ingestion logic:**
 
-- One connector fails while the remaining connectors continue to run
-- An `ingest_runs` row is created for every connector run, pass or fail
-- `last_seen_at` is updated when an external event is re-ingested
-- New external events are inserted with the correct fields
-- Existing external events are updated idempotently (upsert by `source_id, external_id`)
-- A `parsed_count` drop greater than the configured threshold creates an `ingest_alert`
-- Disabled sources are skipped entirely
-- Partial connector failure does not corrupt canonical events
+- Extract pure orchestration logic (connector dispatch, error handling, break detection)
+  into `packages/core` or a dedicated workspace package, then test it there with Vitest.
+- Integration tests against a real Supabase instance belong in `supabase/tests/`.
+- End-to-end trigger runs use `npx trigger.dev@latest dev` and the Trigger.dev dashboard.
 
-### Example Step 1 prompt — orchestrator
+### Behaviours to develop test-first (extract into packages/core)
 
-```text
-Implement this test first. Do not implement production code yet.
+The following behaviours should be implemented as pure functions testable without
+Trigger.dev or Supabase, then called from trigger tasks:
 
-Test target:
-trigger/src/__tests__/orchestrator.test.ts
+- One connector fails while the remaining connectors continue (orchestrator loop)
+- `parsed_count` drop threshold detection (break detection function)
+- `ingest_runs` record construction (data mapping, not DB write)
+- Idempotent upsert key derivation (`source_id` + `external_id`)
 
-Behaviour:
-- The orchestrator runs all enabled connectors.
-- If one connector fails, the remaining connectors still run.
-- Every connector produces an ingest_runs record.
-- Failed connectors record structured errors.
-- Successful connectors upsert external_events.
-- A parsed_count drop greater than the configured threshold creates an ingest_alert.
-
-After writing the test, stop and show me the test file with code analysis.
-```
+Once extracted into a workspace package, use the same Step 1 / Step 2 workflow as
+any other function in `packages/core`.
 
 ---
 
@@ -170,8 +162,8 @@ Key test targets:
 pnpm test
 
 # Single package
-pnpm --filter @clyde-culture/core test
-pnpm --filter @clyde-culture/connectors test
+pnpm --filter @clydeculture/core test
+pnpm --filter @clydeculture/connectors test
 
 # Typecheck
 pnpm typecheck

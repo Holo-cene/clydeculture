@@ -17,7 +17,7 @@ Every behaviour-changing implementation task follows two steps.
 
 1. Read the relevant docs and source files.
 2. Identify affected behaviours.
-3. Identify existing tests that should protect those behaviours.
+3. Identify existing tests that should protect those behaviours. If no tests exist for the module yet, that is expected on a greenfield project — write the first test. If no test framework is configured in the target package, configure Vitest first (the project standard) before writing the test.
 4. Choose the smallest meaningful test target.
 5. Write or update the test.
 6. Review the test: what does it prove? what does it not prove? what edge cases remain?
@@ -102,13 +102,9 @@ Run targeted tests first. Run broader regression checks after the implementation
 
 ## Exceptions
 
-Documentation-only, copy-only, ADR-only, and planning tasks do not require tests. However,
-if a documentation task changes development rules, architecture, schema assumptions, or
-source contracts, run a consistency check where possible.
-
-Tasks explicitly marked as exploratory (spike, proof of concept, throwaway prototype) may
-skip the test-first step, but must be clearly labelled as exploratory and must not be
-merged as production code without tests.
+See `CLAUDE.md §Test-driven development policy` for the full list of exceptions (docs-only,
+ADR-only, exploratory tasks). Tasks explicitly marked as exploratory must be labelled as such
+and must not be merged as production code without tests.
 
 ---
 

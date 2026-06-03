@@ -85,6 +85,9 @@ Required changes in the migration:
 5. Replace or drop `validate_event_consistency()` so it does not reference any dropped column.
    The replacement must retain the `is_free / price_display` check and the
    `image_url = ''` check.
+   Also add two CHECK constraints to the `events` table directly (DB-R2-08):
+   - `CHECK (NOT (is_free = true AND price_min > 0))`
+   - `CHECK (NOT (is_free = true AND price_max > 0))`
 6. Replace the public `events` RLS policy with:
    `using (visibility = 'published' and confidence >= 60)`.
 7. Add `'apify'` to the `sources.source_type` CHECK constraint.
@@ -107,6 +110,12 @@ Required changes in the migration:
   returns zero rows.
 - `sources.source_type` CHECK includes `'apify'`.
 - `events.is_all_day` column exists.
+- Migration has been line-by-line validated against
+  `supabase/migrations/20260531000000_schema_v5_initial.sql` to confirm all referenced
+  object names (triggers, columns, functions) actually exist in the baseline.
+  (DB-R2-11: the CC-NEW-1 draft references `on_publish_mapping_change` but the actual
+  trigger is `set_updated_at` — DROP TABLE handles it implicitly, but every name must
+  be checked.)
 
 ---
 
@@ -371,6 +380,48 @@ Then write `mergeExternalEventIntoCanonicalEvent.test.ts`. Stop after docs updat
 
 ---
 
+### C7 — Document `time_tba` placeholder convention and UTC conversion requirement
+
+**Files:** `docs/NORMALISATION.md` (Step 1 additions)
+**Current gap:** `start_at` is `NOT NULL` in the schema but NORMALISATION.md says "if
+`start_at` is null, `time_tba = true`" — a direct contradiction. Connectors that cannot
+extract a start time must insert *something*; that something is undocumented. A midnight
+placeholder will silently collide with genuine midnight events. (DB-R2-16)
+
+Instruction:
+Update `docs/NORMALISATION.md` Step 1 with two missing specs:
+
+**a) UTC conversion requirement:**
+Connectors are responsible for converting extracted times to UTC before populating
+`start_at`. Never store a local time string as if it were UTC. The IANA timezone used
+for conversion must come from `sources.config.timezone` if set, or `'Europe/London'` as
+the default.
+
+**b) `time_tba` placeholder convention:**
+When a connector cannot extract a start time, it should:
+- Set `time_tba = true`
+- Set `start_at` to `date_trunc('day', <event_date_in_local_tz> AT TIME ZONE 'Europe/London')`
+  — midnight of the event day in local time, converted to UTC
+- This convention is documented and deterministic, but the resulting `dedupe_key` may
+  collide with a genuine midnight event. Document this as a known limitation.
+
+**c) `image_url` validation (gap DB-R2-07):**
+Add to NORMALISATION.md Step 1: `imageUrlGuess` is stored as `image_url` only if it is a
+valid absolute HTTPS URL (same check as `isValidHttpsUrl()`). Any non-empty string that
+fails this check must be set to null before the canonical event is written. This prevents
+`has_image = true` for relative paths, `"N/A"`, `"https://"`, or other malformed values
+from scrapers.
+
+Do not implement yet.
+
+**Acceptance criteria:**
+- NORMALISATION.md Step 1 specifies the UTC conversion requirement, the midnight
+  placeholder convention, and the image_url HTTPS validation requirement.
+- No connector can legitimately leave `start_at` populated with a naive local timestamp.
+- No connector can produce `has_image = true` for a non-HTTPS or malformed `image_url`.
+
+---
+
 ### C6 — Pin festival detection with red tests
 
 **Files:** `packages/core/src/festivals/festivals.test.ts` (already exists or create new),
@@ -390,6 +441,12 @@ Then write red tests covering:
 - `is_festival_event` must follow `festival_id`, not the other way around
 
 Stop after docs check and red test.
+
+**Acceptance criteria (gap DB-R2-06):**
+- Tests explicitly cover: an event whose `start_at` falls outside the festival date
+  window must NOT have `festival_id` set in the canonical record. There is no DB-level
+  guard (application-code-only). The test is the only enforcement mechanism, so it
+  must exist.
 
 ---
 
@@ -477,6 +534,39 @@ because merging on time ambiguity is high-risk for Glasgow live music. Document 
 **Acceptance criteria:**
 - DEDUPLICATION.md has a "Doors vs show time" section.
 - The policy is implementable without further guessing.
+
+---
+
+### D6 — Document `auto_create_venue()` race condition under parallel Trigger.dev tasks
+
+**Files:** `docs/NORMALISATION.md` (Step 2 note), `docs/DEDUPLICATION.md` (or a new ops note)
+**Current gap:** `auto_create_venue()` uses `random()` for slug collision resolution and has
+a documented race condition in the schema. Under sequential single-connector normalisation
+this was acceptable. Under Trigger.dev where each connector runs as a separate parallel task,
+two connectors that encounter the same unknown venue simultaneously will each call
+`auto_create_venue()` and create two separate `venues` rows with different UUIDs and different
+random slugs. This produces two different `dedupe_key` values for the same event and generates
+merge candidates for every event at that venue indefinitely. (BE-R1-12)
+
+Instruction:
+Update `docs/NORMALISATION.md` Step 2 with a "Concurrency note":
+
+- The race condition is real under Trigger.dev parallel connector tasks.
+- **Phase 1 mitigation:** use a Postgres advisory lock on `hashtext(normalised_venue_name)`
+  inside `auto_create_venue()` to serialise concurrent venue creation for the same name.
+  This is a one-function migration change; include it in CC-NEW-1 or a follow-on migration.
+- Alternatively, document that Phase 1 connectors run sequentially within a single sweep
+  invocation (fan-out by task ID, not concurrent execution) — if true, state this in the
+  Trigger.dev task design so an agent does not inadvertently introduce parallelism.
+- Also replace `random()` slug suffix with a deterministic sequential counter suffix
+  (same pattern as `events.slug`), so venue stubs are reproducible.
+
+Do not implement yet.
+
+**Acceptance criteria:**
+- NORMALISATION.md Step 2 documents the concurrency risk and the chosen mitigation.
+- `auto_create_venue()` either uses an advisory lock or the sweep design guarantees sequential
+  per-venue execution. The decision is explicit, not implicit.
 
 ---
 
@@ -765,6 +855,7 @@ Before Sprint 1 begins, classify each item below as:
 | `event_submissions` stored XSS sanitisation (SEC-02) | B |
 | SSRF validation for `source_url` (SEC-03) | B |
 | Venue claim OTP verification (SEC-11) | D — Phase 2 |
+| GIN index on `external_events.tags_guess[]` (DB-R2-13) | D — diagnostic queries only, not blocking |
 
 ---
 

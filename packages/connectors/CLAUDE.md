@@ -63,9 +63,9 @@ dataset item ID only when no upstream ID is present in the payload.
 > verified during connector pre-flight (see CC-NEW-2 for DICE.fm pre-flight).
 > Reference: ADR 0003.
 
-> **Note on `connector.ts`:** `SourceType` currently lists `"api" | "rss" |
-> "ical" | "html" | "manual"`. Add `"apify"` to that union when implementing
-> the first Apify connector — do not use `"html"` as a workaround.
+> **`SourceType` includes `"apify"`** — it is a canonical value in both the TypeScript
+> union and the `sources.source_type` CHECK constraint (added in A1 migration). Do not
+> use `"html"` as a workaround for Apify connectors.
 
 ## Skeleton
 

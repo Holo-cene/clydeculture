@@ -26,14 +26,7 @@ Before editing:
 4. Propose a plan.
 5. Wait for approval before editing unless explicitly told otherwise.
 
-For implementation, follow the **test-driven development policy** below. The short version:
-1. Write or update the relevant test(s) first. Stop. Do not write production code yet.
-2. Wait for the user to say: `Now implement the smallest production code needed to pass this test. Run the test and report the result.`
-3. Implement the smallest production change that makes the test pass.
-4. Run the targeted test, then relevant regression checks.
-5. Report changed files, commands run, test results, and remaining risks.
-
-See also: `docs/DEVELOPMENT_WORKFLOW.md`, `docs/TESTING.md`.
+For implementation, follow the **test-driven development policy** below.
 
 Never:
 - Make schema changes outside `supabase/migrations/`
@@ -177,3 +170,5 @@ the missing contract instead of guessing.
 - `docs/prompts/01_PROMPTS_FOR_CLAUDE_CODE.md` — the prompt sequence used to build the initial docs set (historical; see archive notice in that file).
 - `docs/reference/SPEC.md` — the full platform specification (paste it in if missing).
 - `docs/reference/SCHEMA_v5.sql` — the existing v5 schema (paste it in if missing).
+- `docs/TESTING.md` — package-specific test targets, example prompts, and test commands.
+- `docs/DEVELOPMENT_WORKFLOW.md` — the step-by-step implementation workflow.

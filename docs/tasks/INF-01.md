@@ -166,80 +166,48 @@ Update `packages/connectors/src/index.ts` to re-export the connector interface:
 export * from "./connector.js";
 ```
 
-**Step 5 — Create `packages/ingestion/package.json`:**
+**Step 5 — ⛔ SUPERSEDED — Do not create `packages/ingestion`**
 
-```json
-{
-  "name": "@clydeculture/ingestion",
-  "version": "0.0.0",
-  "private": true,
-  "type": "module",
-  "exports": {
-    ".": "./src/index.ts"
-  },
-  "scripts": {
-    "typecheck": "tsc --noEmit",
-    "build": "tsc",
-    "test": "vitest run"
-  },
-  "dependencies": {
-    "@clydeculture/shared": "workspace:*",
-    "@clydeculture/connectors": "workspace:*",
-    "@clydeculture/core": "workspace:*"
-  },
-  "devDependencies": {
-    "typescript": "^5",
-    "vitest": "^2"
-  }
-}
-```
+`packages/ingestion` has been replaced by `trigger/` (ADR 0002 — Trigger.dev v3 runtime).
+Do not create this package. Ingestion task logic lives in `trigger/` and is run via the
+Trigger.dev CLI (`pnpm ingest` → `npx trigger.dev@latest dev`).
 
-Create `packages/ingestion/tsconfig.json` and `packages/ingestion/src/index.ts`
-(`export type {};`).
+**Step 6 — ⛔ SUPERSEDED — Do not create `packages/publishing`**
 
-**Step 6 — Create `packages/publishing/package.json`:**
+`packages/publishing` has been removed. ADR 0001 adopted Astro + Supabase direct read.
+There is no Webflow sync adapter; the Webflow publish tables were dropped in the A1
+migration. Do not create this package.
 
-```json
-{
-  "name": "@clydeculture/publishing",
-  "version": "0.0.0",
-  "private": true,
-  "type": "module",
-  "exports": {
-    ".": "./src/index.ts"
-  },
-  "scripts": {
-    "typecheck": "tsc --noEmit",
-    "build": "tsc"
-  },
-  "dependencies": {
-    "@clydeculture/shared": "workspace:*"
-  },
-  "devDependencies": {
-    "typescript": "^5"
-  }
-}
-```
+**Step 5a — Scaffold `trigger/` for Trigger.dev v3 (replaces Steps 5 & 6):**
 
-Create `packages/publishing/tsconfig.json` and `packages/publishing/src/index.ts`
-(`export type {};`).
+The ingestion runtime is Trigger.dev v3 (ADR 0002). Scaffold the `trigger/` directory:
 
-Note: `packages/publishing` has no `test` script because the publishing adapter shape
-is not decided until ADR 0001 resolves. Add tests when the adapter is built.
+1. Create `trigger.config.ts` at the repo root (or `trigger/trigger.config.ts`) with the
+   project ID and runtime configuration per the Trigger.dev v3 docs.
+2. Create `trigger/tasks/sweep.ts` as a placeholder task exporting a Trigger.dev `task`
+   that calls `packages/connectors` connector `run()` methods in sequence.
+3. The `trigger/` directory is **not** a pnpm workspace package — it runs directly under
+   the Trigger.dev CLI without its own `package.json`.
+4. Run `pnpm ingest` (`npx trigger.dev@latest dev`) to verify the local dev tunnel connects.
 
 **Step 7 — Update root `package.json` scripts:**
 
-Replace the `echo "TODO"` stubs with real commands:
+Replace the `echo "TODO"` stubs with real commands. Do NOT include `packages/ingestion`
+or `packages/publishing` — those packages do not exist (see Steps 5 & 6 above).
 
 ```json
 "scripts": {
   "typecheck": "pnpm -r typecheck",
   "build": "pnpm -r build",
-  "test": "pnpm -r --filter './packages/core' --filter './packages/connectors' --filter './packages/ingestion' test",
-  "lint": "echo 'TODO: wire up eslint once first connector is built'",
+  "test": "pnpm -r --filter './packages/core' --filter './packages/connectors' test",
+  "lint": "pnpm -r lint",
+  "format": "pnpm -r format",
   "db:migrate": "supabase db push",
   "db:reset": "supabase db reset",
-  "ingest": "node packages/ingestion/dist/index.js"
+  "supabase:start": "supabase start",
+  "supabase:reset": "supabase db reset",
+  "supabase:types": "supabase gen types typescript --local > packages/shared/src/database.types.ts",
+  "ingest": "npx trigger.dev@latest dev"
 }
 ```
 
@@ -286,11 +254,13 @@ Thumbs.db
 ## Acceptance criteria
 
 - [ ] `tsconfig.base.json` exists at repo root with `strict: true`, `target: ES2022`, `module: NodeNext`
-- [ ] `packages/shared`, `packages/core`, `packages/connectors`, `packages/ingestion`, `packages/publishing` each have `package.json` with correct name (prefixed `@clydeculture/`) and workspace dependencies
+- [ ] `packages/shared`, `packages/core`, `packages/connectors` each have `package.json` with correct name (prefixed `@clydeculture/`) and workspace dependencies
+- [ ] **Do not create** `packages/ingestion` or `packages/publishing` — these packages do not exist (see Steps 5 & 6)
 - [ ] Each package has `tsconfig.json` extending the base with `outDir: "dist"` and `rootDir: "src"`
 - [ ] Each package has `src/index.ts` (placeholder export is acceptable)
 - [ ] `packages/connectors/src/index.ts` re-exports `connector.ts`
-- [ ] Root `package.json` `typecheck` and `test` scripts use `pnpm -r` (recursive)
+- [ ] Root `package.json` `test` script filters only `packages/core` and `packages/connectors` (not ingestion)
+- [ ] Root `package.json` `ingest` script uses `npx trigger.dev@latest dev` (not `node packages/ingestion/...`)
 - [ ] `.env.example` documents all required environment variables
 - [ ] `.gitignore` excludes `node_modules/`, `dist/`, `.env`, `scratch/`
 - [ ] `pnpm install` from the repo root completes without errors

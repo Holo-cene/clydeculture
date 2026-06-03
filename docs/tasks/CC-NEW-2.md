@@ -79,16 +79,21 @@ implementation until ToS is confirmed acceptable.
 
 ### 5. `sources` row config shape
 
-Write the SQL to register the DICE.fm connector as a source:
+Write the SQL to register the DICE.fm connector as a source.
+
+**Column notes (schema reference: `docs/reference/SCHEMA_v5.sql`):**
+- Use `enabled` (boolean), not `is_active` — `is_active` does not exist in the schema.
+- Do not include `base_url` — this column does not exist in `sources`. The Apify API base
+  URL and actor token go in environment variables (`APIFY_TOKEN`), not in the config JSON
+  or the `sources` row.
 
 ```sql
-insert into sources (name, slug, source_type, tier, base_url, config, is_active)
+insert into sources (name, slug, source_type, tier, config, enabled)
 values (
   'DICE.fm',
   'dice-fm',
   'apify',
   2,
-  'https://api.apify.com',
   '{
     "actorId": "<actor-id-from-step-1>",
     "actorVersion": "<pinned-version>",

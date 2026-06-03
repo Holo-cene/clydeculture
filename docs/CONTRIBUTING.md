@@ -84,30 +84,32 @@ When in doubt, don't build the connector. Reach out to the source to ask about d
 
 ## Testing
 
-All code contributions must follow the two-step test-first workflow described in
-`docs/DEVELOPMENT_WORKFLOW.md` and enforced in `CLAUDE.md`.
+All code contributions must include tests. The project uses **Vitest v2**. Test files use
+the `.test.ts` suffix and live alongside the source they test.
 
-The short version:
+**Before opening a PR:**
 
-1. Write or update the relevant test(s) first. Do not write production code yet.
-2. Review the test: what does it prove? what edge cases remain?
-3. Wait for the prompt: `Now implement the smallest production code needed to pass this test. Run the test and report the result.`
-4. Then implement the smallest production change that makes the test pass.
+- New functions in `packages/core` need unit tests. The highest-priority targets are
+  `normaliseTitle`, `deriveDedupeKey`, `calculateConfidence`, and `mergeExternalEventIntoCanonicalEvent`.
+- New or modified connectors need fixture-based tests covering result shape, stable `externalId`,
+  required `externalUrl`, and link-first compliance.
+- Schema changes need migration tests in `supabase/tests/`.
 
-**Do not weaken tests, skip assertions, or mock away the behaviour under test to make
-an implementation easier.** If a test cannot be written because a contract is missing,
-stop and propose the missing contract.
+**What reviewers will check:**
+- Tests are present for changed behaviour.
+- Tests assert on contracts, not implementation details.
+- No tests have been weakened or skipped to make an implementation pass.
 
-For package-specific test targets and example prompts, see `docs/TESTING.md`.
-
-To run tests:
+To run tests locally:
 
 ```bash
 pnpm test                                         # all packages
-pnpm --filter @clyde-culture/core test            # core only
-pnpm --filter @clyde-culture/connectors test      # connectors only
+pnpm --filter @clydeculture/core test             # core only
+pnpm --filter @clydeculture/connectors test       # connectors only
 pnpm typecheck && pnpm lint                       # type and lint checks
 ```
+
+For detailed test targets and expected file paths, see `docs/TESTING.md`.
 
 ---
 
