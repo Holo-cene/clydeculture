@@ -7,9 +7,10 @@
   "packageManager": "pnpm@9",
   "scripts": {
     "build": "echo \"TODO: wire up per-package builds\"",
-    "test": "echo \"TODO: wire up tests\"",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
     "lint": "echo \"TODO: wire up lint\"",
     "db:migrate": "supabase db push",
-    "ingest": "echo \"TODO: run ingestion orchestrator\""
+    "ingest": "npx trigger.dev@latest dev"
   }
 }
