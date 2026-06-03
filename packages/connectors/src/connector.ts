@@ -2,7 +2,7 @@
  * The contract every connector implements. Connectors are isolated: a failure in one
  * must never affect another. See docs/CONNECTOR_GUIDE.md before adding a new one.
  */
-export type SourceType = "api" | "rss" | "ical" | "html" | "manual";
+export type SourceType = "api" | "rss" | "ical" | "html" | "apify" | "manual";
 
 /** A raw item as pulled from upstream, before normalisation. */
 export interface RawEvent {
