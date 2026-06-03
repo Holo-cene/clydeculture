@@ -8,7 +8,7 @@ This document describes how Clyde Culture pulls data from upstream sources, stag
 
 Every upstream source is assigned a `source_type` and a `tier` (1–4). Both are stored on the `sources` row and feed the `confidence` score that the normalisation pipeline computes for each canonical event.
 
-**Tier 1 — APIs.** Structured JSON responses with stable identifiers, versioned endpoints, and documented field semantics. Examples: Ticketmaster, Skiddle, Eventbrite, Bandsintown, Meetup. These connectors run on incremental sync using stable external IDs and require near-zero maintenance once built. They form the coverage backbone — roughly 60% of events — and their records are preferred as canonical when cross-source duplicates are merged.
+**Tier 1 — APIs.** Structured JSON responses with stable identifiers, versioned endpoints, and documented field semantics. Examples: Ticketmaster, Skiddle, Meetup. These connectors run on incremental sync using stable external IDs and require near-zero maintenance once built. They form the coverage backbone — roughly 60% of events — and their records are preferred as canonical when cross-source duplicates are merged.
 
 **Tier 2 — RSS and iCal.** Semi-structured feeds that venues and promoters publish as part of their existing website infrastructure. iCal feeds provide machine-readable datetimes and UIDs; RSS feeds vary in field completeness. Examples: Glasgow Art Map (Substack), venue newsletter feeds. Feed formats are extremely stable — a Substack RSS endpoint rarely changes shape. The main failure mode is a silent URL change when a site migrates CMS. Tier 2 covers roughly 20% of events.
 
@@ -49,7 +49,7 @@ Each `RawEvent` must include an `externalId` — a stable upstream identifier (A
 
 ## Scheduled-job model
 
-`packages/ingestion` is the orchestration layer. It runs on a daily schedule, implemented as a Supabase Edge Function invoked by a cron trigger, and processes each enabled connector in sequence.
+Ingestion jobs are Trigger.dev tasks defined in the `trigger/` directory and run on the Trigger.dev cloud worker. Each connector maps to one Trigger.dev task; a parent sweep task fans out to per-connector tasks in parallel. Scheduling is configured via Trigger.dev's built-in cron triggers — no separate cron infrastructure is needed. Jobs can also be triggered manually via the Trigger.dev dashboard or CLI. See [ADR 0002](decisions/0002-ingestion-runtime.md) for the full rationale.
 
 For each connector, the orchestrator:
 
@@ -60,7 +60,7 @@ For each connector, the orchestrator:
 5. Updates the `ingest_runs` row with final counts and status, and stamps `sources.last_success_at` or `sources.last_error_at` accordingly.
 6. Runs break detection against the completed run.
 
-The orchestrator wraps each `run()` call so that a thrown exception — a violation of the contract — is caught and logged as a failed run without halting the remaining connectors.
+The Trigger.dev task wrapper catches any thrown exception — a violation of the contract — and logs it as a failed run without halting the remaining connector tasks.
 
 ---
 
@@ -102,7 +102,7 @@ A run is `success` when there are no errors and `parsed_count > 0`. It is `parti
 
 ## Break detection
 
-After each run, the orchestrator computes a 14-day rolling median of `parsed_count` across all non-failed runs for that connector. If the current run's `parsed_count` drops more than 70% below that median, the connector is considered broken.
+After each run, the Trigger.dev sweep task computes a 14-day rolling median of `parsed_count` across all non-failed runs for that connector. If the current run's `parsed_count` drops more than 70% below that median, the connector is considered broken.
 
 On a break event:
 

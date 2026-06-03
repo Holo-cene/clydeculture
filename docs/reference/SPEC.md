@@ -46,9 +46,10 @@ discovery layer for Glasgow culture, combining automated ingestion with communit
 ## 2. Core Principles
 
 **Automation-first ingestion.** The platform ingests events from four source types:
-APIs (Ticketmaster, Skiddle, Eventbrite, Meetup), RSS feeds (Substack newsletters,
-cultural publications), iCal feeds (venue calendars), and structured HTML scraping for
-venues such as SWG3, Mono, and St Luke's.
+APIs (Ticketmaster, Skiddle, Meetup), RSS feeds (Substack newsletters,
+cultural publications), iCal feeds (venue calendars), and structured HTML scraping
+and managed Apify actors for venues and platforms such as SWG3, Mono, St Luke's,
+and DICE.fm.
 
 **Low maintenance.**
 

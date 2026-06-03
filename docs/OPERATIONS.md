@@ -29,11 +29,12 @@ below) and should never appear in committed files.
 
 Three categories of secret are in play:
 
-- **Third-party API keys** — Ticketmaster, Skiddle, Eventbrite, Meetup, etc. These
-  go in environment variables (`TICKETMASTER_API_KEY`, `SKIDDLE_API_KEY`, and so on).
+- **Third-party API keys** — Ticketmaster, Skiddle, Apify, Meetup, etc. These
+  go in environment variables (`TICKETMASTER_API_KEY`, `APIFY_API_KEY`, and so on).
   In the local environment they live in a `.env` file that is gitignored. In
-  production they are set as Edge Function secrets via `supabase secrets set` or
-  stored in Supabase Vault for values that must be readable at query time.
+  production they are set as environment variables in the Trigger.dev project
+  dashboard, or stored in Supabase Vault for values that must be readable at query
+  time.
 
 - **Supabase project credentials** — `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`
   are required by ingestion jobs and the publish adapter. The service role key
@@ -50,37 +51,73 @@ Vault — never in `config` JSON, never committed.
 
 ---
 
-## Scheduled Ingestion
+## Scheduled Ingestion (Trigger.dev)
 
-Ingestion needs to run on a daily schedule. Three options exist, each with different
-trade-offs:
+Ingestion runs on Trigger.dev v3, a TypeScript-native managed worker platform. The
+decision is documented in [ADR 0002](decisions/0002-ingestion-runtime.md).
 
-**Option A — Supabase Scheduled Edge Functions (recommended for Phase 1).** Supabase
-supports `pg_cron`-triggered HTTP calls to Edge Functions. A cron entry in
-`supabase/migrations/` fires a function once per day; the function iterates over
-enabled sources and runs each connector in sequence. This keeps everything inside
-the Supabase project with no external dependencies. The downside is that Edge
-Functions have a 150-second wall-clock limit per invocation; connectors must be fast
-or the orchestrator must fan out across multiple function invocations. This is
-workable for Phase 1 because connectors run sequentially and most API connectors
-finish in seconds.
+**Project setup.**
 
-**Option B — External cron + Node worker.** A scheduled GitHub Actions workflow,
-Render cron job, or similar fires a Node process daily. The worker imports
-`packages/ingestion` and runs the full connector sweep. This lifts the 150-second
-constraint and makes local debugging easier (`node run-ingestion.ts`). The cost is
-one more moving part outside Supabase. Suitable if connector sweep time grows beyond
-what Edge Functions can handle.
+1. Install the SDK: `pnpm add @trigger.dev/sdk` in the relevant workspace package.
+2. Create `trigger.config.ts` at the repo root, pointing at the tasks directory.
+3. Define tasks in `trigger/tasks/` — one file per connector, plus a parent sweep
+   task that fans out to the per-connector tasks. Each connector's `run()` method
+   maps directly to a Trigger.dev task with no interface change.
 
-**Option C — Supabase pg_cron directly.** A `pg_cron` job calls a Postgres function
-that triggers connectors via `pg_net` HTTP calls. Lowest infrastructure overhead but
-the hardest to test locally and the least visible. Not recommended as the primary
-mechanism.
+Cron schedules are configured in the task definition using Trigger.dev's built-in
+cron trigger syntax. No external cron infrastructure or Supabase Edge Function
+invocation is needed.
 
-For Phase 1, Option A is the right starting point. The connector isolation guarantee
-(a broken connector never affects others) applies equally to all three options, as
-long as each connector run is wrapped in its own try/catch and logs to `ingest_runs`
-regardless of outcome.
+**Secrets.**
+
+Set `TRIGGER_SECRET_KEY` in the Trigger.dev project dashboard under
+Environment Variables. All other runtime secrets that tasks need — `SUPABASE_URL`,
+`SUPABASE_SERVICE_ROLE_KEY`, third-party API keys — are also set in the Trigger.dev
+dashboard environment variables, not in committed files.
+
+**Viewing run logs.**
+
+- Trigger.dev dashboard: [trigger.dev/dashboard](https://trigger.dev/dashboard) —
+  each task run shows structured logs, duration, and status.
+- CLI: `npx trigger.dev@latest logs` streams recent run output to the terminal.
+
+**Triggering a manual run.**
+
+- CLI: `npx trigger.dev@latest run <task-id>`
+- Dashboard: open the task, click "Trigger run", optionally provide a payload.
+
+The connector isolation guarantee (a broken task never affects others) is provided
+natively by Trigger.dev's per-task execution model. Each connector task writes its
+own `ingest_runs` row and logs independently.
+
+---
+
+## Database Connections
+
+Supabase exposes two Postgres endpoints:
+
+- **Direct connection — port 5432.** A standard Postgres connection. Use this for
+  migrations (`supabase db push` / `supabase migrate`) and for local development
+  where a persistent connection is acceptable.
+
+- **PgBouncer — port 6543.** A connection-pooling proxy. Use this for Trigger.dev
+  workers, where concurrent task runs would otherwise exhaust Postgres connection
+  limits.
+
+**Important:** PgBouncer operates in transaction-pooling mode and is incompatible
+with prepared statements. If you use Prisma, append
+`?pgbouncer=true&prepared_statements=false` to the `DATABASE_URL` connection string.
+The `@supabase/supabase-js` client is not affected and works with either endpoint.
+
+Summary:
+
+| Context | Endpoint | Port |
+|---|---|---|
+| Trigger.dev workers (concurrent tasks) | PgBouncer | 6543 |
+| Migrations (`supabase db push`) | Direct | 5432 |
+| Local development | Direct | 5432 |
+
+This closes DB-03.
 
 ---
 
@@ -124,9 +161,8 @@ automatically flagged:
 2. An `ingest_alerts` row is inserted with `alert_type = 'count_drop'`, the
    `run_id` of the failing run, and a human-readable `message`.
 3. An email notification is sent to the operator address (configured via an
-   environment variable — `ALERT_EMAIL`). In the Edge Function path this is sent
-   via Supabase's built-in SMTP integration or a transactional email service
-   (Resend, Postmark). In the Node worker path, any Node mailer works.
+   environment variable — `ALERT_EMAIL`). This is sent from the Trigger.dev task
+   via a transactional email service (Resend, Postmark, or similar).
 
 The email contains: the source name, the current `parsed_count`, the 14-day median,
 the percentage drop, and a link to the Supabase dashboard filtered to that source's
