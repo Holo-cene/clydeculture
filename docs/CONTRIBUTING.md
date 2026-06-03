@@ -82,6 +82,35 @@ When in doubt, don't build the connector. Reach out to the source to ask about d
 
 ---
 
+## Testing
+
+All code contributions must follow the two-step test-first workflow described in
+`docs/DEVELOPMENT_WORKFLOW.md` and enforced in `CLAUDE.md`.
+
+The short version:
+
+1. Write or update the relevant test(s) first. Do not write production code yet.
+2. Review the test: what does it prove? what edge cases remain?
+3. Wait for the prompt: `Now implement the smallest production code needed to pass this test. Run the test and report the result.`
+4. Then implement the smallest production change that makes the test pass.
+
+**Do not weaken tests, skip assertions, or mock away the behaviour under test to make
+an implementation easier.** If a test cannot be written because a contract is missing,
+stop and propose the missing contract.
+
+For package-specific test targets and example prompts, see `docs/TESTING.md`.
+
+To run tests:
+
+```bash
+pnpm test                                         # all packages
+pnpm --filter @clyde-culture/core test            # core only
+pnpm --filter @clyde-culture/connectors test      # connectors only
+pnpm typecheck && pnpm lint                       # type and lint checks
+```
+
+---
+
 ## Pull requests
 
 Keep pull requests focused. A connector is one PR. A schema migration is one PR. Don't
