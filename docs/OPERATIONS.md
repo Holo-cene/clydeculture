@@ -222,6 +222,6 @@ wraps `pg_dump`) and store the output in a private location outside the reposito
 
 The `supabase/migrations/` directory is the authoritative schema history. Restoring
 to a blank Postgres instance is a matter of running `supabase db push` against the
-target project, then restoring data from the most recent dump. The frontend is
-disposable — if it is lost, re-running the publish sync job from the Supabase source
-of truth rebuilds it.
+target project, then restoring data from the most recent dump. The Astro frontend is
+disposable — if it is lost, redeploying `apps/web` from the Supabase source of truth
+rebuilds it. No data is held in the frontend layer.

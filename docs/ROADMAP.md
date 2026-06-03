@@ -57,7 +57,7 @@ handle all four connector types (built here for API shape; extended in later mil
 for RSS/iCal/HTML shape).
 
 - [ ] Normaliser in `packages/core`: maps `external_events` fields to the canonical `events` schema — title, `start_at`, `event_type_id`, tags, `venue_id`, `source_url`
-- [ ] `event_type` classification from source category fields; falls back to `Other`; stores pre-normalisation guess in `external_events.event_type_guess`
+- [ ] `event_type_id` classification from source category fields via `source_type_category_map`; falls back to `other`; stores pre-normalisation guess in `external_events.event_type_guess`
 - [ ] Confidence scoring (0–100); events below threshold land in `needs_review = true` rather than `visibility = published`
 - [ ] Within-source deduplication: upsert by `(source_id, external_id)` on each run
 - [ ] Cross-source deduplication: compute `dedupe_key` as SHA-256 of `venue_id | start_bucket | normalised_title`; duplicate candidates written to `event_merge_candidates`

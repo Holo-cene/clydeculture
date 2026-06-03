@@ -1,3 +1,21 @@
+> **ARCHIVED DOCUMENT — superseded as of 2026-06-02.**
+> This document was a production-readiness review of the v5 schema conducted against the
+> original Webflow-path design. It is retained for historical reference only.
+>
+> **What supersedes it:**
+> - ADR 0001 (`docs/decisions/0001-frontend-architecture.md`) — Webflow rejected; Astro +
+>   Supabase direct read adopted. The 13 Webflow-only denormalised fields and the
+>   `publish_mappings`, `publish_jobs`, `publish_job_items` tables are retired.
+> - ADR 0003 (`docs/decisions/0003-scraping-strategy.md`) — Eventbrite direct API deprecated;
+>   coverage via Apify actor (Tier 2). `source_type = 'apify'` added to schema.
+> - `docs/NORMALISATION.md` — the authoritative normalisation contract, including the
+>   `compute_dedupe_key` UTC-bucketing correction (BE-09).
+>
+> The worked use cases and bug fixes documented here (UC1–UC30, fixes [44] and earlier) remain
+> accurate at the level of the v5 schema baseline but should be read alongside the ADRs above.
+> Do not treat the Webflow CMS field map, Webflow display scenarios (UC8–UC17), or the
+> denormalised-field rationale as current guidance.
+
 # Clyde Culture — Schema v5 Production Readiness Assessment
 
 ## Verdict: Production Ready

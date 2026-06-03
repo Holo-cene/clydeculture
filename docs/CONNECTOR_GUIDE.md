@@ -9,18 +9,28 @@ a new connector.
 
 ## 1. Choose a source type
 
+The preferred integration order is: **API → RSS/iCal → JSON-LD (static HTML) → HTML
+(Crawlee) → Apify actor**. Apply the earliest option that provides sufficient structured
+data. See [ADR 0003](decisions/0003-scraping-strategy.md) for the full rationale.
+
 | Type | When to use | Tier | Maintenance |
 |------|-------------|------|-------------|
 | `api` | Source exposes a REST/JSON API with stable identifiers | 1 | Near zero |
 | `rss` | Venue or promoter publishes an RSS feed | 2 | Near zero |
 | `ical` | Venue publishes an `.ics` calendar link | 2 | Near zero |
-| `html` | No feed exists; you must parse HTML with CSS selectors | 3 | Occasional |
+| `html` | No feed exists; parse HTML with Crawlee (CSS selectors or JSON-LD) | 3 | Occasional |
+| `apify` | Source is JS-heavy or a maintained Apify Store actor exists (e.g. DICE.fm, Eventbrite) | 2 | Low — pin actor version |
 
-`html` connectors are the most fragile. A layout change on the source site silently
-breaks the scraper — there is no HTTP error to catch. The platform's break detection
-(a 70% drop in parsed count vs. the 14-day median) exists mainly for Tier 3, but you
-should still expect to fix an HTML connector a few times a year. Prefer RSS or iCal if
-the venue publishes them.
+`html` connectors use **Crawlee** (`CheerioCrawler` for static pages, `PlaywrightCrawler`
+for JS-rendered pages). They are the most fragile source type — a layout change on the
+source site silently breaks the scraper with no HTTP error to catch. The platform's
+break detection (a 70% drop in parsed count vs. the 14-day median) exists mainly for
+Tier 3. Prefer RSS, iCal, or JSON-LD if the venue publishes them.
+
+`apify` connectors call the Apify API from inside a Trigger.dev task: trigger an actor
+run, poll for completion, fetch the output dataset, and convert to `RawEvent[]`. The
+connector interface (`run() → IngestResult`) is unchanged; the Apify HTTP calls are
+implementation details inside `run()`.
 
 ---
 
@@ -38,6 +48,8 @@ connector is first deployed.
 packages/connectors/src/rss/glasgow-art-map/index.ts
 packages/connectors/src/api/skiddle/index.ts
 packages/connectors/src/html/swg3/index.ts
+packages/connectors/src/apify/dice/index.ts
+packages/connectors/src/apify/eventbrite/index.ts
 ```
 
 ---
@@ -47,7 +59,7 @@ packages/connectors/src/html/swg3/index.ts
 The full contract is in [packages/connectors/src/connector.ts](../packages/connectors/src/connector.ts):
 
 ```ts
-export type SourceType = "api" | "rss" | "ical" | "html" | "manual";
+export type SourceType = "api" | "rss" | "ical" | "html" | "apify" | "manual";
 
 export interface RawEvent {
   externalId: string;    // stable upstream identifier — see section 4
@@ -76,8 +88,10 @@ export interface Connector {
 
 **`run()` must not throw.** All errors — network failures, parse errors, unexpected
 payloads — go into `IngestResult.errors` as plain strings. This is the isolation
-contract: an unhandled exception propagating out of `run()` would crash the orchestrator
-and silently skip every connector that follows.
+contract: an unhandled exception propagating out of `run()` would crash the Trigger.dev
+task and silently skip every connector that follows. Trigger.dev's per-task isolation
+means a crashed task does not affect other connector tasks, but the broken connector's
+own `ingest_runs` row will not be updated correctly if `run()` throws.
 
 The gap between `fetchedCount` and `parsedCount` is an early signal that a source is
 changing shape, so keep them accurate: increment `fetchedCount` for every raw record you
@@ -268,9 +282,41 @@ VALUES (
 **Credentials go in Supabase Vault or environment variables, never in `config`.** The
 `config` column is visible to anyone with database access and is not encrypted.
 
+After registering the source, create a Trigger.dev task in `trigger/tasks/` that calls
+the connector's `run()` method, writes the `ingest_runs` row, and upserts items into
+`external_events`. Add the connector to the parent sweep task's fan-out list. See ADR
+0002 for the Trigger.dev task model.
+
 ---
 
-## 8. Test locally
+## 8. Pre-flight checklist (HTML and Apify connectors)
+
+Before writing any code for an `html` or `apify` connector, complete this checklist and
+record the findings as comments in the connector's source file header. This checklist
+applies every time — not just for the first build.
+
+- [ ] **robots.txt** — Check `https://<domain>/robots.txt`. Does it allow crawling the
+  events listing path? If the relevant path is disallowed, do not build the connector.
+  Propose alternative coverage (iCal, RSS, or link-out only) and open an issue instead.
+
+- [ ] **Terms of service** — Does the site's ToS explicitly permit or prohibit automated
+  access? Sources that prohibit scraping cannot be added. If the ToS is ambiguous,
+  raise the question in a discussion thread before writing any code.
+
+- [ ] **JSON-LD structured data** — Check whether the events listing page embeds
+  `<script type="application/ld+json">` with `schema.org/Event` markup. If it does,
+  prefer JSON-LD extraction over CSS selector scraping — it is more stable and more
+  likely to survive redesigns. Document the result (present/absent) in the connector
+  header.
+
+- [ ] **Static vs JS-rendered** — Test with `curl` or a plain `fetch()`: are event
+  titles and dates visible in the raw HTML response, or does the page require JavaScript
+  execution? If JS is required, document it and use `PlaywrightCrawler`. Record which
+  Crawlee crawler type is needed.
+
+---
+
+## 9. Test locally
 
 No test framework needed for a quick smoke test. Create a `scratch/` directory at the
 repo root (gitignored; not committed) and add a test file:
@@ -293,11 +339,6 @@ Run it with:
 npx tsx scratch/test-glasgow-art-map.ts
 ```
 
-**Before building an HTML connector, verify:**
-
-- [ ] `robots.txt` at the source domain does not disallow crawling the events path. Check `https://<domain>/robots.txt` and record the finding in the connector's implementation notes. If crawling is disallowed, do not build the connector — propose alternative coverage (iCal, RSS, or link-out only) instead.
-- [ ] The event listing page renders in a static fetch (no JS required). Test with `curl` or a plain `fetch()` and confirm that event titles and dates are visible in the raw HTML. If the page requires JavaScript execution, document it as a JS-rendered source and raise as a blocker (see API-06).
-
 Check off the following before opening a PR:
 
 - [ ] `parsedCount > 0`
@@ -306,6 +347,8 @@ Check off the following before opening a PR:
 - [ ] `externalId` values are stable — running the connector twice produces the same IDs
 - [ ] `externalUrl` values load in a browser and point to the source's own page
 - [ ] `run()` does not throw — wrap the call in a try/catch to confirm
+- [ ] Pre-flight checklist (section 8) completed and findings recorded in the connector
+  source header (HTML and Apify connectors only)
 
 Once the connector passes the smoke test, open a pull request. The review will check the
 above list and verify the `sources` row is included in a migration or seed file.

@@ -242,6 +242,7 @@ The following traces a single event from ingest to publication.
 packages/shared       types, taxonomy enums, config, Supabase client, query helpers
 packages/core         normalisation, deduplication, festival detection
 packages/connectors   modular connector library (api/ rss/ ical/ html/ apify/)
+trigger/              Trigger.dev tasks (sweep task + per-connector tasks)
 apps/web              Astro frontend — reads Supabase directly
 supabase/             migrations, edge functions, seed data
 docs/                 project documentation and decision records
@@ -249,4 +250,5 @@ docs/                 project documentation and decision records
 
 TypeScript (strict mode) throughout. pnpm workspaces. Connectors are plain TypeScript
 modules behind the shared `Connector` interface — no framework coupling. The
-`packages/ingestion` directory is removed; Trigger.dev replaces it.
+`packages/ingestion` directory is removed; Trigger.dev tasks in `trigger/` replace it.
+The `packages/publishing` directory is removed; the Astro frontend reads Supabase directly.

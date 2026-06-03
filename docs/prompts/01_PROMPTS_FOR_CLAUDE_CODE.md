@@ -1,3 +1,9 @@
+> **HISTORICAL DOCUMENT — generation sequence only.**
+> This file contains the prompts used to generate the initial documentation set.
+> ADRs 0001–0003 and NORMALISATION.md supersede many of the decisions and descriptions
+> these prompts produced. Do not use this as a source of truth for current architecture.
+> See `docs/decisions/` and `docs/NORMALISATION.md` instead.
+
 # Prompts for Claude Code — building the documentation set
 
 Run these **in order, one at a time**, in Claude Code (Cursor). Each one produces or

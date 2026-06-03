@@ -26,8 +26,9 @@ row, not an update to the existing one. This preserves historical event associat
 
 ## Detection Rules
 
-Festival membership is determined automatically during the normalisation step, after a
-canonical event record has been created but before it is marked ready for publishing.
+Festival membership is determined automatically during the normalisation step, after venue
+resolution (Step 2) and before the canonical record is written to `events` (Step 8). See
+[docs/NORMALISATION.md](NORMALISATION.md) for the full normalisation pipeline.
 The detector runs each candidate festival in turn. An event is tagged when any of the
 following conditions is true:
 
@@ -92,9 +93,8 @@ If no festival match is found, both fields remain null / false. No default is ap
 Festival pages on the frontend are not manually authored. They are populated directly
 from the `festivals` table (name, description, dates, banner image) combined with a
 filtered query on `events` where `festival_id` matches and `visibility = 'published'`.
-Adding a new festival row and tagging events to it is sufficient to trigger the data.
-⚠ **ADR 0001**: on the coded-frontend path, no additional deployment is needed; on the
-Webflow path, a sync job run is required to push the new festival record to the Webflow CMS.
+The Astro frontend (ADR 0001) reads Supabase directly — adding a new festival row and
+tagging events to it is sufficient. No sync job or deployment step is required.
 
 The "active now" state — whether a festival banner is shown in site-wide navigation —
 is derived from the `start_date` and `end_date` fields at query time.

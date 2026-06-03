@@ -23,11 +23,12 @@ Full specification: [docs/reference/SPEC.md](reference/SPEC.md). Authoritative s
 
 ## Core principles
 
-**Automation-first ingestion.** The platform ingests from four source types: REST APIs
-(Ticketmaster, Skiddle, Eventbrite, Meetup), RSS/iCal feeds (venue calendars, Substack
-newsletters), structured HTML scrapers (SWG3, Mono, St Luke's), and cultural directories
-used as an enrichment layer. API and feed sources form the stable backbone; scrapers
-supplement coverage but are treated as breakable.
+**Automation-first ingestion.** The platform ingests from multiple source types: REST APIs
+(Ticketmaster, Skiddle, Meetup), managed Apify actors (DICE.fm, Eventbrite), RSS/iCal
+feeds (venue calendars, Substack newsletters), structured HTML scrapers using Crawlee
+(SWG3, Mono, St Luke's), and cultural directories used as an enrichment layer. API and
+feed sources form the stable backbone; scrapers supplement coverage but are treated as
+breakable. See ADR 0003 for the full source integration strategy.
 
 **Low maintenance by design.** Stable external IDs are stored for incremental sync.
 Every connector logs run metrics to `ingest_runs`. Break detection automatically flags
@@ -42,9 +43,9 @@ are stored in `external_events` separately from the canonical `events` table, en
 re-parsing and diff detection without touching published records.
 
 **Supabase is the source of truth.** The frontend is a presentation layer only. Nothing
-of consequence lives in the frontend — approved, high-confidence events
-(`visibility = 'published'`, confidence above threshold) are pushed to it; everything
-else stays internal.
+of consequence lives in the frontend. The Astro frontend reads Supabase directly via the
+anon key scoped by RLS. Only approved, high-confidence events (`visibility = 'published'`,
+confidence above threshold) are returned by RLS policies; everything else stays internal.
 
 **Festival-aware.** Major festivals — Celtic Connections, Glasgow Comedy Festival,
 Glasgow Film Festival, Glasgow International, Tectonics, and others — are first-class
@@ -74,13 +75,15 @@ Sources are organised into four tiers by integration stability and maintenance b
 Full per-source detail — including risk notes and specific connector guidance — is in
 [docs/reference/SPEC.md § 6](reference/SPEC.md).
 
-**Tier 1 — API backbone (~60% of coverage, near-zero maintenance).** Ticketmaster,
-Skiddle, Eventbrite, Bandsintown, Meetup. Scheduled daily ingestion via official REST
+**Tier 1 — API backbone (~45% of coverage, near-zero maintenance).** Ticketmaster,
+Skiddle (gated on commercial approval), Meetup. Scheduled daily ingestion via official REST
 APIs, stable external IDs, incremental upsert. These sources require almost no
 intervention after initial setup.
 
-**Tier 2 — RSS / iCal feeds (~20% of coverage, near-zero maintenance).** Substack
-newsletters, venue iCal feeds. Feed formats are extremely stable.
+**Tier 2 — Apify actors and RSS/iCal feeds (~30% of coverage, low maintenance).** DICE.fm
+and Eventbrite via Apify actors (Eventbrite's public location-search API was deprecated in
+2019 and is no longer usable; see ADR 0003). Substack newsletters and venue iCal feeds.
+Actor versions are pinned; maintenance is triggered by actor output schema changes.
 
 **Tier 3 — Structured HTML scrapers (~15% of coverage, occasional maintenance).**
 SWG3, St Luke's, Mono, The Flying Duck, The Old Hairdressers, The Pipe Factory, Gigs
@@ -106,9 +109,10 @@ images).
 
 **Ingestion backbone**
 
-- Ticketmaster API
-- Skiddle API
-- Eventbrite API
+- Ticketmaster API (Tier 1)
+- Skiddle API (Tier 1 — gated on commercial approval, API-03)
+- DICE.fm via Apify actor (Tier 2)
+- Eventbrite via Apify actor (Tier 2 — direct API deprecated 2019; see ADR 0003)
 
 **Venue connectors**
 

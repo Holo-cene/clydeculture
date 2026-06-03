@@ -14,7 +14,7 @@ Events             festivals, event_series, events, event_tags,
                    external_events
 Ingestion          ingest_runs, ingest_alerts
 Deduplication      event_merge_candidates
-Publishing         publish_mappings, publish_jobs, publish_job_items
+Publishing         publish_mappings, publish_jobs, publish_job_items  ← RETIRED (ADR 0001, CC-NEW-1)
 Community (Ph.2)   event_submissions, venue_claims, moderation_log
 ```
 
@@ -75,7 +75,7 @@ The authoritative registry of every connector and its current health. Every row 
 
 ### source_type_category_map
 
-Maps source-specific category strings to canonical event_type_ids. A Ticketmaster classification ID or an Eventbrite category name resolves here rather than being hard-coded in connector code.
+Maps source-specific category strings to canonical event_type_ids. A Ticketmaster classification ID or an Apify actor output category resolves here rather than being hard-coded in connector code.
 
 Unique constraint: `(source_id, source_category)`.
 
@@ -248,7 +248,7 @@ Junction table. Composite PK `(event_id, tag_id)` enforces uniqueness. Index on 
 
 Multiple external_events rows can point to the same events row. If Ticketmaster and Skiddle both carry the same gig, two external_events rows share one events row. The API-sourced record is preferred as canonical when a merge is resolved.
 
-When an external record disappears from the source, `is_deleted = true` propagates to the canonical event. The sync job then removes the Webflow item (or, with a coded frontend, expiry is handled by the visibility transition to `archived`).
+When an external record disappears from the source, `is_deleted = true` propagates to the canonical event. Expiry is handled by the visibility transition to `archived` — the `archive_past_events()` function sets `visibility = 'archived'` on published events more than 7 days past their end/start time, after which they are excluded by RLS.
 
 ---
 
@@ -259,13 +259,13 @@ compute_dedupe_key(venue_id uuid, start_at timestamptz, title text)
   → SHA-256(
       COALESCE(venue_id::text, 'no-venue')
       || '|'
-      || TO_CHAR(DATE_TRUNC('hour', start_at), 'YYYY-MM-DD-HH24')
+      || TO_CHAR(DATE_TRUNC('hour', start_at AT TIME ZONE 'UTC'), 'YYYY-MM-DD-HH24')
       || '|'
       || normalise_title(title)
     )
 ```
 
-`normalise_title` strips all non-alphanumeric characters and collapses whitespace to a single lowercase space. `start_at` is bucketed to the hour, so a Ticketmaster event listed at 20:00 and a Skiddle event listed at 20:30 produce the same bucket and, if the titles match, the same key — one canonical record.
+`normalise_title` strips all non-alphanumeric characters and collapses whitespace to a single lowercase space. `start_at` is bucketed to the hour in UTC (BE-09 — avoids session-timezone dependency), so a Ticketmaster event listed at 20:00 and a Skiddle event listed at 20:30 produce the same bucket and, if the titles match, the same key — one canonical record.
 
 The `UNIQUE` index on `events.dedupe_key` enforces this at the database level. A second normalised event with the same key causes a constraint violation, which the pipeline catches and converts to an update of the existing record.
 
@@ -307,34 +307,27 @@ A cancelled event keeps `visibility = 'published'` — users who booked need to 
 
 ---
 
-## Denormalised Fields on events
+## Denormalised Fields on events (v5 schema — pending migration)
 
-The events table carries 13 fields that are derivable from foreign-key relationships: `event_type_label`, `venue_name_display`, `venue_slug_display`, `festival_name_display`, `festival_slug_display`, `tags_display`, `location_display`, `has_image`, `is_festival_event`, `is_sold_out`, `availability_note`, `ticket_url_label`, `age_restriction`.
+The v5 schema carries 13 fields that are derivable from foreign-key relationships:
+`event_type_label`, `venue_name_display`, `venue_slug_display`, `festival_name_display`,
+`festival_slug_display`, `tags_display`, `location_display`, `has_image`, `is_festival_event`,
+`is_sold_out`, `availability_note`, `ticket_url_label`, `age_restriction`.
 
-These exist because **Webflow CMS cannot perform joins**. The sync job serialises one flat document per event; all data that appears on the event card must be in that document. Without `venue_name_display`, the sync job would need a separate query per event to join against venues.
+The first 7 of these (`event_type_label`, `venue_name_display`, `venue_slug_display`,
+`festival_name_display`, `festival_slug_display`, `tags_display`, `location_display`)
+existed solely to give the Webflow sync job a flat document to push. **ADR 0001
+(accepted 2026-06-02) selected Astro + Supabase direct read and rejected Webflow.**
+These 7 fields are therefore redundant and will be dropped in the schema migration
+(Milestone 6 / CC-NEW-1). The Astro frontend derives these values via joins at query time.
 
-The trade-off is write amplification: when a venue renames, all events at that venue need `venue_name_display` updated. `validate_event_consistency()` checks for the most common consistency violations before a sync run.
+The remaining generated booleans (`has_image`, `is_festival_event`, `is_sold_out`) remain
+useful regardless of frontend choice — they enable partial indexes and clean WHERE clauses
+without repeating the expression in every query.
 
-**This is contingent on ADR 0001.** See [docs/decisions/0001-frontend-architecture.md](decisions/0001-frontend-architecture.md) before building the publishing layer.
-
-> **⚠ If ADR 0001 resolves to a coded Next.js frontend:**
-> The following fields become redundant and can be dropped from the schema:
-> - `event_type_label` → join to `event_types` on `event_type_id`
-> - `venue_name_display`, `venue_slug_display` → join to `venues`
-> - `festival_name_display`, `festival_slug_display` → join to `festivals`
-> - `tags_display` (comma-separated string) → join through `event_tags` to `tags`
-> - `location_display` → compose from `venues` at query time
->
-> The generated boolean columns (`has_image`, `is_festival_event`, `is_sold_out`) remain
-> useful regardless of frontend choice — they enable partial indexes and clean WHERE clauses
-> without repeating the expression in every query.
->
-> The `publish_mappings`, `publish_jobs`, and `publish_job_items` tables are retired
-> entirely if there is no Webflow sync job.
->
-> The denormalised string fields can be left in place without harm if the frontend changes;
-> they are not incorrect, just unused. A new migration can drop them once ADR 0001 is
-> decided.
+`validate_event_consistency()` was designed to check denormalised field consistency before
+a Webflow sync run. It checks the Webflow-specific fields and will be updated or removed
+as part of the CC-NEW-1 migration.
 
 ---
 
@@ -376,17 +369,23 @@ When two canonical events share a venue and a time bucket but have different tit
 
 ---
 
-## Publishing
+## Publishing (tables retired — pending schema migration)
+
+The following three tables exist in the v5 schema but are retired under ADR 0001
+(Astro + Supabase direct read). They will be dropped in the CC-NEW-1 schema migration.
+Do not write new code that depends on these tables.
 
 ### publish_mappings
 
-Tracks which Postgres entity maps to which Webflow CMS item. One row per entity. `content_hash` lets the sync job skip unchanged records. Covers `event`, `venue`, `festival`, and `tag` entity types (tags synced as a Phase 2 Webflow collection for native multi-reference filtering).
+Previously tracked which Postgres entity mapped to which Webflow CMS item. The `content_hash`
+let the sync job skip unchanged records. **Retired — no sync job exists on the Astro path.**
 
 ### publish_jobs / publish_job_items
 
-Audit log of sync runs. `publish_jobs` is one row per sync run; `publish_job_items` is one row per entity action (`created`, `updated`, `skipped`, `deleted`, `failed`). The partial index on `action = 'failed'` supports efficient failure-only queries.
+Previously an audit log of sync runs. **Retired — no sync job, no sync audit trail.**
 
-If ADR 0001 resolves to a coded frontend, these three tables are retired.
+The `packages/publishing` package is also removed. Shared Supabase query helpers
+(typed wrappers for `getPublishedEvents`, `getVenue`, `getFestival`) live in `packages/shared`.
 
 ---
 
@@ -415,7 +414,7 @@ Append-only audit trail across all entity types. No updates or deletes.
 | `compute_dedupe_key(uuid, timestamptz, text)` | Computes the SHA-256 cross-source dedupe hash. Immutable. |
 | `resolve_venue(text)` | Looks up a venue by name then alias; returns uuid or null |
 | `auto_create_venue(text, text)` | Creates a bare venue record with `auto_created=true`, `needs_review=true`, `status='pending'` when resolve_venue returns null. Race condition documented in the schema; safe with sequential Edge Functions. |
-| `validate_event_consistency(uuid)` | Checks denormalised fields are consistent before a Webflow sync run. Returns false if venue_name_display is missing when venue_id is set, festival_name_display is missing when festival_id is set, event_type_label is empty, or is_free is true without a price_display. |
+| `validate_event_consistency(uuid)` | Checks denormalised fields are consistent (v5 schema, Webflow-era). Returns false if venue_name_display is missing when venue_id is set, festival_name_display is missing when festival_id is set, event_type_label is empty, or is_free is true without a price_display. This function checks the Webflow-specific denormalised fields that will be dropped in the CC-NEW-1 migration; it will be updated or removed at that point. |
 | `archive_past_events()` | Sets `visibility = 'archived'` on published events more than 7 days past `COALESCE(end_at, start_at)` |
 
 ---
@@ -426,8 +425,8 @@ RLS is enabled on all 20 tables. Public policies:
 
 - `event_types`, `tags`, `venue_aliases`, `festivals`, `event_series` — public read
 - `venues` — public read where `status IN ('active', 'temporary')`
-- `events` — public read where `visibility = 'published'`
+- `events` — public read where `visibility = 'published' AND confidence >= 60` (the CC-NEW-1 migration tightens the v5 policy to add the confidence check)
 - `event_tags` — public read where the parent event is published
 - `event_submissions` — public insert (no read)
 
-All other tables (sources, external_events, ingestion, publishing, community moderation) have no public policies; access is via the service role key in Edge Functions.
+All other tables (sources, external_events, ingestion, publishing, community moderation) have no public policies; access is via the service role key in Trigger.dev tasks only.

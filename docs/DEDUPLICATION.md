@@ -25,13 +25,13 @@ compute_dedupe_key(venue_id uuid, start_at timestamptz, title text)
   → SHA-256(
       COALESCE(venue_id::text, 'no-venue')
       || '|'
-      || TO_CHAR(DATE_TRUNC('hour', start_at), 'YYYY-MM-DD-HH24')
+      || TO_CHAR(DATE_TRUNC('hour', start_at AT TIME ZONE 'UTC'), 'YYYY-MM-DD-HH24')
       || '|'
       || normalise_title(title)
     )
 ```
 
-The result is stored in `events.dedupe_key`, which carries a `UNIQUE` index. When the normalisation pipeline tries to insert a second canonical event that hashes to the same key, the constraint violation is caught and converted to an update of the existing record.
+`start_at` is truncated in UTC to avoid session-timezone dependency (BE-09) — using the session timezone would produce different hashes depending on where the normaliser runs. The result is stored in `events.dedupe_key`, which carries a `UNIQUE` index. When the normalisation pipeline tries to insert a second canonical event that hashes to the same key, the constraint violation is caught and converted to an update of the existing record.
 
 ### Normalisation rules
 
@@ -41,7 +41,7 @@ If `resolve_venue` returns null, `auto_create_venue` creates a bare `venues` row
 
 **Title.** `normalise_title(text)` strips all non-alphanumeric characters, collapses internal whitespace to a single space, and lowercases the result. "Mogwai: Live in Glasgow!" and "Mogwai - Live in Glasgow" both normalise to `mogwai live in glasgow`. The function is marked `IMMUTABLE` and is safe to use in index expressions.
 
-**Time bucket.** `start_at` is truncated to the hour using `DATE_TRUNC('hour', ...)`. An event listed at 20:00 by Ticketmaster and at 20:30 by Skiddle both truncate to the same `2026-06-14-20` bucket and produce the same hash component.
+**Time bucket.** `start_at` is truncated to the hour in UTC using `DATE_TRUNC('hour', start_at AT TIME ZONE 'UTC')` (BE-09 — using the session timezone would produce different hashes depending on where the normaliser runs). An event listed at 20:00 by Ticketmaster and at 20:30 by Skiddle both truncate to the same `2026-06-14-19` UTC bucket and produce the same hash component.
 
 ### Bucket size trade-off: hourly vs. 30-minute
 
@@ -75,9 +75,9 @@ When a merge is resolved — whether by dedupe key collision or by a confirmed `
 
 Source tier (stored in `sources.tier`) determines this ranking:
 
-- **Tier 1** (structured API: Ticketmaster, Skiddle, Eventbrite) — authoritative
-- **Tier 2** (RSS/iCal feeds) — high trust
-- **Tier 3** (HTML scrapers) — supplementary; used when no higher-tier record exists
+- **Tier 1** (structured API: Ticketmaster, Skiddle) — authoritative
+- **Tier 2** (Apify actors, RSS/iCal feeds: DICE.fm, Eventbrite via Apify) — high trust
+- **Tier 3** (HTML scrapers — Crawlee) — supplementary; used when no higher-tier record exists
 
 Where two records from the same tier conflict, the more recently fetched record is preferred. The canonical `events` row is updated to reflect the winning source's fields, but all contributing `external_events` rows retain their individual `event_id` link. This means the system knows that four sources carry the same event, can update the canonical record if the API source changes, and can detect removal if the API source stops returning it.
 
@@ -99,7 +99,7 @@ Where two records from the same tier conflict, the more recently fetched record 
 - Both venue strings resolve to the same `venues` row via `venue_aliases` (UUID: `abc-123`).
 - `normalise_title('Fontaines D.C.')` → `fontaines dc`
 - `normalise_title('Fontaines DC')` → `fontaines dc`
-- Both `start_at` values truncate to `2026-06-14-21`.
+- Both `start_at` values truncate to `2026-06-14-20` in UTC (21:00+01 = 20:00 UTC).
 - Both hash to the same `dedupe_key`.
 
 **Result:** The Ticketmaster record inserts the canonical `events` row. The Skiddle upsert hits the unique constraint on `dedupe_key`, and the pipeline updates the existing record rather than inserting. Both `external_events` rows link to the same `events.id`. The Ticketmaster fields are retained as authoritative (Tier 1 over Tier 1 — the earlier-seen record wins by timestamp).
@@ -120,7 +120,7 @@ Where two records from the same tier conflict, the more recently fetched record 
 - Both venue strings resolve to the same `venues` row. The scraper's `Sub Club, Glasgow` variant is registered in `venue_aliases`.
 - `normalise_title('Sub Club: Optimo')` → `sub club optimo`
 - `normalise_title('Optimo at Sub Club')` → `optimo at sub club`
-- Hourly bucket for both: `2026-06-20-23`.
+- UTC hourly bucket for both: `2026-06-20-22` (23:00+01 = 22:00 UTC).
 - The titles normalise differently, so the hashes do not collide. Two separate canonical events are created.
 
 **Fuzzy pass:** The pipeline detects the pair shares a venue and a time bucket. Trigram similarity between `sub club optimo` and `optimo at sub club` is above the merge threshold. A row is written to `event_merge_candidates` (`status = 'pending'`).
@@ -135,8 +135,8 @@ Where two records from the same tier conflict, the more recently fetched record 
 
 | Source | Raw title | Raw venue | Raw start_at |
 |---|---|---|---|
-| Eventbrite | `Hyd: Glasgow Tour` | `The Rum Shack` | `2026-07-05 19:00:00+01` |
-| Venue HTML scraper | `Hyd Live` | `Rum Shack Glasgow` | `2026-07-05 19:00:00+01` |
+| Eventbrite (Apify, Tier 2) | `Hyd: Glasgow Tour` | `The Rum Shack` | `2026-07-05 19:00:00+01` |
+| Venue HTML scraper (Tier 3) | `Hyd Live` | `Rum Shack Glasgow` | `2026-07-05 19:00:00+01` |
 
 **Normalisation:**
 
@@ -146,4 +146,4 @@ Where two records from the same tier conflict, the more recently fetched record 
 
 **Fuzzy pass:** The pair is flagged as a merge candidate. `match_reasons` includes `same_hour_bucket` and `title_similarity: 0.82`.
 
-**Result:** An operator resolves the venue alias: `Rum Shack Glasgow` is added to `venue_aliases` pointing to `def-456`. The Eventbrite record (Tier 1) is canonical. On the next ingestion run, the scraper's `external_events` row recomputes its dedupe key, now matches the Eventbrite record, and the duplicate canonical event is merged and hidden. The bare `ghi-789` venue row is marked `is_deleted` and queued for cleanup.
+**Result:** An operator resolves the venue alias: `Rum Shack Glasgow` is added to `venue_aliases` pointing to `def-456`. The Eventbrite (Apify) record (Tier 2) is canonical over the Tier 3 HTML scraper record. On the next ingestion run, the scraper's `external_events` row recomputes its dedupe key, now matches the Eventbrite record, and the duplicate canonical event is merged and hidden. The bare `ghi-789` venue row is marked `is_deleted` and queued for cleanup.

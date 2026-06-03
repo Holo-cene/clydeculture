@@ -98,6 +98,6 @@ Apify (managed scraping platform; actor-based connectors for Eventbrite and DICE
 
 ## Useful references in this repo
 
-- `docs/PROMPTS_FOR_CLAUDE_CODE.md` — the prompt sequence used to build the docs set.
+- `docs/prompts/01_PROMPTS_FOR_CLAUDE_CODE.md` — the prompt sequence used to build the initial docs set (historical; see archive notice in that file).
 - `docs/reference/SPEC.md` — the full platform specification (paste it in if missing).
 - `docs/reference/SCHEMA_v5.sql` — the existing v5 schema (paste it in if missing).

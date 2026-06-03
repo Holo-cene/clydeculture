@@ -8,11 +8,11 @@ This document describes how Clyde Culture pulls data from upstream sources, stag
 
 Every upstream source is assigned a `source_type` and a `tier` (1–4). Both are stored on the `sources` row and feed the `confidence` score that the normalisation pipeline computes for each canonical event.
 
-**Tier 1 — APIs.** Structured JSON responses with stable identifiers, versioned endpoints, and documented field semantics. Examples: Ticketmaster, Skiddle, Meetup. These connectors run on incremental sync using stable external IDs and require near-zero maintenance once built. They form the coverage backbone — roughly 60% of events — and their records are preferred as canonical when cross-source duplicates are merged.
+**Tier 1 — APIs.** Structured JSON responses with stable identifiers, versioned endpoints, and documented field semantics. Examples: Ticketmaster, Skiddle (gated on commercial approval), Meetup. These connectors run on incremental sync using stable external IDs and require near-zero maintenance once built. They form the coverage backbone — roughly 45% of events — and their records are preferred as canonical when cross-source duplicates are merged.
 
-**Tier 2 — RSS and iCal.** Semi-structured feeds that venues and promoters publish as part of their existing website infrastructure. iCal feeds provide machine-readable datetimes and UIDs; RSS feeds vary in field completeness. Examples: Glasgow Art Map (Substack), venue newsletter feeds. Feed formats are extremely stable — a Substack RSS endpoint rarely changes shape. The main failure mode is a silent URL change when a site migrates CMS. Tier 2 covers roughly 20% of events.
+**Tier 2 — Apify actors and RSS/iCal feeds.** Managed scraping actors (DICE.fm, Eventbrite via Apify — the Eventbrite direct API was deprecated in 2019; see ADR 0003) and semi-structured feeds (venue iCal feeds, Substack RSS). iCal feeds provide machine-readable datetimes and UIDs; RSS feeds vary in field completeness. Apify actor versions are pinned; the main maintenance trigger is an actor output schema change. Feed formats are extremely stable. Tier 2 covers roughly 30% of events.
 
-**Tier 3 — Structured HTML.** Connectors that parse HTML page structure using CSS selectors. These are the most fragile: a layout change on the source site breaks the scraper immediately, with no upstream error signal. Examples: SWG3, St Luke's, Mono, The Flying Duck, The Old Hairdressers, Gigs in Scotland. (Mono and The Flying Duck additionally use iCal links for `start_at` validation.) Break detection (described below) is particularly important for Tier 3 sources because their failure mode is a silent drop in parsed records rather than an HTTP error. Tier 3 covers roughly 15% of events and requires occasional manual fixes — a few times per year, each isolated to one connector.
+**Tier 3 — Structured HTML.** Connectors that parse HTML page structure using Crawlee (`CheerioCrawler` for static pages, `PlaywrightCrawler` for JS-rendered pages). These are the most fragile: a layout change on the source site breaks the scraper immediately, with no upstream error signal. Where a venue page embeds `schema.org/Event` JSON-LD, that is extracted first before falling back to CSS selectors. Examples: SWG3, St Luke's, Mono, The Flying Duck, The Old Hairdressers, Gigs in Scotland. (Mono and The Flying Duck additionally use iCal links for `start_at` validation.) Break detection (described below) is particularly important for Tier 3 sources because their failure mode is a silent drop in parsed records rather than an HTTP error. Tier 3 covers roughly 15% of events and requires occasional manual fixes — a few times per year, each isolated to one connector.
 
 **Tier 4 — Cultural directories and enrichment.** Festival microsites, cultural directories, and other sources where structured data is not available and extraction may require inference. Examples: Glasgow Comedy Festival, Celtic Connections, Glasgow International, The Skinny. These are used for festival detection, event tagging, and editorial enrichment rather than as primary coverage sources, and carry the lowest confidence weight in normalisation.
 
@@ -20,9 +20,9 @@ The expected maintenance load across tiers, from the platform specification:
 
 | Tier | Coverage share | Maintenance |
 |---|---|---|
-| Tier 1 (APIs) | ~60% | Near zero — incremental sync, stable IDs |
-| Tier 2 (RSS / iCal) | ~20% | Near zero — very stable feed formats |
-| Tier 3 (HTML scrapers) | ~15% | Occasional — a few fixes per year, isolated to one connector |
+| Tier 1 (APIs) | ~45% | Near zero — incremental sync, stable IDs |
+| Tier 2 (Apify / RSS / iCal) | ~30% | Low — actor version pinning; very stable feed formats |
+| Tier 3 (HTML scrapers — Crawlee) | ~15% | Occasional — a few fixes per year, isolated to one connector |
 | Community submissions | ~5% | Moderation only |
 
 ---
@@ -34,7 +34,7 @@ Every connector is a TypeScript module that implements the `Connector` interface
 ```ts
 export interface Connector {
   readonly slug: string;     // stable machine name, e.g. "ticketmaster" or "swg3"
-  readonly type: SourceType; // "api" | "rss" | "ical" | "html" | "manual"
+  readonly type: SourceType; // "api" | "rss" | "ical" | "html" | "apify" | "manual"
   run(): Promise<IngestResult>;
 }
 ```
@@ -43,7 +43,7 @@ export interface Connector {
 
 `IngestResult` carries four fields: `fetchedCount` (raw records retrieved from upstream), `parsedCount` (records successfully extracted into `RawEvent` form), `items` (the parsed array), and `errors` (diagnostic strings for any failures). The gap between `fetchedCount` and `parsedCount` is the first signal that a source is changing shape.
 
-Each `RawEvent` must include an `externalId` — a stable upstream identifier (API ID, RSS GUID, iCal UID, or a content hash for sources with no native identifier) — and an `externalUrl`. The URL is required because Clyde Culture is link-first: every event on the platform must route back to its origin. Connectors are organised under `packages/connectors/src/` by type: `api/`, `rss/`, `ical/`, `html/`. See `docs/CONNECTOR_GUIDE.md` before adding a new one.
+Each `RawEvent` must include an `externalId` — a stable upstream identifier (API ID, RSS GUID, iCal UID, or a content hash for sources with no native identifier) — and an `externalUrl`. The URL is required because Clyde Culture is link-first: every event on the platform must route back to its origin. Connectors are organised under `packages/connectors/src/` by type: `api/`, `rss/`, `ical/`, `html/`, `apify/`. See `docs/CONNECTOR_GUIDE.md` before adding a new one.
 
 ---
 
@@ -112,6 +112,6 @@ On a break event:
 
 `ingest_alerts` carries a partial index on `resolved = false`, so the active-alert query stays fast regardless of historical volume. Alerts are resolved manually once the underlying issue is fixed and a healthy run confirms recovery.
 
-**Cold-start exception.** New connectors have no 14-day baseline. During the cold-start period (fewer than 14 days of completed runs in `ingest_runs`), the percentage-drop rule cannot apply. Instead, a simpler rule governs: if `parsed_count = 0` on any run during the cold-start period, the connector is flagged immediately — `sources.status` is set to `degraded`, an `ingest_alerts` row is created with `alert_type = 'cold_start_zero'`, and a notification is sent. This catches a connector that was broken from day one before a baseline has accumulated.
+**Cold-start exception.** New connectors have no 14-day baseline. During the cold-start period (fewer than 14 days of completed runs in `ingest_runs`), the percentage-drop rule cannot apply. Instead, a simpler rule governs: if `parsed_count = 0` on any run during the cold-start period, the connector is flagged immediately — `sources.status` is set to `degraded`, an `ingest_alerts` row is created with `alert_type = 'count_drop'` (the CC-NEW-1 migration will add a dedicated `'cold_start_zero'` value to the `alert_type` CHECK constraint), and a notification is sent. This catches a connector that was broken from day one before a baseline has accumulated.
 
 `sources.status` (`ok`, `degraded`, `broken`, `disabled`) is a separate field from `sources.enabled`. Status reflects observed health; `enabled` is the operational on/off switch. A connector can be `status = 'broken'` and `enabled = true` while a fix is being deployed, or `status = 'ok'` and `enabled = false` while temporarily paused. Disabling a connector stops all future scheduler runs for it without deleting the connector module, its `ingest_runs` history, or any `external_events` rows. Re-enabling resumes normal scheduling immediately.
