@@ -9,7 +9,9 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "tsc",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "lint": "eslint src",
+    "format": "prettier --write src"
   },
   "dependencies": {
     "@clydeculture/shared": "workspace:*"

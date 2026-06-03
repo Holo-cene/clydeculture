@@ -9,12 +9,19 @@
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
-    "lint": "echo 'TODO: wire up eslint once first connector is built'",
+    "lint": "pnpm -r lint",
+    "format": "pnpm -r format",
     "db:migrate": "supabase db push",
     "db:reset": "supabase db reset",
+    "supabase:start": "supabase start",
+    "supabase:reset": "supabase db reset",
+    "supabase:types": "supabase gen types typescript --local > packages/shared/src/database.types.ts",
     "ingest": "npx trigger.dev@latest dev"
   },
   "devDependencies": {
-    "@trigger.dev/sdk": "^3.0.0"
+    "@trigger.dev/sdk": "^3.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0",
+    "typescript-eslint": "^8.0.0"
   }
 }

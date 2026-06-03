@@ -9,12 +9,15 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "tsc",
-    "test": "echo 'no tests yet'"
+    "test": "vitest run --passWithNoTests",
+    "lint": "eslint src",
+    "format": "prettier --write src"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2"
   },
   "devDependencies": {
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^2"
   }
 }
