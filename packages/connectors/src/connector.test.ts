@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Connector, IngestResult, RawEvent } from './connector.js';
+import { validateIngestResult, isValidHttpsUrl } from './validate.js';
 
 describe('Connector interface', () => {
   it('accepts a conforming implementation and run() returns an IngestResult', async () => {
@@ -81,5 +82,171 @@ describe('Connector interface', () => {
 
     expect(connector.slug).toBe('my-venue');
     expect(connector.type).toBe('html');
+  });
+});
+
+// validateIngestResult — link-first compliance and shape guarantees
+// Every item returned by a connector must have a non-empty externalUrl (link-first
+// architecture). validateIngestResult enforces this at the boundary before items
+// reach the normaliser.
+
+describe('validateIngestResult', () => {
+  it('returns the result unchanged when all items have a valid externalUrl', () => {
+    const result: IngestResult = {
+      fetchedCount: 2,
+      parsedCount: 2,
+      items: [
+        { externalId: 'a', externalUrl: 'https://example.com/a', title: 'A', raw: {} },
+        { externalId: 'b', externalUrl: 'https://example.com/b', title: 'B', raw: {} },
+      ],
+      errors: [],
+    };
+
+    const validated = validateIngestResult(result);
+    expect(validated.items).toHaveLength(2);
+    expect(validated.errors).toHaveLength(0);
+  });
+
+  it('removes items with no externalUrl and adds an error entry', () => {
+    const result: IngestResult = {
+      fetchedCount: 2,
+      parsedCount: 2,
+      items: [
+        { externalId: 'a', externalUrl: 'https://example.com/a', title: 'A', raw: {} },
+        { externalId: 'b', externalUrl: '', title: 'B (no url)', raw: {} },
+      ],
+      errors: [],
+    };
+
+    const validated = validateIngestResult(result);
+    expect(validated.items).toHaveLength(1);
+    expect(validated.items[0]?.externalId).toBe('a');
+    expect(validated.errors).toHaveLength(1);
+    expect(validated.errors[0]).toMatch(/externalUrl/);
+    expect(validated.errors[0]).toMatch(/b/);
+  });
+
+  it('removes items with a non-https externalUrl', () => {
+    const result: IngestResult = {
+      fetchedCount: 1,
+      parsedCount: 1,
+      items: [{ externalId: 'a', externalUrl: 'http://example.com/a', title: 'A', raw: {} }],
+      errors: [],
+    };
+
+    const validated = validateIngestResult(result);
+    expect(validated.items).toHaveLength(0);
+    expect(validated.errors).toHaveLength(1);
+  });
+
+  it('preserves existing errors alongside new validation errors', () => {
+    const result: IngestResult = {
+      fetchedCount: 2,
+      parsedCount: 1,
+      items: [{ externalId: 'a', externalUrl: '', title: 'A', raw: {} }],
+      errors: ['upstream: rate limit hit'],
+    };
+
+    const validated = validateIngestResult(result);
+    expect(validated.errors).toHaveLength(2);
+    expect(validated.errors).toContain('upstream: rate limit hit');
+  });
+
+  it('handles an empty items array without error', () => {
+    const result: IngestResult = {
+      fetchedCount: 0,
+      parsedCount: 0,
+      items: [],
+      errors: [],
+    };
+
+    const validated = validateIngestResult(result);
+    expect(validated.items).toHaveLength(0);
+    expect(validated.errors).toHaveLength(0);
+  });
+});
+
+// isValidHttpsUrl — used by validateIngestResult and can be used by individual connectors
+
+describe('isValidHttpsUrl', () => {
+  it('accepts a valid https URL', () => {
+    expect(isValidHttpsUrl('https://dice.fm/event/abc123')).toBe(true);
+  });
+
+  it('rejects an empty string', () => {
+    expect(isValidHttpsUrl('')).toBe(false);
+  });
+
+  it('rejects a plain http URL', () => {
+    expect(isValidHttpsUrl('http://example.com/event')).toBe(false);
+  });
+
+  it('rejects a relative path', () => {
+    expect(isValidHttpsUrl('/events/abc123')).toBe(false);
+  });
+
+  it('rejects a non-URL string', () => {
+    expect(isValidHttpsUrl('not a url at all')).toBe(false);
+  });
+});
+
+// Stable externalId — a connector run against the same fixture must produce the same
+// externalId values on every call. This test verifies the invariant by building a
+// simple connector that parses a static fixture twice.
+
+describe('stable externalId', () => {
+  it('the same upstream payload always produces the same externalId', async () => {
+    const fixture = { id: 'upstream-123', title: 'A Show', url: 'https://example.com/a-show' };
+
+    const connector: Connector = {
+      slug: 'fixture-connector',
+      type: 'api',
+      async run(): Promise<IngestResult> {
+        return {
+          fetchedCount: 1,
+          parsedCount: 1,
+          items: [
+            {
+              externalId: fixture.id, // stable: always from fixture.id
+              externalUrl: fixture.url,
+              title: fixture.title,
+              raw: fixture,
+            },
+          ],
+          errors: [],
+        };
+      },
+    };
+
+    const run1 = await connector.run();
+    const run2 = await connector.run();
+
+    expect(run1.items[0]?.externalId).toBe(run2.items[0]?.externalId);
+    expect(run1.items[0]?.externalId).toBe('upstream-123');
+  });
+
+  it('a connector must not use a counter or timestamp as externalId', async () => {
+    // This is a negative example — a counter-based id is NOT stable across runs.
+    // We test that the stable pattern (using the upstream id) is what we expect.
+    let counter = 0;
+    const unstableConnector: Connector = {
+      slug: 'unstable',
+      type: 'api',
+      async run(): Promise<IngestResult> {
+        counter++;
+        return {
+          fetchedCount: 1,
+          parsedCount: 1,
+          items: [{ externalId: `run-${counter}`, externalUrl: 'https://example.com', title: 'X', raw: {} }],
+          errors: [],
+        };
+      },
+    };
+
+    const run1 = await unstableConnector.run();
+    const run2 = await unstableConnector.run();
+
+    // These differ — proving why counter-based ids must never be used
+    expect(run1.items[0]?.externalId).not.toBe(run2.items[0]?.externalId);
   });
 });
