@@ -13,10 +13,9 @@ Full brief: `docs/reference/SPEC.md`. Brand and voice: `docs/BRAND_VOICE.md`.
 
 ## Status
 
-Greenfield. **The public frontend is not yet decided** (Webflow vs. coded Next.js).
-That decision is tracked in `docs/decisions/0001-frontend-architecture.md`. Until it
-is resolved, build nothing that assumes a specific frontend. The engine is designed
-to be frontend-agnostic.
+Greenfield. The engine is designed to be frontend-agnostic.
+
+Frontend decision accepted 2026-06-02: Astro + Supabase direct read (ADR 0001). Ingestion runtime: Trigger.dev v3 (ADR 0002). Scraping stack: Apify + Crawlee (ADR 0003).
 
 ## Development workflow
 
@@ -37,8 +36,7 @@ Never:
 - Make schema changes outside `supabase/migrations/`
 - Add dependencies without asking
 - Store secrets in committed files
-- Populate `apps/web` before ADR 0001 is resolved
-- Implement frontend-specific publishing before ADR 0001 is resolved
+- Do not populate `apps/web` until the CC-NEW-1 schema migration has been applied and reviewed.
 
 ## Architecture (engine-first)
 
@@ -47,18 +45,17 @@ The bulk of the work is a backend engine that does not care what the frontend is
 - **Source of truth:** Supabase (Postgres). The frontend is a presentation layer only.
 - **Ingestion:** scheduled jobs pull from four source types — API, RSS, iCal, HTML —
   store raw payloads, then normalise into canonical `events`.
-- **Publishing:** approved, high-confidence events are pushed to the frontend
-  (a Webflow sync job, OR direct reads if the frontend is coded — depends on ADR 0001).
+- **Publishing:** the Astro frontend reads Supabase directly via the anon key scoped
+  by RLS. There is no sync adapter.
 
 Monorepo layout (pnpm workspaces):
 
 ```
 packages/shared       types, taxonomy enums, config, db client
 packages/core         normalisation, deduplication, festival detection
-packages/connectors   modular connector library (api/ rss/ ical/ html/)
-packages/ingestion    orchestration, run logging, break detection
-packages/publishing   frontend sync adapter (Webflow or other)
-apps/web              frontend placeholder — do not populate until ADR 0001 is decided
+packages/connectors   modular connector library (api/ rss/ ical/ html/ apify/)
+trigger/              Trigger.dev tasks (sweep, connectors) — replaces packages/ingestion
+apps/web              Astro frontend — do not populate until CC-NEW-1 migration is applied
 supabase/             migrations, edge functions, seed
 docs/                 all project documentation + decision records
 ```
@@ -67,6 +64,9 @@ docs/                 all project documentation + decision records
 
 TypeScript (strict). Node. Supabase/Postgres. pnpm workspaces. Connectors are plain
 TypeScript modules behind a shared interface (see `packages/connectors/src/connector.ts`).
+Trigger.dev v3 (ingestion task runner). Astro (frontend framework, apps/web).
+Crawlee (HTML scraping, used inside Apify actors and in-process Trigger.dev tasks).
+Apify (managed scraping platform; actor-based connectors for Eventbrite and DICE.fm).
 
 ## Hard rules — do not violate these
 
@@ -75,7 +75,7 @@ TypeScript modules behind a shared interface (see `packages/connectors/src/conne
    sources (Resident Advisor, Instagram). Respect each source's terms of service.
 2. **Source of truth is Supabase**, never the frontend. The frontend is disposable.
 3. **Within-source dedup** = upsert by `(source_id, external_id)`. **Cross-source dedup**
-   = SHA-256 of `venue_id | start_bucket | normalised_title`. Prefer the
+   = SHA-256 of `COALESCE(venue_id::text, 'no-venue') | DATE_TRUNC('hour', start_at AT TIME ZONE 'UTC') formatted as 'YYYY-MM-DD-HH24' | normalise_title(title)`. Prefer the
    API-sourced record as canonical over scraped records.
 4. **Only `visibility = 'published'` events above the confidence threshold** are eligible
    for the frontend. Everything else stays internal.
