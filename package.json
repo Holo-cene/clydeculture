@@ -6,11 +6,15 @@
   "engines": { "node": ">=20" },
   "packageManager": "pnpm@9",
   "scripts": {
-    "build": "echo \"TODO: wire up per-package builds\"",
+    "build": "pnpm -r build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
-    "lint": "echo \"TODO: wire up lint\"",
+    "lint": "echo 'TODO: wire up eslint once first connector is built'",
     "db:migrate": "supabase db push",
+    "db:reset": "supabase db reset",
     "ingest": "npx trigger.dev@latest dev"
+  },
+  "devDependencies": {
+    "@trigger.dev/sdk": "^3.0.0"
   }
 }

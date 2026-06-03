@@ -20,6 +20,7 @@ node_modules/
 # Build outputs
 dist/
 .next/
+*.tsbuildinfo
 
 # Supabase local state
 supabase/.temp/
