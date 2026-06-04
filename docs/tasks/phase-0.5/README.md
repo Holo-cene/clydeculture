@@ -212,7 +212,7 @@ Phase 0.5 is complete when all of the following are ticked:
 - [x] [A2](A2-internal-rls-deny-tests.md) — Internal RLS deny tests pass against local Supabase
 
 ### Group B — Type alignment
-- [ ] [B1](B1-event-category-taxonomy.md) — `EventCategory` matches 13 SQL slugs
+- [x] [B1](B1-event-category-taxonomy.md) — `EventCategory` matches 13 SQL slugs
 - [ ] [B2](B2-source-interface-alignment.md) — `Source` interface matches `sources` table
 - [ ] [B3](B3-source-type-sync.md) — `SourceType` includes `'apify'` in all locations
 - [ ] [B4](B4-raw-event-contract.md) — `RawEvent` includes all 17 fields
