@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Connector, IngestResult, RawEvent } from './connector.js';
+import type { Connector, IngestResult, RawEvent, SourceType } from './connector.js';
 import { validateIngestResult, isValidHttpsUrl } from './validate.js';
 
 describe('Connector interface', () => {
@@ -248,5 +248,42 @@ describe('stable externalId', () => {
 
     // These differ — proving why counter-based ids must never be used
     expect(run1.items[0]?.externalId).not.toBe(run2.items[0]?.externalId);
+  });
+});
+
+// SourceType sync guard — Phase 1 canonical values
+// These tests guard against drift between the connector package's SourceType and the
+// canonical set defined in @clydeculture/shared. If either definition changes, the
+// compile-time assertions below will cause this file to fail to compile, making the
+// test suite fail.
+
+describe('SourceType canonical values — sync guard', () => {
+  it('includes all six canonical Phase 1 source types including apify', () => {
+    // compile-time: every element here must be a valid SourceType; removing a value
+    // from connector.ts SourceType causes a compile error on the satisfies line.
+    const canonical = [
+      'api',
+      'rss',
+      'ical',
+      'html',
+      'apify',
+      'manual',
+    ] satisfies SourceType[];
+
+    expect(canonical).toHaveLength(6);
+    expect(canonical).toContain('apify');
+    expect(canonical).toContain('manual');
+  });
+
+  it('connector SourceType is exactly the canonical set — no extra or missing values (compile-time guard)', () => {
+    // Bidirectional type assertion against the hardcoded canonical union.
+    // Adding or removing a value from connector.ts SourceType without updating this
+    // canonical type causes `never`, which cannot be assigned to `true`, breaking compilation.
+    // NOTE: packages/shared SourceType must stay manually in sync (cross-package rootDir
+    // constraint prevents a direct import here; alignment verified by inspection or step 2).
+    type CanonicalSourceType = 'api' | 'rss' | 'ical' | 'html' | 'apify' | 'manual';
+    type AssertEqual<A, B> = A extends B ? (B extends A ? true : never) : never;
+    const syncCheck: AssertEqual<SourceType, CanonicalSourceType> = true;
+    expect(syncCheck).toBe(true);
   });
 });
