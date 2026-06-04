@@ -1,7 +1,7 @@
 # A2 — Add Internal RLS Deny Tests
 
 ## Status
-Open
+Complete
 
 ## Purpose
 Clyde Culture's internal tables (`sources`, `external_events`, `ingest_runs`, etc.) must never be readable by the anon role. The current schema defines RLS policies but no automated test confirms the default-deny posture. A misconfigured policy or future migration could silently expose ingestion metadata to the public. This task adds a pgTAP test suite that can be run against a local Supabase instance to confirm zero rows are returned to anon for all seven internal tables.
@@ -50,11 +50,11 @@ pnpm supabase db test
 ```
 
 ## Acceptance criteria
-- [ ] `supabase/tests/rls_internal_tables_test.sql` exists.
-- [ ] Tests confirm zero rows returned to anon for all seven internal tables.
-- [ ] `event_submissions` anon INSERT check is present (even if marked expected-fail until F1).
-- [ ] Test file includes a comment explaining how to run it.
-- [ ] Tests pass against a local Supabase instance with A1 migration applied.
+- [x] `supabase/tests/rls_internal_tables_test.sql` exists.
+- [x] Tests confirm zero rows returned to anon for all seven internal tables.
+- [x] `event_submissions` anon INSERT check is present (even if marked expected-fail until F1).
+- [x] Test file includes a comment explaining how to run it.
+- [x] Tests pass against a local Supabase instance with A1 migration applied.
 
 ## Stop condition
 Stop when `supabase/tests/rls_internal_tables_test.sql` is written and the tests pass against local Supabase. Report:

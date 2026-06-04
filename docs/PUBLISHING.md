@@ -100,13 +100,13 @@ These policies must be correct before any route in `apps/web` is deployed.
 | Table | Policy | Condition |
 |---|---|---|
 | `events` | Public read | `visibility = 'published' AND confidence >= 60` |
-| `event_tags` | Public read | Parent event is published |
+| `event_tags` | Public read | Parent event is published AND confidence >= 60 (inherited via recursive RLS — A3 will make this explicit) |
 | `venues` | Public read | `status IN ('active', 'temporary')` |
 | `event_types` | Public read | All rows |
 | `tags` | Public read | All rows |
 | `festivals` | Public read | All rows |
 | `event_series` | Public read | All rows |
-| `venue_aliases` | Public read | All rows |
+| `venue_aliases` | Public read | Parent venue `status IN ('active', 'temporary')` |
 | `event_submissions` | Public insert | No read |
 | All other tables | No public access | Service role only |
 

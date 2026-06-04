@@ -208,8 +208,8 @@ Start with the lowest-risk confirmed connector after pre-flights:
 Phase 0.5 is complete when all of the following are ticked:
 
 ### Group A — Schema
-- [ ] [A1](A1-cc-new-1-schema-corrections.md) — CC-NEW-1 migration written, `pnpm supabase:reset` passes, BST/UTC assertion passes
-- [ ] [A2](A2-internal-rls-deny-tests.md) — Internal RLS deny tests pass against local Supabase
+- [x] [A1](A1-cc-new-1-schema-corrections.md) — CC-NEW-1 migration written, `pnpm supabase:reset` passes, BST/UTC assertion passes
+- [x] [A2](A2-internal-rls-deny-tests.md) — Internal RLS deny tests pass against local Supabase
 
 ### Group B — Type alignment
 - [ ] [B1](B1-event-category-taxonomy.md) — `EventCategory` matches 13 SQL slugs
@@ -253,7 +253,7 @@ Phase 0.5 is complete when all of the following are ticked:
 - [ ] [G1](G1-trigger-sweep-orchestration.md) — sweep orchestration red tests written
 
 ### Group H — Cleanup
-- [ ] [H1](H1-stale-task-cleanup.md) — stale task files cleaned; no references to `packages/ingestion` or `packages/publishing` remain
+- [x] [H1](H1-stale-task-cleanup.md) — stale task files cleaned; no references to `packages/ingestion` or `packages/publishing` remain
 
 ---
 
