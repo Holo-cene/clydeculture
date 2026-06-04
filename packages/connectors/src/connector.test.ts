@@ -9,7 +9,18 @@ describe('Connector interface', () => {
       externalUrl: 'https://example.com/events/evt-001',
       title: 'Test Event',
       startAt: '2026-07-01T19:00:00Z',
+      endAt: '2026-07-01T22:00:00Z',
+      doorsAt: '2026-07-01T18:30:00Z',
       venueName: 'The Old Hairdresser',
+      eventTypeGuess: 'live_music',
+      tagsGuess: ['indie', 'glaswegian'],
+      priceMinGuess: 10.00,
+      priceMaxGuess: 15.00,
+      isFreeGuess: false,
+      ticketUrlGuess: 'https://example.com/tickets/evt-001',
+      ticketUrlLabelGuess: 'Buy tickets',
+      imageUrlGuess: 'https://example.com/images/evt-001.jpg',
+      availabilityGuess: 'onsale',
       raw: { id: 'evt-001' },
     };
 
@@ -285,5 +296,50 @@ describe('SourceType canonical values — sync guard', () => {
     type AssertEqual<A, B> = A extends B ? (B extends A ? true : never) : never;
     const syncCheck: AssertEqual<SourceType, CanonicalSourceType> = true;
     expect(syncCheck).toBe(true);
+  });
+});
+
+// B4: RawEvent full field contract — compile-time guard
+// RawEvent must carry all fields needed to populate external_events so connectors
+// cannot silently discard pricing, availability, ticket URL, image URL, end time,
+// or doors time. These tests are red (TypeScript errors on `pnpm typecheck`) until
+// connector.ts adds the 9 missing fields: endAt, doorsAt, priceMinGuess,
+// priceMaxGuess, isFreeGuess, ticketUrlGuess, ticketUrlLabelGuess, imageUrlGuess,
+// availabilityGuess.
+
+describe('RawEvent full field contract', () => {
+  it('accepts a RawEvent with all 17 fields mapped to external_events columns', () => {
+    // Excess property check: TypeScript errors on fields not yet in RawEvent.
+    // After step 2 adds the fields to connector.ts, this compiles cleanly.
+    const fullEvent: RawEvent = {
+      externalId: 'evt-b4-001',
+      externalUrl: 'https://example.com/events/evt-b4-001',
+      title: 'Full Contract Test Event',
+      startAt: '2026-07-01T19:00:00Z',
+      endAt: '2026-07-01T22:00:00Z',
+      doorsAt: '2026-07-01T18:30:00Z',
+      venueName: 'The Barrowlands',
+      eventTypeGuess: 'live_music',
+      tagsGuess: ['indie', 'rock'],
+      priceMinGuess: 12.50,
+      priceMaxGuess: 20.00,
+      isFreeGuess: false,
+      ticketUrlGuess: 'https://tickets.example.com/evt-b4-001',
+      ticketUrlLabelGuess: 'Buy tickets',
+      imageUrlGuess: 'https://images.example.com/evt-b4-001.jpg',
+      availabilityGuess: 'onsale',
+      raw: { id: 'evt-b4-001' },
+    };
+
+    expect(fullEvent.externalId).toBe('evt-b4-001');
+    expect(fullEvent.endAt).toBe('2026-07-01T22:00:00Z');
+    expect(fullEvent.doorsAt).toBe('2026-07-01T18:30:00Z');
+    expect(fullEvent.priceMinGuess).toBe(12.50);
+    expect(fullEvent.priceMaxGuess).toBe(20.00);
+    expect(fullEvent.isFreeGuess).toBe(false);
+    expect(fullEvent.ticketUrlGuess).toBe('https://tickets.example.com/evt-b4-001');
+    expect(fullEvent.ticketUrlLabelGuess).toBe('Buy tickets');
+    expect(fullEvent.imageUrlGuess).toBe('https://images.example.com/evt-b4-001.jpg');
+    expect(fullEvent.availabilityGuess).toBe('onsale');
   });
 });
