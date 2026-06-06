@@ -106,6 +106,37 @@ values (
 );
 ```
 
+> **⚠️ WARNING — Ticketmaster source stub (`ON CONFLICT DO UPDATE`, not `DO NOTHING`)**
+>
+> B5 (`20260606000000_source_category_map_seed.sql`) inserts a disabled `ticketmaster`
+> row (`enabled = false`, `config = '{}'`) as an FK anchor for `source_type_category_map`.
+> That row already exists in any environment where B5 has been applied.
+>
+> Any later task that seeds or promotes the Ticketmaster source **must** use:
+>
+> ```sql
+> INSERT INTO sources (name, slug, source_type, tier, config, status, enabled)
+> VALUES (...)
+> ON CONFLICT (slug) DO UPDATE SET
+>   name        = EXCLUDED.name,
+>   source_type = EXCLUDED.source_type,
+>   tier        = EXCLUDED.tier,
+>   config      = EXCLUDED.config,
+>   status      = EXCLUDED.status,
+>   enabled     = EXCLUDED.enabled;
+> ```
+>
+> **Do not use `ON CONFLICT (slug) DO NOTHING`.** If you do, the disabled B5 stub will
+> silently persist with `enabled = false` and empty `config`, even though the intent was
+> to promote it to a real source row.
+>
+> **Do not flip `enabled = true` until E1 is complete and the Ticketmaster connector
+> exists.** G1's sweep scheduler queries `WHERE enabled = true` and would attempt to run
+> a connector that does not yet exist.
+>
+> The same `DO UPDATE` pattern applies to any source whose FK-anchor stub was seeded
+> before the real connector row was ready.
+
 ---
 
 ## Output

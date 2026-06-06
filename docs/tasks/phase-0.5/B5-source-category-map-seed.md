@@ -60,6 +60,27 @@ pnpm supabase:reset
 - [x] Seed covers: live_music, club_night, comedy, arts_exhibition, film from Ticketmaster. **Note:** theatre not included — no theatre classification ID is documented in BE-03. Adding one requires a documented API ID.
 - [x] `docs/tasks/BE-03.md` updated to mark seed migration as complete.
 
+## Follow-up
+
+### Theatre classification ID (deferred)
+
+The Ticketmaster Discovery API classification ID for theatre / performing arts was not
+confirmed before B5 was committed. **No theatre row is included in the seed.**
+
+Before adding a theatre mapping:
+
+1. Verify the real classification ID via the Ticketmaster Discovery API or its official
+   documentation. Do not invent or guess the ID.
+2. Do not reuse any ID already mapped in B5 unless verified as a theatre/performing-arts
+   identifier by the API or specification.
+3. Once confirmed, add a single-row migration (a new file in `supabase/migrations/`).
+4. Update the C3 red tests and `docs/tasks/BE-03.md` acceptance criteria at that time.
+
+The migration file (`20260606000000_source_category_map_seed.sql`) already documents this
+gap with a comment in the file header.
+
+---
+
 ## Stop condition
 Stop when the seed migration is written and the SQL assertion passes. Report:
 - Ticketmaster classification IDs included
