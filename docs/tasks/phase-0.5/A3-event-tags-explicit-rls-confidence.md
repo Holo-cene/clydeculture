@@ -1,7 +1,13 @@
 # A3 — Make event_tags RLS Confidence Gate Explicit
 
 ## Status
-Open
+Complete
+
+## Completion note
+- Migration: `supabase/migrations/20260606001000_a3_event_tags_explicit_confidence.sql`
+- Test file updated: `supabase/tests/rls_internal_tables_test.sql` (plan count 17 → 18; Section 4 catalog check added)
+- Validation passed: `npx supabase db reset` (all 4 migrations clean) and `npx supabase db test` (18/18 tests passing)
+- Commits: `docs: add A3 event_tags RLS hardening task` then `fix: make event_tags RLS confidence gate explicit`
 
 ## Purpose
 The `event_tags` table is currently protected by an implicit confidence threshold.
@@ -152,16 +158,16 @@ npx supabase db test
 ```
 
 ## Acceptance criteria
-- [ ] `supabase/tests/rls_internal_tables_test.sql` has a `pg_policies` assertion
+- [x] `supabase/tests/rls_internal_tables_test.sql` has a `pg_policies` assertion
   confirming the `event_tags` SELECT policy explicitly contains `confidence >= 60`.
-- [ ] The new test is **red** (fails) against the pre-migration schema.
-- [ ] A new migration exists that replaces the `event_tags` SELECT policy to include
+- [x] The new test is **red** (fails) against the pre-migration schema.
+- [x] A new migration exists that replaces the `event_tags` SELECT policy to include
   `AND events.confidence >= 60` in the USING clause subquery.
-- [ ] After the migration, `npx supabase db test` passes all 18 tests.
-- [ ] The existing A2 Section 4 tests (tests 14–15) continue to pass unchanged.
-- [ ] The migration touches only the `event_tags` SELECT policy — no other tables,
+- [x] After the migration, `npx supabase db test` passes all 18 tests.
+- [x] The existing A2 Section 4 tests (tests 14–15) continue to pass unchanged.
+- [x] The migration touches only the `event_tags` SELECT policy — no other tables,
   functions, or policies.
-- [ ] `npx supabase db reset` applies all migrations cleanly with no errors.
+- [x] `npx supabase db reset` applies all migrations cleanly with no errors.
 
 ## Hard rules
 - Do not implement the migration (Step 2) until the red test (Step 1) has been

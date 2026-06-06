@@ -214,7 +214,7 @@ Phase 0.5 is complete when all of the following are ticked:
 ### Group A — Schema
 - [x] [A1](A1-cc-new-1-schema-corrections.md) — CC-NEW-1 migration written, `pnpm supabase:reset` passes, BST/UTC assertion passes
 - [x] [A2](A2-internal-rls-deny-tests.md) — Internal RLS deny tests pass against local Supabase
-- [ ] [A3](A3-event-tags-explicit-rls-confidence.md) — `event_tags` SELECT policy explicitly checks `confidence >= 60` (not relying on recursive RLS)
+- [x] [A3](A3-event-tags-explicit-rls-confidence.md) — `event_tags` SELECT policy explicitly checks `confidence >= 60` (not relying on recursive RLS)
 
 ### Group B — Type alignment
 - [x] [B1](B1-event-category-taxonomy.md) — `EventCategory` matches 13 SQL slugs
