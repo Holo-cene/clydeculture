@@ -1,7 +1,7 @@
 # D2 — Specify Rescheduled Event Handling
 
 ## Status
-Open
+Done
 
 ## Purpose
 The normalisation pipeline has no documented path for what happens when a connector re-ingests an event with a changed date. Without this, implementations may create duplicate published rows (a ghost row at the old date plus a new row at the new date), or silently update the canonical event's dedupe key without checking for collisions. This task documents the full reschedule/update path in `docs/NORMALISATION.md` Step 8 and `docs/DEDUPLICATION.md`. No code.

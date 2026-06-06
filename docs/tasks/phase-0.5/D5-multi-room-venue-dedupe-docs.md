@@ -1,7 +1,7 @@
 # D5 — Document Multi-Room Venue Dedupe Limitation
 
 ## Status
-Open
+Done
 
 ## Purpose
 SWG3, the Barrowlands complex, and other Glasgow multi-room venues share a single `venue_id`, causing `dedupe_key` collisions for simultaneous events with similar titles across different rooms. Without documentation, the implementation team will either silently merge these events or be surprised by a flood of merge candidates. This task documents the known limitation and chooses a Phase 1 approach. No code.

@@ -1,7 +1,7 @@
 # D3 — Define Upstream Removal/Cancellation Propagation
 
 ## Status
-Open
+Done
 
 ## Purpose
 The docs currently use "N missed runs" as a placeholder for when a missing event should be considered removed. Trigger.dev sweep tasks cannot be safely implemented without a concrete number. Additionally, multi-source cancellation behaviour (what happens when one source cancels an event but another source still lists it) is undecided. This task resolves both. No code.

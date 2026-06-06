@@ -54,11 +54,11 @@ direct assignments before any resolution logic runs.
 | `price_max` | `external_events.price_max_guess` | |
 | `is_free` | `external_events.is_free_guess` | Defaults to false if null |
 | `price_display` | derived | "Free", "£10", "£10–£25", "PWYC" — compose from price fields |
-| `start_at` | `external_events.start_at` | Required; if null, `time_tba = true` |
+| `start_at` | `external_events.start_at` | NOT NULL in canonical events; if no time is extractable, normaliser uses a local-midnight placeholder and sets `time_tba = true` (see UTC conversion and time_tba rules below) |
 | `end_at` | `external_events.end_at` | Nullable |
 | `doors_at` | `external_events.doors_at` | Nullable |
 | `timezone` | `'Europe/London'` | Default; override if source provides IANA timezone |
-| `time_tba` | `start_at IS NULL` | True when `start_at` cannot be extracted |
+| `time_tba` | set explicitly by normaliser | `true` when source has a date but no extractable time; `start_at` is set to a local-midnight placeholder (see time_tba rules below) |
 | `availability` | mapped from `availability_guess` | See availability mapping table below |
 | `availability_note` | source-dependent | Custom badge text; null for standard states |
 | `is_online` | `false` | Default; set `true` if source explicitly marks online |
@@ -95,6 +95,43 @@ the normaliser must enforce `summary = null`, `image_url = null`, and
 is recorded in `sources.config` as `{ "link_only": true }`. This is a hard
 constraint, not a soft default.
 
+### UTC conversion
+
+Connectors MUST convert extracted event times to UTC before populating `startAt` in `RawEvent`. Never store a local time string as though it were UTC.
+
+The IANA timezone for conversion comes from:
+- `sources.config.timezone` if set, or
+- `'Europe/London'` as the default.
+
+This applies to all timestamp fields that the normaliser maps from `external_events`: `start_at`, `end_at`, `doors_at`. The `compute_dedupe_key` function truncates `start_at` in UTC (BE-09); a non-UTC value produces incorrect dedupe keys.
+
+### time_tba placeholder convention
+
+`events.start_at` is `NOT NULL`. When `external_events.start_at` is null (the connector could not extract a start time):
+
+1. Set `time_tba = true` on the canonical event.
+2. Set `start_at` to midnight of the event date in the source timezone, converted to UTC:
+   `date_trunc('day', <event_date> AT TIME ZONE source_tz) AT TIME ZONE 'UTC'`
+   where `source_tz` is `sources.config.timezone` or `'Europe/London'`.
+
+**Known limitation:** a genuine midnight event and a time-unknown event on the same date at the same venue produce the same `start_at` and therefore the same `dedupe_key`. These will incorrectly deduplicate. This is a documented Phase 1 limitation. Events with `time_tba = true` are always flagged `needs_review = true` (see Step 7).
+
+If a connector cannot extract even a date, it MUST NOT emit the `external_events` row. A completely unanchored event cannot be canonicalised.
+
+### image_url HTTPS validation
+
+`imageUrlGuess` from the connector becomes `image_url` on the canonical event **only if** it is a valid absolute HTTPS URL (the same check as `isValidHttpsUrl()`).
+
+Any value that fails this check MUST be set to `null` before writing the canonical event. This includes:
+
+- relative paths (`/images/event.jpg`)
+- bare or truncated URLs (`https://`)
+- non-HTTPS URLs (`http://...`)
+- placeholder strings (`"N/A"`, `"undefined"`, empty string)
+- any other malformed value from a scraper
+
+`has_image` is a generated column on `events` (`image_url IS NOT NULL AND image_url != ''`). Setting an invalid value to `null` prevents `has_image = true` for events with no real image.
+
 ---
 
 ## Step 2 — Venue resolution
@@ -122,13 +159,20 @@ lat/lng, or website. The venue appears in the moderation queue for manual enrich
 A canonical event linked to an auto-created venue gets `needs_review = true` on the
 event as well (see Step 7).
 
-**Race condition note.** `auto_create_venue` is not atomic across concurrent
-normalisation runs. If two connector runs produce the same previously-unknown venue
-simultaneously, two venue stubs may be created. The deduplication merge candidate
-process handles the downstream consequence (two canonical events for the same venue);
-a subsequent manual alias addition collapses them on the next ingestion run. This is
-acceptable for Phase 1 where normalisation runs sequentially inside a single
-Trigger.dev task.
+**Race condition and concurrency.** `auto_create_venue` is not atomic across concurrent normalisation runs. Two concurrent calls for the same unknown venue name can both pass the `SELECT EXISTS` alias check before either has committed, each creating a separate `venues` row with a different UUID. Because `compute_dedupe_key` uses `venue_id`, every event at that venue then produces a different dedupe key per source — generating indefinite false-positive merge candidates until an operator adds a `venue_aliases` entry.
+
+**Current Phase 1 design:** The sweep task (`trigger/tasks/sweep.ts`) runs connectors sequentially inside a single Trigger.dev task — there is no fan-out. This makes the race unlikely in Phase 1. The schema comment on `auto_create_venue` documents this assumption explicitly.
+
+**If Phase 1 introduces parallel connector tasks**, the chosen mitigation MUST be one of:
+
+- **Option A (recommended):** Add a Postgres advisory lock on `hashtext(lower(trim(p_venue_name)))` inside `auto_create_venue()`. This serialises concurrent venue creation for the same normalised name without changing any calling code. Requires a one-function migration.
+- **Option B:** Enforce sequential connector execution at the Trigger.dev level — no fan-out. If chosen, document it explicitly in `trigger/tasks/sweep.ts` to prevent future agents from introducing parallelism inadvertently.
+
+Options A and B are not mutually exclusive. Option A is the safer long-term choice because it protects against any future parallelism, even if Option B is in place.
+
+**This task documents the contract only.** Implementing Option A requires a separate migration task. Do not implement the advisory lock here.
+
+**Follow-on task (Phase 1.5):** Replace the `random()` slug suffix in `auto_create_venue()` with a deterministic sequential counter (`-2`, `-3`, etc.) matching the `events` slug convention. This makes venue stubs reproducible and eliminates non-deterministic slug churn.
 
 ---
 
@@ -292,7 +336,7 @@ Set `needs_review = true` if any of the following is true:
 |---|---|
 | Venue was auto-created (`venues.auto_created = true`) | Venue data is a bare stub; event needs venue enrichment |
 | `event_type_id` resolved to `'other'` | Classification uncertain |
-| `start_at IS NULL` (`time_tba = true`) | Date not extractable |
+| `time_tba = true` | Date not extractable; `start_at` holds a midnight placeholder |
 | Source tier is 4 | Low-confidence enrichment source |
 | Source is Apify-backed AND this is a new actor (< 14 days of run history) | Output quality unvalidated |
 | `confidence < 50` | Below the minimum threshold for any trust |
@@ -335,6 +379,26 @@ If `confidence >= 60 AND needs_review = false AND visibility = 'draft'`, set
 in Phase 1, keep at `'draft'` until manual review is complete. This conservative
 default can be relaxed per-source by setting a flag in `sources.config` once output
 quality is validated.
+
+**Reschedule path (external_events.event_id already set; dedupe_key changed):**
+
+A reschedule occurs when an `external_events` row already has an `event_id` (previously normalised) but the newly computed `dedupe_key` differs — typically because `start_at` changed.
+
+**Invariant:** one external event rescheduled and re-ingested → exactly one canonical event. Ghost duplicate rows (a published event at the old date plus a new event at the new date) MUST NOT occur.
+
+*Safe path — new dedupe_key does not collide with any other canonical event:*
+1. Update the existing canonical `events` row in place: `dedupe_key`, `start_at`, `end_at`, `doors_at`.
+2. Set `availability = 'rescheduled'` and `needs_review = true`.
+3. Preserve the `external_events.event_id` link. Do not create a new canonical row.
+4. There is no ghost row risk because this is an in-place update of the existing record.
+
+*Unsafe path — new dedupe_key collides with a different canonical event:*
+1. MUST NOT auto-update. The update would incorrectly merge two unrelated events.
+2. Set `needs_review = true` on both affected canonical events.
+3. Write a merge candidate to `event_merge_candidates` with `match_reasons` including `reschedule_key_collision: true`.
+4. Log the collision as a reschedule conflict.
+
+If `external_events.availability_guess` is `'rescheduled'` or `'postponed'`, set `availability` accordingly and set `needs_review = true` regardless of whether the dedupe_key changed.
 
 ---
 

@@ -1,7 +1,7 @@
 # D1 — Specify Fuzzy-Match Threshold in DEDUPLICATION.md
 
 ## Status
-Open
+Done
 
 ## Purpose
 `docs/DEDUPLICATION.md` does not state a concrete fuzzy-match threshold. Any agent implementing `find_fuzzy_merge_candidates()` will have to invent one. The Phase 1 threshold is 0.35, with a specific rationale (low enough for "Sub Club: Optimo" / "Optimo at Sub Club", high enough not to flood with different events). This task documents the threshold, rationale, and supporting policies. No code.

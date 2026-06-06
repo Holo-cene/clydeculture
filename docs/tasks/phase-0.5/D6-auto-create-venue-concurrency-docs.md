@@ -1,7 +1,7 @@
 # D6 — Document auto_create_venue() Race Condition Under Parallel Trigger.dev Tasks
 
 ## Status
-Open
+Done
 
 ## Purpose
 `auto_create_venue()` uses `random()` for slug collision resolution and has a documented race condition in the schema. Under Trigger.dev, each connector runs as a separate task and may call `auto_create_venue()` concurrently for the same unknown venue. Two concurrent calls create two separate `venues` rows with different UUIDs, different random slugs, and therefore different `dedupe_key` values for the same event — producing indefinite merge candidates for every event at that venue. This task documents the risk and chosen mitigation. No code.

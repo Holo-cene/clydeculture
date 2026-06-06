@@ -114,4 +114,32 @@ On a break event:
 
 **Cold-start exception.** New connectors have no 14-day baseline. During the cold-start period (fewer than 14 days of completed runs in `ingest_runs`), the percentage-drop rule cannot apply. Instead, a simpler rule governs: if `parsed_count = 0` on any run during the cold-start period, the connector is flagged immediately — `sources.status` is set to `degraded`, an `ingest_alerts` row is created with `alert_type = 'count_drop'` (the CC-NEW-1 migration will add a dedicated `'cold_start_zero'` value to the `alert_type` CHECK constraint), and a notification is sent. This catches a connector that was broken from day one before a baseline has accumulated.
 
+**Sustained failure — connector_break.** A single-run anomaly (`count_drop`) may be transient — a flaky network call, a momentary upstream outage. When the drop persists across 3 or more consecutive runs, a second alert is created with `alert_type = 'connector_break'`. This distinguishes an ongoing failure from a one-off event. `connector_break` alerts are higher-priority: bulk `is_deleted` operations triggered while a `connector_break` alert is active SHOULD be held for review before being propagated to canonical event visibility (see "Event removal detection" below).
+
 `sources.status` (`ok`, `degraded`, `broken`, `disabled`) is a separate field from `sources.enabled`. Status reflects observed health; `enabled` is the operational on/off switch. A connector can be `status = 'broken'` and `enabled = true` while a fix is being deployed, or `status = 'ok'` and `enabled = false` while temporarily paused. Disabling a connector stops all future scheduler runs for it without deleting the connector module, its `ingest_runs` history, or any `external_events` rows. Re-enabling resumes normal scheduling immediately.
+
+---
+
+## Event removal detection
+
+When a connector's run is successful but a previously-seen event is no longer returned, `external_events.last_seen_at` stops being refreshed. After a tier-specific number of consecutive successful missed runs, the event is considered removed upstream and `external_events.is_deleted` is set to `true`.
+
+### Missed-run thresholds
+
+| Tier | Threshold | Rationale |
+|---|---|---|
+| Tier 1 (API) | 3 consecutive missed successful runs | High-confidence sources; absence is a reliable removal signal |
+| Tier 2 (Apify / RSS / iCal) | 3 consecutive missed successful runs | Feeds and actors are stable enough that 3 misses indicates genuine removal |
+| Tier 3 (HTML scraper) | 5 consecutive missed successful runs | Scrapers have transient extraction failures; extra tolerance reduces false deletions |
+
+### What counts as a missed successful run
+
+A run counts toward the threshold only if:
+- The connector run completed with `ingest_runs.status = 'success'` or `'partial'`, AND
+- This specific `external_events` row was NOT returned (i.e., `last_seen_at` was not refreshed in this run).
+
+Runs where the connector is disabled (`sources.enabled = false`) or where `ingest_runs.status = 'failed'` do NOT count toward the threshold. Only absence from an otherwise-working run is evidence of removal.
+
+### Bulk removal and connector_break safeguard
+
+If `external_events.is_deleted` is being set in bulk during a run where a `connector_break` alert is active on the same source, the normaliser SHOULD flag the affected canonical events with `needs_review = true` and SHOULD NOT immediately set `visibility = 'hidden'` on their canonical events. This prevents a scraper outage or feed failure from hiding large numbers of valid events that the connector simply could not reach. Human review confirms whether the removals are genuine. See "Break detection" above for alert types.

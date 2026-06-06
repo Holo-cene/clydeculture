@@ -1,7 +1,7 @@
 # C7 — Document time_tba Placeholder Convention and UTC Conversion Requirement
 
 ## Status
-Open
+Done
 
 ## Purpose
 `docs/NORMALISATION.md` contains a direct contradiction: `start_at` is `NOT NULL` in the schema, but NORMALISATION.md says "if `start_at` is null, `time_tba = true`" — meaning connectors need to store *something* when no start time is available. The midnight placeholder convention is undocumented, which means connectors can silently collide with genuine midnight events. Similarly, the UTC conversion requirement and `image_url` HTTPS validation are not specified, allowing connectors to store local time strings as UTC or malformed image URLs. This is a documentation-only task.

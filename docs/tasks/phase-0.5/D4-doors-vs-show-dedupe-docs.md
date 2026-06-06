@@ -1,7 +1,7 @@
 # D4 — Specify Doors-vs-Show-Time Dedupe Policy
 
 ## Status
-Open
+Done
 
 ## Purpose
 When one source uses doors time and another uses show time for the same event, the result is two `external_events` rows with the same venue, same title, and start times 30–60 minutes apart. Without a documented policy, the implementation will either silently auto-merge (losing timing data) or miss the pair entirely. The recommended decision is to send these to human review via `event_merge_candidates`, not auto-merge. This task documents the policy. No code.

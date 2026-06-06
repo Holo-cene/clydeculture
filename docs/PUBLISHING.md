@@ -122,12 +122,13 @@ context.
 on published events more than 7 days past `COALESCE(end_at, start_at)`. This runs
 on a schedule. Archived events are not returned by the public RLS policy.
 
-**Deleted upstream events.** When a connector stops seeing an upstream record,
-`external_events.last_seen_at` stops updating. After N missed runs, `is_deleted`
-is set to `true` on the `external_events` row. The normaliser propagates this to
-the canonical event: if all `external_events` rows pointing to an `events` row are
-`is_deleted = true`, the event's `visibility` is set to `'hidden'`. The next
-`archive_past_events()` run may then archive it.
+**Deleted upstream events.** When a connector stops seeing an upstream record, `external_events.last_seen_at` stops updating. After the tier-specific threshold of consecutive successful missed runs (Tier 1/2: 3, Tier 3: 5), `external_events.is_deleted = true` is set. Full threshold rules and the definition of a "missed successful run" are in `docs/INGESTION.md` — "Event removal detection".
+
+**Multi-source visibility rule.** A canonical event's `visibility` MUST be set to `'hidden'` only when ALL linked `external_events` rows are either `is_deleted = true` or have `availability_guess = 'cancelled'`. If one source cancels an event but another source still lists it as active, the event MUST NOT be hidden — the active source's record takes precedence. The `archive_past_events()` function may then archive the hidden event.
+
+**Tier 1 cancellation override.** If a Tier 1 source (structured API: Ticketmaster, Skiddle) explicitly sends `availability_guess = 'cancelled'`, the canonical event MAY be hidden immediately, regardless of what lower-tier sources show. Tier 1 API cancellations are considered authoritative. Set `availability = 'cancelled'` on the canonical event and `visibility = 'hidden'`. Waiting for Tier 2/3 sources to confirm is not required.
+
+**Ghost duplicate prevention.** `visibility = 'hidden'` is for confirmed removals, cancellations, and duplicates. MUST NOT leave a published row at the old date after a reschedule — see `docs/DEDUPLICATION.md` — "Reschedule" and `docs/NORMALISATION.md` Step 8 for the reschedule path.
 
 ---
 

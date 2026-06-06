@@ -55,7 +55,7 @@ The cost is a higher theoretical false-positive rate: two different events at th
 
 The dedupe key handles exact-match-after-normalisation cases. It does not catch events where the title wording differs materially across sources: "Mogwai" on one source vs. "Mogwai: Live At SWG3" on another will not hash to the same key.
 
-For these cases, the normalisation pipeline runs a secondary pass using trigram similarity (`pg_trgm`). Pairs of canonical events that share a venue and time bucket but have different dedupe keys are scored by title similarity. Any pair above the similarity threshold is written to `event_merge_candidates`:
+For these cases, the normalisation pipeline runs a secondary pass using trigram similarity (`pg_trgm`). Pairs of canonical events that share a venue and time bucket but have different dedupe keys are scored by title similarity. Any pair at or above the similarity threshold (0.35 in Phase 1; see below) is written to `event_merge_candidates`:
 
 | Column | Notes |
 |---|---|
@@ -66,6 +66,87 @@ For these cases, the normalisation pipeline runs a secondary pass using trigram 
 | `merge_group_id` | Groups three or more candidates relating to the same underlying event |
 
 A `pending` merge candidate surfaces in the moderation queue for manual review. An operator can confirm the merge (setting `status = 'merged'`) or dismiss it (`rejected`). Auto-merge may be enabled in future for pairs above a high-confidence threshold, but requires deliberate configuration.
+
+### Fuzzy-match threshold
+
+The similarity threshold for Phase 1 is **0.35**.
+
+- **Rationale:** 0.35 is intentionally conservative for early ingestion. It is low enough to catch title variants with materially different word order — for example, "Sub Club: Optimo" / "Optimo at Sub Club" (trigram similarity ≈ 0.61) — while high enough not to flood the merge queue with genuinely different events that share one or two common words.
+- **Scope:** Global for Phase 1 — one threshold applies to all source types and venue categories. Per-source tuning is deferred.
+- **False positives:** At 0.35, short-title events at the same venue on the same day may occasionally be flagged. Human review resolves these. They are not a blocker.
+- **False negatives:** Events with very different title formats — for example, "Mogwai" vs. "Mogwai: Live At SWG3" — may score below 0.35 after normalisation and not be caught. These are logged but are not a Phase 1 blocker.
+
+**Worked examples:**
+
+| Normalised title A | Normalised title B | Similarity | Outcome |
+|---|---|---|---|
+| `sub club optimo` | `optimo at sub club` | ≈ 0.61 | Above 0.35 — merge candidate created |
+| `the secret garden party` | `the secret room sessions` | ≈ 0.29 | Below 0.35 — no candidate created |
+
+### Duplicate candidate prevention
+
+Repeated ingestion runs MUST NOT create duplicate `event_merge_candidates` rows for the same pair. The schema enforces this via a unique index on `(LEAST(event_a_id, event_b_id), GREATEST(event_a_id, event_b_id))`.
+
+All inserts into `event_merge_candidates` MUST use `ON CONFLICT DO NOTHING` (or equivalent) against this index. Do not use raw `(event_a_id, event_b_id)` column ordering for the constraint — the pair `(A, B)` and `(B, A)` would bypass a plain equality constraint and create duplicate review rows on repeated ingestion runs.
+
+---
+
+## Doors vs Show Time
+
+Live music listings frequently represent the same event twice — once with the doors time and once with the show time. The typical offset is 30–60 minutes. Without a documented policy, a naive implementation might auto-merge these pairs and discard timing data that is genuinely useful to attendees.
+
+### Detection criteria
+
+A doors-vs-show-time ambiguity is flagged when two `external_events` rows share:
+
+- the same normalised venue (`venue_id`),
+- the same normalised title (after `normalise_title`),
+- the same calendar date,
+- `start_at` values **≤ 90 minutes apart**.
+
+### Policy
+
+These pairs MUST NOT be auto-merged in Phase 1. They MUST be written to `event_merge_candidates` with `match_reasons` including `doors_show_time_ambiguity: true`, and `status = 'pending'` for human review.
+
+**Rationale:** For Glasgow live music, the distinction between doors time and show time is meaningful to attendees. Merging on time ambiguity without confirmation risks discarding a `doors_at` value that a lower-tier source captured but a higher-tier source did not report. Human review is safer.
+
+### Time field precedence
+
+When an operator confirms a merge:
+
+- `start_at` in the surviving canonical event holds the **show time**, taken from the higher-tier source.
+- `doors_at` is populated from the lower-tier source if it carried the doors time and the canonical event did not already have one.
+- The lower-tier `external_events` row is marked `is_deleted = true` after the merge is confirmed.
+
+### What MUST NOT happen
+
+- MUST NOT auto-merge adjacent-hour same-venue same-title pairs in Phase 1.
+- MUST NOT discard the `doors_at` field without human confirmation.
+- MUST NOT leave two published canonical events for the same gig after a merge is confirmed.
+
+---
+
+## Multi-Room Venues (Phase 1 Limitation)
+
+Venues like SWG3, the Barrowlands complex, and CCA operate multiple rooms under one brand. In Phase 1, these are modelled as a single `venues` row. Simultaneous events in different rooms share the same `venue_id`, which causes `dedupe_key` collisions and false-positive `event_merge_candidates` rows when titles are similar.
+
+### Known limitation
+
+SWG3 Tech Room, SWG3 Warehouse 23, and SWG3 Galvanizers events can appear as merge candidates even when they are distinct simultaneous events in different rooms. The schema (`events`, `venues`) carries no `room_name` or `parent_venue_id` column in Phase 1.
+
+### Phase 1 decision
+
+Accept this as a known limitation. Multi-room false positives surface in the moderation queue (`needs_review = true`) for human review. Operators SHOULD learn to recognise SWG3 multi-room pairs and reject them. Do NOT implement automated room-name detection or sub-venue splitting in Phase 1.
+
+### Future options (deferred to Phase 1.5)
+
+**Option A — Sub-venue rows with `parent_venue_id`:**
+Model SWG3 Tech Room, Warehouse 23 etc. as child `venues` rows linked to a parent via a `parent_venue_id` column. Richer venue data, more schema work.
+
+**Option B — `events.room_name` field:**
+Add an optional `room_name` text column to `events`. When non-null, include it as an additional component of `compute_dedupe_key`. Smallest change, most directly resolves hash collisions.
+
+A task MUST be created in Phase 1.5 to decide between these options and implement one.
 
 ---
 
@@ -80,6 +161,30 @@ Source tier (stored in `sources.tier`) determines this ranking:
 - **Tier 3** (HTML scrapers — Crawlee) — supplementary; used when no higher-tier record exists
 
 Where two records from the same tier conflict, the more recently fetched record is preferred. The canonical `events` row is updated to reflect the winning source's fields, but all contributing `external_events` rows retain their individual `event_id` link. This means the system knows that four sources carry the same event, can update the canonical record if the API source changes, and can detect removal if the API source stops returning it.
+
+---
+
+## Reschedule
+
+When a source changes an event's date, time, or venue and the `external_events` row is re-ingested, the normaliser MUST NOT create a ghost duplicate published row.
+
+**Invariant:** one external event, rescheduled and re-ingested, produces exactly one canonical event. Never two published rows.
+
+**Detection:** `external_events.event_id` is already set (the event was previously normalised), but the newly computed `dedupe_key` differs from the existing `events.dedupe_key`.
+
+**Safe path** — the new dedupe_key does not collide with any other canonical event:
+- Update the canonical `events` row in place (`dedupe_key`, `start_at`, etc.).
+- Set `availability = 'rescheduled'` and `needs_review = true`.
+- The `external_events.event_id` link is preserved. No new canonical row is created.
+
+**Unsafe path** — the new dedupe_key collides with a different canonical event:
+- MUST NOT auto-update. The update would merge two unrelated events.
+- Set `needs_review = true` on both affected canonical events.
+- Write a merge candidate to `event_merge_candidates` for human review.
+
+**Upstream availability signal:** if a Tier 1 source explicitly sets `availability = 'rescheduled'` or `'postponed'`, set `needs_review = true` immediately regardless of whether the dedupe_key changed.
+
+Full reschedule path implementation detail is in `docs/NORMALISATION.md` Step 8.
 
 ---
 
@@ -123,7 +228,7 @@ Where two records from the same tier conflict, the more recently fetched record 
 - UTC hourly bucket for both: `2026-06-20-22` (23:00+01 = 22:00 UTC).
 - The titles normalise differently, so the hashes do not collide. Two separate canonical events are created.
 
-**Fuzzy pass:** The pipeline detects the pair shares a venue and a time bucket. Trigram similarity between `sub club optimo` and `optimo at sub club` is above the merge threshold. A row is written to `event_merge_candidates` (`status = 'pending'`).
+**Fuzzy pass:** The pipeline detects the pair shares a venue and a time bucket. Trigram similarity between `sub club optimo` and `optimo at sub club` is approximately 0.61, exceeding the 0.35 Phase 1 threshold. A row is written to `event_merge_candidates` (`status = 'pending'`).
 
 **Result:** An operator reviews the candidate, confirms the merge, and the scraper-sourced canonical event is hidden (`visibility = 'hidden'`). The Skiddle record (Tier 1) becomes the surviving canonical. The scraper's `external_events` row has its `event_id` updated to point to the surviving event, so the pipeline continues tracking the scraper's view of the event for removal detection.
 
