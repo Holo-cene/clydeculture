@@ -3,7 +3,7 @@
 -- A2 — RLS deny and policy boundary tests
 --
 -- Asserts that:
---   1. Seven internal operational tables are default-deny for the anon role.
+--   1. Eight internal operational/config tables are default-deny for the anon role.
 --   2. The events confidence threshold (>= 60) is enforced at both boundaries.
 --   3. The venue_aliases parent-status policy is enforced correctly.
 --   4. The event_tags policy correctly inherits the confidence threshold
@@ -36,7 +36,7 @@
 -- =============================================================================
 
 BEGIN;
-SELECT plan(18);
+SELECT plan(19);
 
 
 -- =============================================================================
@@ -124,15 +124,21 @@ VALUES ('00000000-a200-0000-0000-000000000090'::uuid,
 
 
 -- =============================================================================
--- SECTION 1: Internal tables — default deny (tests 1–7)
+-- SECTION 1: Internal tables — default deny (tests 1–8)
 --
 -- Tables: sources, external_events, ingest_runs, ingest_alerts,
---         event_merge_candidates, moderation_log, venue_claims.
+--         event_merge_candidates, moderation_log, venue_claims,
+--         source_type_category_map.
 --
 -- Each table has RLS enabled but no SELECT policy defined.
 -- PostgreSQL default-deny: if no policy matches a row, it is invisible.
--- One fixture row was inserted above to prove the deny is from RLS,
--- not simply an empty table.
+-- One fixture row was inserted above (or seed data already exists) to prove
+-- the deny is from RLS, not simply an empty table.
+--
+-- Note: source_type_category_map relies on the 5 rows committed by the B5
+-- seed migration (20260606000000_source_category_map_seed.sql) rather than a
+-- dedicated fixture insert, since it requires source_id and event_type_id FKs
+-- that resolve via the seed data.
 -- =============================================================================
 
 SET ROLE anon;
@@ -177,6 +183,12 @@ SELECT is(
   (SELECT count(*)::int FROM public.venue_claims),
   0,
   'anon: venue_claims is default-deny (0 rows despite 1 fixture row)'
+);
+
+SELECT is(
+  (SELECT count(*)::int FROM public.source_type_category_map),
+  0,
+  'anon: source_type_category_map is default-deny (0 rows despite 5 B5 seed rows)'
 );
 
 RESET ROLE;
