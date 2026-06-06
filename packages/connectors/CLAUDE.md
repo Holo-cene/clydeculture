@@ -94,11 +94,22 @@ export const myConnector: Connector = {
             continue;
           }
           items.push({
-            externalId: record.id,        // TODO — stable upstream id
+            externalId: record.id,                    // TODO — stable upstream id
             externalUrl,
             title: record.title ?? "(untitled)",
-            startAt: record.date ?? undefined, // ISO 8601
+            startAt: record.startDate ?? undefined,   // ISO 8601
+            endAt: record.endDate ?? undefined,       // ISO 8601
+            doorsAt: record.doorsTime ?? undefined,   // ISO 8601
             venueName: record.venue ?? undefined,
+            eventTypeGuess: record.eventType ?? undefined,
+            tagsGuess: record.tags ?? undefined,
+            priceMinGuess: record.priceMin ?? undefined,
+            priceMaxGuess: record.priceMax ?? undefined,
+            isFreeGuess: record.isFree ?? undefined,
+            ticketUrlGuess: record.ticketUrl ?? undefined,
+            ticketUrlLabelGuess: record.ticketUrlLabel ?? undefined,
+            imageUrlGuess: record.imageUrl ?? undefined,
+            availabilityGuess: record.availability ?? undefined,
             raw: record,
           });
         } catch (err) {

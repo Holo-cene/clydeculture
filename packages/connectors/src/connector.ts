@@ -12,9 +12,18 @@ export interface RawEvent {
   externalUrl: string;
   title: string;
   startAt?: string; // ISO 8601
+  endAt?: string; // ISO 8601
+  doorsAt?: string; // ISO 8601
   venueName?: string;
   eventTypeGuess?: string;
   tagsGuess?: string[];
+  priceMinGuess?: number;
+  priceMaxGuess?: number;
+  isFreeGuess?: boolean;
+  ticketUrlGuess?: string;
+  ticketUrlLabelGuess?: string;
+  imageUrlGuess?: string;
+  availabilityGuess?: string;
   /** Full upstream payload, kept for debugging and re-parsing. */
   raw: unknown;
 }

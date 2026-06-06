@@ -62,14 +62,23 @@ The full contract is in [packages/connectors/src/connector.ts](../packages/conne
 export type SourceType = "api" | "rss" | "ical" | "html" | "apify" | "manual";
 
 export interface RawEvent {
-  externalId: string;    // stable upstream identifier — see section 4
-  externalUrl: string;   // required — Clyde Culture is link-first
+  externalId: string;           // stable upstream identifier — see section 4
+  externalUrl: string;          // required — Clyde Culture is link-first
   title: string;
-  startAt?: string;      // ISO 8601
+  startAt?: string;             // ISO 8601
+  endAt?: string;               // ISO 8601
+  doorsAt?: string;             // ISO 8601 — "Doors 7pm, Show 8pm"
   venueName?: string;
   eventTypeGuess?: string;
   tagsGuess?: string[];
-  raw: unknown;          // full upstream payload, kept for debugging
+  priceMinGuess?: number;
+  priceMaxGuess?: number;
+  isFreeGuess?: boolean;
+  ticketUrlGuess?: string;
+  ticketUrlLabelGuess?: string;
+  imageUrlGuess?: string;
+  availabilityGuess?: string;   // e.g. "onsale", "sold_out", "cancelled"
+  raw: unknown;                 // full upstream payload, kept for debugging
 }
 
 export interface IngestResult {
@@ -167,8 +176,10 @@ one.
 Clyde Culture is a discovery and routing layer, not a publisher. Every event on the
 platform links back to its origin. This shapes what you store:
 
-**Store:** `title`, `startAt`, `venueName`, `eventTypeGuess`, `tagsGuess`. A short
-summary line is fine where the source provides one.
+**Store:** `title`, `startAt`, `endAt`, `doorsAt`, `venueName`, `eventTypeGuess`,
+`tagsGuess`, `priceMinGuess`, `priceMaxGuess`, `isFreeGuess`, `ticketUrlGuess`,
+`ticketUrlLabelGuess`, `imageUrlGuess`, `availabilityGuess` — where the source provides
+them. All are optional; omit rather than guess.
 
 **Do not store:** full event descriptions, promotional copy, or images from link-only
 sources such as Resident Advisor or Instagram. These sources are designed to be linked

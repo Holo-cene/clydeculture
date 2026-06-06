@@ -1,18 +1,18 @@
 # B4 — Expand RawEvent to Match external_events
 
 ## Status
-Open
+Complete
 
 ## Purpose
 The current `RawEvent` interface is missing 7 fields that connectors need to output pricing, availability, ticket URL, image, end time, and doors time. Any connector built against the current interface cannot populate these columns in `external_events`, and ingestion quality will be silently degraded. This task updates connector contract tests so mock connector fixtures can carry all required fields, then stops.
 
-**TDD step 1 only** — update tests/fixtures, stop. Do not change the production interface.
+**Both steps complete.** Step 1 added red tests; step 2 added the 9 optional fields to the production interface.
 
 The complete required `RawEvent` field list:
 `externalId`, `externalUrl`, `title`, `startAt`, `endAt`, `doorsAt`, `venueName`, `eventTypeGuess`, `tagsGuess`, `priceMinGuess`, `priceMaxGuess`, `isFreeGuess`, `ticketUrlGuess`, `ticketUrlLabelGuess`, `imageUrlGuess`, `availabilityGuess`, `raw`
 
 ## Classification
-- Type: red-tests-only (step 1 of two)
+- Type: complete (step 1 red tests + step 2 production interface)
 - Blocks: connector code
 - Can run in parallel: yes (independent of B1, B2, B3, D-group, H1)
 - Must run after: none
@@ -56,10 +56,10 @@ pnpm --filter @clyde-culture/connectors typecheck
 ```
 
 ## Acceptance criteria
-- [ ] Mock fixtures in `connector.test.ts` include all 17 `RawEvent` fields.
-- [ ] A test asserts that a full-field `RawEvent` object is type-valid.
-- [ ] Tests currently fail because the production interface does not have the missing fields.
-- [ ] No `_guess` field in `external_events` is left without a corresponding field in the test fixture.
+- [x] Mock fixtures in `connector.test.ts` include all 17 `RawEvent` fields.
+- [x] A test asserts that a full-field `RawEvent` object is type-valid.
+- [x] `pnpm typecheck` is clean — all 9 fields added to production interface.
+- [x] No `_guess` field in `external_events` is left without a corresponding field in the test fixture.
 
 ## Stop condition
 Stop after test updates are written and confirmed failing. Do not change `connector.ts`. Report:
