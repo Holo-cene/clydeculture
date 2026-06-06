@@ -199,6 +199,22 @@ describe('isValidHttpsUrl', () => {
   it('rejects a non-URL string', () => {
     expect(isValidHttpsUrl('not a url at all')).toBe(false);
   });
+
+  it('rejects undefined passed as string (runtime guard)', () => {
+    // The function signature is string, but runtime data may be undefined.
+    // The !url guard at line 4 of validate.ts handles this.
+    expect(isValidHttpsUrl(undefined as unknown as string)).toBe(false);
+  });
+
+  it('rejects a malformed https:// with no host', () => {
+    // new URL('https://') throws — caught and returns false
+    expect(isValidHttpsUrl('https://')).toBe(false);
+  });
+
+  it('accepts an uppercase HTTPS:// URL (URL spec normalises scheme to lowercase)', () => {
+    // new URL('HTTPS://example.com').protocol === 'https:' — passes the check
+    expect(isValidHttpsUrl('HTTPS://example.com/event')).toBe(true);
+  });
 });
 
 // Stable externalId — a connector run against the same fixture must produce the same

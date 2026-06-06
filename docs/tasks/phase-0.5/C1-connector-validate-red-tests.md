@@ -1,7 +1,7 @@
 # C1 — Implement validate.ts Test-First
 
 ## Status
-Open
+Complete
 
 ## Purpose
 `packages/connectors/src/connector.test.ts` already imports from `./validate.js`, which does not exist. This breaks all connector tests. This task reviews the existing tests, fills any coverage gaps, then stops. The implementation of `validate.ts` itself happens in step 2. Once `validate.ts` exists and all connector tests pass, `index.ts` must export both `validateIngestResult` and `isValidHttpsUrl`.
