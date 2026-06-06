@@ -218,9 +218,9 @@ Phase 0.5 is complete when all of the following are ticked:
 
 ### Group B — Type alignment
 - [x] [B1](B1-event-category-taxonomy.md) — `EventCategory` matches 13 SQL slugs
-- [ ] [B2](B2-source-interface-alignment.md) — `Source` interface matches `sources` table
-- [ ] [B3](B3-source-type-sync.md) — `SourceType` includes `'apify'` in all locations
-- [ ] [B4](B4-raw-event-contract.md) — `RawEvent` includes all 17 fields
+- [x] [B2](B2-source-interface-alignment.md) — `Source` interface matches `sources` table
+- [x] [B3](B3-source-type-sync.md) — `SourceType` includes `'apify'` in all locations
+- [x] [B4](B4-raw-event-contract.md) — `RawEvent` includes all 17 fields
 - [x] [B5](B5-source-category-map-seed.md) — `source_type_category_map` seed migration exists and applies
 
 ### Group C — Core utility tests

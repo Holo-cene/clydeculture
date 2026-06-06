@@ -1,7 +1,12 @@
 # B3 — Align SourceType Everywhere
 
 ## Status
-Open
+Complete
+
+## Completion note
+- Production fix: `packages/connectors/src/connector.ts` — `SourceType` is `"api" | "rss" | "ical" | "html" | "apify" | "manual"` (all 6 canonical Phase 1 values including `"apify"`). `packages/shared/src/types/source.ts` matches identically.
+- Test file: `packages/connectors/src/connector.test.ts` — SourceType sync guard at the `'SourceType canonical values — sync guard'` describe block; includes a bidirectional `AssertEqual` compile-time assertion against the canonical union.
+- Both step 1 (red test) and step 2 (production type) are committed.
 
 ## Purpose
 `SourceType` has two definitions in the codebase (one in `packages/shared`, one in `packages/connectors`) and `'apify'` is missing from at least the connectors definition. The canonical Phase 1 values are: `api | rss | ical | html | apify | manual`. Any connector or ingestion task built before this is fixed will silently reject Apify-sourced records. This task writes a failing test/assertion, then stops.

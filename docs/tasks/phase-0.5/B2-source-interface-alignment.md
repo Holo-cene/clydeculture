@@ -1,7 +1,12 @@
 # B2 — Align Source Interface with the sources Table
 
 ## Status
-Open
+Complete
+
+## Completion note
+- Production fix: `packages/shared/src/types/source.ts` — `isActive` replaced with `enabled` (matching the `sources` DB column); `baseUrl` removed (no such column); all 14 DB columns present.
+- Test file: `packages/shared/src/types/source.test.ts` — asserts `enabled` exists and `baseUrl` does not; comment reads "Step 2: GREEN".
+- Both step 1 (red test) and step 2 (interface fix) are committed.
 
 ## Purpose
 The current `Source` TypeScript interface uses `isActive` (the DB column is `enabled`) and `baseUrl` (no such column exists in `sources`). Any connector, seed SQL, or ingestion task that references these fields will silently fail at runtime. This task writes a failing type-level or runtime test that proves the mismatch, then stops. The production fix (replacing the interface) happens in step 2.
