@@ -216,7 +216,7 @@ Phase 0.5 is complete when all of the following are ticked:
 - [ ] [B2](B2-source-interface-alignment.md) — `Source` interface matches `sources` table
 - [ ] [B3](B3-source-type-sync.md) — `SourceType` includes `'apify'` in all locations
 - [ ] [B4](B4-raw-event-contract.md) — `RawEvent` includes all 17 fields
-- [ ] [B5](B5-source-category-map-seed.md) — `source_type_category_map` seed migration exists and applies
+- [x] [B5](B5-source-category-map-seed.md) — `source_type_category_map` seed migration exists and applies
 
 ### Group C — Core utility tests
 - [ ] [C1](C1-connector-validate-red-tests.md) — `validate.ts` exists, connector tests pass
