@@ -4,7 +4,7 @@
 Complete
 
 ## Purpose
-The current `RawEvent` interface is missing 7 fields that connectors need to output pricing, availability, ticket URL, image, end time, and doors time. Any connector built against the current interface cannot populate these columns in `external_events`, and ingestion quality will be silently degraded. This task updates connector contract tests so mock connector fixtures can carry all required fields, then stops.
+The current `RawEvent` interface was missing 9 fields that connectors need to output pricing, availability, ticket URL, image, end time, and doors time. Any connector built against the current interface cannot populate these columns in `external_events`, and ingestion quality will be silently degraded. This task updates connector contract tests so mock connector fixtures can carry all required fields, then stops.
 
 **Both steps complete.** Step 1 added red tests; step 2 added the 9 optional fields to the production interface.
 

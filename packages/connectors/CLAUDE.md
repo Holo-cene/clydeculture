@@ -6,8 +6,11 @@ Every connector is a TypeScript module implementing the `Connector` interface in
 ## Invariants
 
 - `run()` **must not throw** — catch everything and return errors in `IngestResult.errors`
-- `externalUrl` is **required** on every `RawEvent` — skip records you can't link and push an error
+- `externalId`, `externalUrl`, `title`, and `raw` are **required** on every `RawEvent`
+- `externalUrl` must be **https** — skip records you can't link and push an error
 - `externalId` must be **stable and upstream-sourced** — not a DB id, not a counter
+- All other `RawEvent` fields are **optional** — pass through what the source provides; do not invent values
+- Dates/times (`startAt`, `endAt`, `doorsAt`) must be **ISO 8601** strings where present
 - **Never store full descriptions or images** from link-only sources (RA, Instagram)
 - `connector.slug` must **exactly match** the `sources.slug` database row
 

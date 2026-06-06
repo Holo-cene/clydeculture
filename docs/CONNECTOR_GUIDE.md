@@ -95,6 +95,21 @@ export interface Connector {
 }
 ```
 
+**Required fields:** `externalId`, `externalUrl`, `title`, and `raw` — every `RawEvent`
+must carry all four. Skip records where you cannot supply a stable id or a valid HTTPS
+URL; push a descriptive string to `errors` instead.
+
+**Optional fields:** everything else. Many sources will not provide all of them —
+that is expected. Pass through whatever the source makes available and omit the rest.
+Do not invent or default a value for an optional field; the normalisation pipeline
+decides how to use what is present.
+
+**Dates and times** (`startAt`, `endAt`, `doorsAt`) must be ISO 8601 strings
+(`"2026-07-01T19:00:00Z"`) where provided. Leave the field absent if the source does
+not supply it.
+
+---
+
 **`run()` must not throw.** All errors — network failures, parse errors, unexpected
 payloads — go into `IngestResult.errors` as plain strings. This is the isolation
 contract: an unhandled exception propagating out of `run()` would crash the Trigger.dev
