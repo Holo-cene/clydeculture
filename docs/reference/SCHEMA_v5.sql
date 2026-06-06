@@ -914,9 +914,9 @@ create policy "Public insert submissions" on event_submissions
 --   12. source_type_category_map
 --   13. ingest_alerts
 --   14. event_merge_candidates
---   15. publish_mappings
---   16. publish_jobs
---   17. publish_job_items
+--   15. publish_mappings              (DROPPED — A1 migration 20260603000000)
+--   16. publish_jobs                  (DROPPED — A1 migration 20260603000000)
+--   17. publish_job_items             (DROPPED — A1 migration 20260603000000)
 --
 -- 🔵 PHASE 2 (3 tables):
 --   18. event_submissions

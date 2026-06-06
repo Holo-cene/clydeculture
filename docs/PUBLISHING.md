@@ -100,7 +100,7 @@ These policies must be correct before any route in `apps/web` is deployed.
 | Table | Policy | Condition |
 |---|---|---|
 | `events` | Public read | `visibility = 'published' AND confidence >= 60` |
-| `event_tags` | Public read | Parent event is published AND confidence >= 60 (inherited via recursive RLS — A3 will make this explicit) |
+| `event_tags` | Public read | Parent event is published AND confidence >= 60 (explicit since A3 migration `20260606001000`) |
 | `venues` | Public read | `status IN ('active', 'temporary')` |
 | `event_types` | Public read | All rows |
 | `tags` | Public read | All rows |

@@ -30,14 +30,14 @@ migration files.
 In the numbered data flow, step 1 currently uses Eventbrite as the example connector.
 Replace Eventbrite with Ticketmaster:
 
-Replace:
+Replace (stale text currently in ARCHITECTURE.md — `packages/ingestion` is superseded by `trigger/`):
 > `packages/ingestion schedules a run for the Eventbrite connector. The connector
 > fetches events via the Eventbrite API, extracts externalId (Eventbrite event ID),
 > externalUrl, title, start_at, and venue_name, and stores the full API response
 > as raw JSON.`
 
 With:
-> `packages/ingestion schedules a run for the Ticketmaster connector. The connector
+> `A Trigger.dev task schedules a run for the Ticketmaster connector. The connector
 > fetches events via the Ticketmaster Discovery API, extracts externalId (Ticketmaster
 > event ID), externalUrl, title, start_at, doors_at, and venue_name from the
 > `_embedded.venues` array, and stores the full API response as raw JSON.`

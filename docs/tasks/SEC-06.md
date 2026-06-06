@@ -95,7 +95,7 @@ $$ language plpgsql;
 
 ### Step 2 — Schedule retention cleanup in the ingestion orchestrator
 
-In `packages/ingestion` (the orchestration layer), after the daily ingestion sweep,
+In the Trigger.dev sweep task (`trigger/`), after the daily ingestion sweep,
 call both retention functions:
 
 ```ts

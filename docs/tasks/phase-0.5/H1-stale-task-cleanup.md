@@ -1,7 +1,7 @@
 # H1 — Stale Task File Cleanup
 
 ## Status
-Open
+Complete
 
 ## Purpose
 Several existing task files contain stale or incorrect instructions that contradict the Phase 0.5 canonical decisions: references to `packages/ingestion` and `packages/publishing` (replaced by `trigger/`), `is_active` instead of `enabled`, `base_url` that doesn't exist, and stale "add apify later" notes. Leaving these in place means a future Claude Code session could follow stale instructions and create incorrect code. This task is documentation cleanup only.
@@ -84,12 +84,12 @@ git diff docs/tasks/INF-01.md docs/tasks/CC-NEW-2.md packages/connectors/CLAUDE.
 ```
 
 ## Acceptance criteria
-- [ ] `docs/tasks/INF-01.md` does not instruct creation of `packages/ingestion` or `packages/publishing`.
-- [ ] `docs/tasks/CC-NEW-2.md` uses `enabled`, not `is_active`; no `base_url` reference.
-- [ ] `packages/connectors/CLAUDE.md` has no "add apify later" note.
-- [ ] `docs/tasks/BE-03.md` marks doc-creation as done; scopes to seed migration.
-- [ ] `docs/tasks/BE-13.md` is marked as superseded by NORMALISATION.md.
-- [ ] Root `package.json` scripts are inspected and any `packages/ingestion`/`packages/publishing` references are flagged in the report.
+- [x] `docs/tasks/INF-01.md` does not instruct creation of `packages/ingestion` or `packages/publishing`.
+- [x] `docs/tasks/CC-NEW-2.md` uses `enabled`, not `is_active`; no `base_url` reference.
+- [x] `packages/connectors/CLAUDE.md` has no "add apify later" note.
+- [x] `docs/tasks/BE-03.md` marks doc-creation as done; scopes to seed migration.
+- [x] `docs/tasks/BE-13.md` is marked as superseded by NORMALISATION.md.
+- [x] Root `package.json` scripts are inspected and any `packages/ingestion`/`packages/publishing` references are flagged in the report.
 
 ## Stop condition
 Stop when all five task files are updated. Report:
