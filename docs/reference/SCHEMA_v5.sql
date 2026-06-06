@@ -2,6 +2,23 @@
 -- CLYDE CULTURE — SUPABASE SCHEMA v5 (FINAL)
 -- ============================================================================
 --
+-- NOTE — BASELINE REFERENCE ONLY:
+--
+--   This file is the baseline/reference schema as designed at v5.
+--   It is NOT the complete effective schema in production or local Supabase.
+--
+--   The effective current schema is this baseline PLUS all committed migrations
+--   applied in order. At minimum the following migrations extend this baseline:
+--
+--     supabase/migrations/20260531000000_schema_v5_initial.sql
+--     supabase/migrations/20260603000000_cc_new_1_schema_corrections.sql
+--     supabase/migrations/20260606000000_source_category_map_seed.sql
+--     supabase/migrations/20260606001000_a3_event_tags_explicit_confidence.sql
+--
+--   Always read migrations alongside this file. When in doubt about the current
+--   effective state of any table, column, or policy, consult the migration files
+--   rather than this document.
+--
 -- CHANGES FROM v4:
 --
 --   AVAILABILITY & STATUS:
