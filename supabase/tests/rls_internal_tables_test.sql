@@ -36,7 +36,7 @@
 -- =============================================================================
 
 BEGIN;
-SELECT plan(17);
+SELECT plan(18);
 
 
 -- =============================================================================
@@ -317,6 +317,34 @@ SELECT is(
 );
 
 RESET ROLE;
+
+
+-- =============================================================================
+-- SECTION 4 CATALOG CHECK: event_tags policy definition (test 18)
+--
+-- A catalog assertion (runs as postgres superuser; no SET ROLE needed) that
+-- confirms the event_tags SELECT policy USING expression explicitly references
+-- both 'confidence' and '60'.
+--
+-- This test is RED against the current schema — the policy only checks
+-- visibility = 'published' — and GREEN after the A3 migration is applied.
+--
+-- Two separate LIKE checks are used rather than one exact string to tolerate
+-- any differences in how PostgreSQL renders the expression (casts, spacing,
+-- parentheses) in the pg_policies.qual column.
+-- =============================================================================
+
+SELECT ok(
+  EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename  = 'event_tags'
+      AND cmd        = 'SELECT'
+      AND qual LIKE '%confidence%'
+      AND qual LIKE '%60%'
+  ),
+  'event_tags SELECT policy explicitly references confidence threshold (defence-in-depth, not relying on recursive RLS)'
+);
 
 
 -- =============================================================================
