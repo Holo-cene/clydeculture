@@ -2,7 +2,7 @@
 
 **Priority:** P0  
 **Area:** Database / Schema  
-**Status:** Open  
+**Status:** Complete  
 **Depends on:** CC-NEW-3 (confidence threshold decision — resolved, use Option A)
 
 ---

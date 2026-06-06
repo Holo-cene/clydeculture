@@ -1,7 +1,7 @@
 # A1 — Write and Apply the CC-NEW-1 Schema Correction Migration
 
 ## Status
-Open
+Complete
 
 ## Purpose
 The existing v5 schema has several inconsistencies that block all downstream normalisation and connector work: the `compute_dedupe_key()` function omits `AT TIME ZONE 'UTC'` in its `date_trunc` call (causing BST/UTC collisions), Webflow-era publishing tables and columns still exist, the `events` RLS policy uses the wrong confidence threshold, `'apify'` is missing from the `source_type` CHECK constraint, and `validate_event_consistency()` references columns that will be dropped.
