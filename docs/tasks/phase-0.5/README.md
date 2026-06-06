@@ -59,6 +59,7 @@ Run A1 first (serial). Then run the rest in parallel:
 |------|------|-----------------|
 | **A1** — CC-NEW-1 schema corrections | migration | Serial first |
 | A2 — Internal RLS deny tests | red-tests | After A1 |
+| **A3** — event_tags explicit RLS | migration | After A2 |
 | B1 — EventCategory taxonomy | red-tests | Parallel |
 | B2 — Source interface alignment | red-tests | Parallel |
 | B3 — SourceType sync | red-tests | Parallel |
@@ -107,6 +108,7 @@ Start with the lowest-risk confirmed connector after pre-flights:
 
 - **A1** must complete before anything that touches the schema or depends on RLS.
 - **A2** must run after A1.
+- **A3** must run after A2 (extends the A2 test file and depends on the A1 RLS foundation).
 - **B5** must run after B1 (seed uses correct slug values).
 - **C5** must run after D2 (reschedule path must be documented first).
 - **G1** must run after B2, B3, B4, D3, D6.
@@ -153,6 +155,7 @@ Start with the lowest-risk confirmed connector after pre-flights:
 
 ### Migration tasks
 - A1 — CC-NEW-1 schema corrections
+- A3 — event_tags explicit RLS confidence gate
 - B5 — source_type_category_map seed
 
 ### Spike / research tasks
@@ -197,6 +200,7 @@ Start with the lowest-risk confirmed connector after pre-flights:
 | Blocker | What it blocks |
 |---------|----------------|
 | A2 | Confidence in RLS posture before any public traffic |
+| A3 | Defence-in-depth for public traffic; does not block Phase 1 connector work |
 | F1 | Public submission form only |
 | F2 | RA and Instagram connectors only |
 | F3 | Public form with email collection |
@@ -210,6 +214,7 @@ Phase 0.5 is complete when all of the following are ticked:
 ### Group A — Schema
 - [x] [A1](A1-cc-new-1-schema-corrections.md) — CC-NEW-1 migration written, `pnpm supabase:reset` passes, BST/UTC assertion passes
 - [x] [A2](A2-internal-rls-deny-tests.md) — Internal RLS deny tests pass against local Supabase
+- [ ] [A3](A3-event-tags-explicit-rls-confidence.md) — `event_tags` SELECT policy explicitly checks `confidence >= 60` (not relying on recursive RLS)
 
 ### Group B — Type alignment
 - [x] [B1](B1-event-category-taxonomy.md) — `EventCategory` matches 13 SQL slugs
