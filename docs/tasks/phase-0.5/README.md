@@ -104,6 +104,66 @@ Start with the lowest-risk confirmed connector after pre-flights:
 
 ---
 
+## Prototype Pivot — Vertical Slice First
+
+**Status:** Accepted 2026-06-07. This overrides the Wave 2 → Wave 3 sequencing for the immediate next sprint.
+
+### What changed and why
+
+Phase 0.5 has produced a solid contract foundation. D1–D6 lifecycle and deduplication docs are done, C7 (UTC conversion, time\_tba, image\_url) is done, and all A/B groups are complete. **These docs contracts remain valid guardrails — nothing below invalidates them.**
+
+However, the project currently has no production code, no implemented connectors, no working normalisation path, and no public listings page showing real events. Completing every remaining red-test wave (C2–C6, G1) before any production code would add weeks of specification work before real data is seen. That is the wrong order.
+
+**The immediate next goal is a working vertical slice using Ticketmaster as the first structured source.** One end-to-end path that proves the whole system works with real data. C2–C6 and G1 tests will be written afterward, informed by the actual data shapes.
+
+### Vertical slice definition
+
+The slice is complete when a real Ticketmaster event appears on a live Astro listings page:
+
+1. **Ticketmaster fetch** — query the Discovery API for Glasgow events; verify API key, quota, and geo-filter response shape.
+2. **Map to `RawEvent`** — parse the response into the 17-field `RawEvent` schema (B4 contract).
+3. **Upsert into `external_events`** — write rows via the `(source_id, external_id)` unique constraint.
+4. **Create/update minimal canonical `events`** — run normalisation Steps 1–4 (field extraction, venue resolution, event type classification, confidence scoring) and upsert into `events`. Within-source dedup only — the upsert constraint handles it automatically.
+5. **Astro listings page** — one route that reads `events WHERE visibility = 'published'` via the Supabase anon key and renders title, date, and source URL.
+
+### What is explicitly deferred
+
+Until real data quality from the vertical slice is reviewed:
+
+- **Fuzzy cross-source deduplication** — `event_merge_candidates`, similarity threshold, merge workflow (C5)
+- **Festival detection** — `festivals` table matching, series tagging (C6)
+- **Merge candidate workflow** — human review queue, operator tooling
+- **Public submissions** — `event_submissions` table, moderation queue
+- **HTML scraper expansion** — SWG3, St Luke's, Mono, Flying Duck connectors (E7)
+- **Full G1 orchestration** — sweep task fan-out, multi-connector scheduling
+
+C2–C4 red tests (confidence scoring, category mapping, venue normalisation) are not written yet; the vertical slice will expose the realistic data shapes they need to cover.
+
+D1–D6 and C7 contracts remain in force as guardrails during all vertical slice implementation.
+
+### TDD policy for the vertical slice
+
+The two-step TDD workflow (red test first → smallest implementation) still applies. Scope it to:
+- The Ticketmaster connector: E1 pre-flight → fixture-parsing red test → implementation.
+- The minimal normalisation/upsert path: field extraction + confidence scoring + upsert.
+
+Tests for deferred components (C2–C6, G1) are written after Step 6 below.
+
+### Revised recommended sequence
+
+| Step | Task | Type |
+|------|------|------|
+| 1 | **E1 — Ticketmaster pre-flight** | Spike: API key, Glasgow geo query, response shape, quota limits |
+| 2 | **Ticketmaster fixture parsing (red test)** | TDD Step 1 — failing test against a real API response fixture |
+| 3 | **Minimal Ticketmaster connector** | TDD Step 2 — smallest implementation to pass the test |
+| 4 | **Minimal normalisation/upsert path** | Steps 1–4 of `NORMALISATION.md`; Tier 1 base score (50) sufficient for now |
+| 5 | **Astro listings page** | One route; `visibility = 'published'`; title + date + source URL |
+| 6 | **Review real data quality** | Inspect actual events in the DB; identify edge cases for C2–C6 and G1 |
+
+After Step 6, resume remaining Phase 0.5 red-test work (C2–C6, G1) informed by real data shapes.
+
+---
+
 ## Tasks that must be serial
 
 - **A1** must complete before anything that touches the schema or depends on RLS.
@@ -224,21 +284,21 @@ Phase 0.5 is complete when all of the following are ticked:
 - [x] [B5](B5-source-category-map-seed.md) — `source_type_category_map` seed migration exists and applies
 
 ### Group C — Core utility tests
-- [ ] [C1](C1-connector-validate-red-tests.md) — `validate.ts` exists, connector tests pass
+- [x] [C1](C1-connector-validate-red-tests.md) — `validate.ts` exists, connector tests pass
 - [ ] [C2](C2-confidence-red-tests.md) — `calculateConfidence.test.ts` (red) written, one canonical formula
 - [ ] [C3](C3-category-mapping-red-tests.md) — `mapSourceCategoryToEventType.test.ts` (red) written
 - [ ] [C4](C4-venue-normalisation-red-tests.md) — venue normalisation tests pass (SQL/TS equivalence confirmed)
 - [ ] [C5](C5-merge-behaviour-red-tests.md) — `mergeExternalEventIntoCanonicalEvent.test.ts` (red) written, merge table in docs
 - [ ] [C6](C6-festival-detection-red-tests.md) — `festivals.test.ts` (red) written
-- [ ] [C7](C7-time-tba-image-url-docs.md) — `NORMALISATION.md` Step 1 updated with UTC conversion, time_tba, image_url specs
+- [x] [C7](C7-time-tba-image-url-docs.md) — `NORMALISATION.md` Step 1 updated with UTC conversion, time_tba, image_url specs
 
 ### Group D — Deduplication and lifecycle docs
-- [ ] [D1](D1-fuzzy-threshold-docs.md) — fuzzy-match threshold 0.35 in `DEDUPLICATION.md`
-- [ ] [D2](D2-reschedule-handling-docs.md) — rescheduled event handling specified
-- [ ] [D3](D3-removal-cancellation-lifecycle-docs.md) — upstream removal N-runs per tier defined
-- [ ] [D4](D4-doors-vs-show-dedupe-docs.md) — doors-vs-show-time policy documented
-- [ ] [D5](D5-multi-room-venue-dedupe-docs.md) — multi-room venue limitation documented
-- [ ] [D6](D6-auto-create-venue-concurrency-docs.md) — `auto_create_venue()` race condition documented
+- [x] [D1](D1-fuzzy-threshold-docs.md) — fuzzy-match threshold 0.35 in `DEDUPLICATION.md`
+- [x] [D2](D2-reschedule-handling-docs.md) — rescheduled event handling specified
+- [x] [D3](D3-removal-cancellation-lifecycle-docs.md) — upstream removal N-runs per tier defined
+- [x] [D4](D4-doors-vs-show-dedupe-docs.md) — doors-vs-show-time policy documented
+- [x] [D5](D5-multi-room-venue-dedupe-docs.md) — multi-room venue limitation documented
+- [x] [D6](D6-auto-create-venue-concurrency-docs.md) — `auto_create_venue()` race condition documented
 
 ### Group E — Connector pre-flights
 - [ ] [E1](E1-ticketmaster-preflight.md) — Ticketmaster SPEC.md and fixture written
