@@ -23,9 +23,15 @@ logged as a non-fatal warning.
 **Attribution:** Hardcode `ticketUrlLabelGuess = "Buy on Ticketmaster"`. Link to
 `event.url` from every listing satisfies the trademark display requirement.
 
-**Open question:** Comedy segment ID `KZFzniwnSyZfZ7v7nE` (documented in BE-03 as
-"Comedy segment") is unverified against a live API response. Validate with API Explorer
-or a real key before the first production sweep.
+**Live verification (2026-06-07):** Smoke test fetched 20/20 events. Music segment ID
+confirmed as `kzfzniwnsyzfz7v7nj`. B5 seed had a transposition typo in all four
+`kzfzniwnS...` IDs (`szy` → `syz`). Corrective migration written:
+`supabase/migrations/20260607000000_fix_ticketmaster_segment_ids.sql`.
+
+**Comedy segment ID:** `kzfzniwnsyzfz7v7ne` (corrected form) — not seen in smoke
+sample (size=20, Music-heavy). Structure is consistent with confirmed Music ID.
+Validate when a comedy event appears in the result set before relying on comedy
+category mapping in production.
 
 ## Why this matters
 
