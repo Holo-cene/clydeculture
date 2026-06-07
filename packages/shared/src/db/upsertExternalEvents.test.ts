@@ -108,7 +108,7 @@ describe('upsertExternalEvents', () => {
     it('maps all 17 RawEvent camelCase fields to snake_case external_events columns', async () => {
       const { client, mockUpsert } = makeClient();
       await upsertExternalEvents(client, SOURCE_ID, [MOGWAI]);
-      const row = capturedRows(mockUpsert)[0];
+      const row = capturedRows(mockUpsert)[0]!;
 
       expect(row['external_id']).toBe('G5vYZpYd1bujA');
       expect(row['external_url']).toBe(MOGWAI.externalUrl);
@@ -138,7 +138,7 @@ describe('upsertExternalEvents', () => {
     it('sets last_seen_at to a current ISO 8601 timestamp', async () => {
       const { client, mockUpsert } = makeClient();
       await upsertExternalEvents(client, SOURCE_ID, [MOGWAI]);
-      const lastSeenAt = capturedRows(mockUpsert)[0]['last_seen_at'];
+      const lastSeenAt = capturedRows(mockUpsert)[0]!['last_seen_at'];
       expect(lastSeenAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
     });
 
@@ -201,8 +201,8 @@ describe('upsertExternalEvents', () => {
       const { client, mockUpsert } = makeClient();
       await upsertExternalEvents(client, SOURCE_ID, [MOGWAI]);
       await upsertExternalEvents(client, SOURCE_ID, [MOGWAI]);
-      const firstId = capturedRows(mockUpsert, 0)[0]['external_id'];
-      const secondId = capturedRows(mockUpsert, 1)[0]['external_id'];
+      const firstId = capturedRows(mockUpsert, 0)[0]!['external_id'];
+      const secondId = capturedRows(mockUpsert, 1)[0]!['external_id'];
       expect(firstId).toBe(secondId);
     });
   });
@@ -212,7 +212,7 @@ describe('upsertExternalEvents', () => {
       const { client, mockUpsert } = makeClient();
       await upsertExternalEvents(client, SOURCE_ID, [MOGWAI]);
       await upsertExternalEvents(client, SOURCE_ID, [{ ...MOGWAI, title: 'Mogwai (SOLD OUT)' }]);
-      expect(capturedRows(mockUpsert, 1)[0]['title']).toBe('Mogwai (SOLD OUT)');
+      expect(capturedRows(mockUpsert, 1)[0]!['title']).toBe('Mogwai (SOLD OUT)');
     });
 
     it('reflects an updated availability_guess', async () => {
@@ -221,7 +221,7 @@ describe('upsertExternalEvents', () => {
       await upsertExternalEvents(client, SOURCE_ID, [
         { ...MOGWAI, availabilityGuess: 'offsale' },
       ]);
-      expect(capturedRows(mockUpsert, 1)[0]['availability_guess']).toBe('offsale');
+      expect(capturedRows(mockUpsert, 1)[0]!['availability_guess']).toBe('offsale');
     });
 
     it('reflects updated price fields', async () => {
@@ -230,7 +230,7 @@ describe('upsertExternalEvents', () => {
       await upsertExternalEvents(client, SOURCE_ID, [
         { ...MOGWAI, priceMinGuess: 25, priceMaxGuess: 35 },
       ]);
-      const row = capturedRows(mockUpsert, 1)[0];
+      const row = capturedRows(mockUpsert, 1)[0]!;
       expect(row['price_min_guess']).toBe(25);
       expect(row['price_max_guess']).toBe(35);
     });
@@ -242,7 +242,7 @@ describe('upsertExternalEvents', () => {
       await upsertExternalEvents(client, SOURCE_ID, [
         { ...MOGWAI, imageUrlGuess: newImage },
       ]);
-      expect(capturedRows(mockUpsert, 1)[0]['image_url_guess']).toBe(newImage);
+      expect(capturedRows(mockUpsert, 1)[0]!['image_url_guess']).toBe(newImage);
     });
   });
 
