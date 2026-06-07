@@ -2,7 +2,8 @@
 
 **Priority:** P3 (Spike)
 **Area:** Security, Legal, Connectors
-**Status:** Open
+**Status:** Resolved — 2026-06-08
+**Decision record:** `docs/decisions/0004-ticketmaster-image-usage.md`
 **Depends on:** API-02 (Ticketmaster connector)
 
 ## Why this matters
@@ -116,10 +117,15 @@ After the link-first rule section, add a paragraph:
 
 ## Acceptance criteria
 
-- [ ] `docs/decisions/0002-ticketmaster-image-usage.md` exists with status `accepted` or `proposed`
-- [ ] Decision record states whether attribution is required (with specific format if yes)
-- [ ] Decision record states whether CDN hot-linking is permitted
-- [ ] Decision record recommends one of Options A–D and explains the reasoning
-- [ ] If attribution is required: a task is added to the sync job / frontend template to implement it
-- [ ] If hot-linking is prohibited: the Ticketmaster connector sets `image_url = null` in normalisation
-- [ ] `docs/CONNECTOR_GUIDE.md` §5 references `0002-ticketmaster-image-usage.md`
+- [x] `docs/decisions/0004-ticketmaster-image-usage.md` exists with status `accepted`
+- [x] Decision record states attribution is required — "Buy on Ticketmaster" label adjacent to image
+- [x] Decision record states CDN hot-linking is permitted (no binary caching)
+- [x] Decision record chooses Option B (attribution required) and explains the reasoning
+- [x] Attribution is already implemented in the parser (`ticketUrlLabelGuess = "Buy on Ticketmaster"`); frontend template must render it adjacent to the image — noted as a frontend implementation requirement in the ADR
+- [x] Hot-linking is permitted; `image_url = null` override is NOT required for Ticketmaster
+- [x] `docs/CONNECTOR_GUIDE.md` §5 references `0004-ticketmaster-image-usage.md`
+
+## Note on ADR numbering
+
+SEC-10 originally requested `0002-ticketmaster-image-usage.md` but `0002` was taken
+by `0002-ingestion-runtime.md`. The decision record was created as `0004`.

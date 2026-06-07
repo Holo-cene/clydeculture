@@ -203,6 +203,14 @@ platform's own principles.
 
 When in doubt: less is more. The `externalUrl` is what matters.
 
+**Image storage policy:** Before storing `imageUrlGuess` from any API source,
+confirm that the provider's API terms permit hot-linking or image display in a
+third-party site. Ticketmaster's terms are documented in
+[`docs/decisions/0004-ticketmaster-image-usage.md`](decisions/0004-ticketmaster-image-usage.md).
+If terms are unclear, do not set `imageUrlGuess` — the normalisation pipeline
+will leave `events.image_url` null for that source. Never download or
+proxy-cache image binaries from any source.
+
 ---
 
 ## 6. Worked example: RSS connector
