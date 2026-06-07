@@ -106,10 +106,10 @@ describe('parseTicketmasterEvents', () => {
     });
 
     it('maps eventTypeGuess to the lowercased primary segment ID (Music → live_music via source_type_category_map)', () => {
-      // 'KZFzniwnSyZfZ7v7nJ' lowercased → 'kzfzniwnszyfz7v7nj'
-      // Maps to live_music via the B5 source_type_category_map seed
+      // 'KZFzniwnSyZfZ7v7nJ' lowercased → 'kzfzniwnsyzfz7v7nj'
+      // Maps to live_music via B5 seed corrected by fix_ticketmaster_segment_ids migration
       const [mogwai] = parseTicketmasterEvents(fixture);
-      expect(mogwai?.eventTypeGuess).toBe('kzfzniwnszyfz7v7nj');
+      expect(mogwai?.eventTypeGuess).toBe('kzfzniwnsyzfz7v7nj');
     });
 
     it('selects the widest 16:9 image ≥ 640px wide as imageUrlGuess (1024px chosen over 640px)', () => {
@@ -172,10 +172,10 @@ describe('parseTicketmasterEvents', () => {
     });
 
     it('maps eventTypeGuess to the lowercased Arts & Theatre segment ID (→ arts_exhibition)', () => {
-      // 'KZFzniwnSyZfZ7v7na' lowercased → 'kzfzniwnszyfz7v7na'
-      // Maps to arts_exhibition via the B5 source_type_category_map seed
+      // 'KZFzniwnSyZfZ7v7na' lowercased → 'kzfzniwnsyzfz7v7na'
+      // Maps to arts_exhibition via B5 seed corrected by fix_ticketmaster_segment_ids migration
       const [, ballet] = parseTicketmasterEvents(fixture);
-      expect(ballet?.eventTypeGuess).toBe('kzfzniwnszyfz7v7na');
+      expect(ballet?.eventTypeGuess).toBe('kzfzniwnsyzfz7v7na');
     });
 
     it('imageUrlGuess is an absolute HTTPS URL (16:9 at 1024px selected)', () => {

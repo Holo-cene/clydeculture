@@ -291,7 +291,7 @@ Review this if Clyde Culture gains significant traffic or Ticketmaster raises an
 | Risk | Severity | Resolution |
 |---|---|---|
 | No real API key — fixture is synthetic | Medium | Fixture is accurate to known API structure; unblocks test writing. Validate live before first production sweep. |
-| Comedy segment ID (`kzfzniwnszyfz7v7ne`) unconfirmed | Low | Flag in test; verify with API Explorer or live key before first sweep |
+| Comedy segment ID (`kzfzniwnsyzfz7v7ne`) unconfirmed | Low | Flag in test; verify with API Explorer or live key before first sweep |
 | `timeTBA` fallback path — connector must handle gracefully | Medium | Contract defined above; implementation must cover the 4-step `startAt` fallback chain |
 | `priceRanges` absent — must NOT infer free | Low | Documented; enforced in test fixture |
 | `_embedded.venues` absent — must not throw | Low | Defensive optional chaining required |

@@ -15,7 +15,7 @@ const MOGWAI = {
   endAt: '2026-07-05T21:00:00Z',
   doorsAt: '2026-07-05T17:30:00Z',
   venueName: 'Barrowland Ballroom',
-  eventTypeGuess: 'kzfzniwnszyfz7v7nj',
+  eventTypeGuess: 'kzfzniwnsyzfz7v7nj',
   tagsGuess: ['rock', 'post-rock'] as string[],
   priceMinGuess: 22.5,
   priceMaxGuess: 30,
@@ -36,7 +36,7 @@ const BALLET = {
   title: 'Scottish Ballet: Swan Lake',
   startAt: '2026-07-10T19:30:00Z',
   venueName: 'Theatre Royal',
-  eventTypeGuess: 'kzfzniwnszyfz7v7na',
+  eventTypeGuess: 'kzfzniwnsyzfz7v7na',
   ticketUrlGuess: 'https://www.ticketmaster.co.uk/scottish-ballet-swan-lake-glasgow-tickets',
   ticketUrlLabelGuess: 'Buy on Ticketmaster',
   imageUrlGuess:
@@ -117,7 +117,7 @@ describe('upsertExternalEvents', () => {
       expect(row['end_at']).toBe('2026-07-05T21:00:00Z');
       expect(row['doors_at']).toBe('2026-07-05T17:30:00Z');
       expect(row['venue_name']).toBe('Barrowland Ballroom');
-      expect(row['event_type_guess']).toBe('kzfzniwnszyfz7v7nj');
+      expect(row['event_type_guess']).toBe('kzfzniwnsyzfz7v7nj');
       expect(row['tags_guess']).toEqual(['rock', 'post-rock']);
       expect(row['price_min_guess']).toBe(22.5);
       expect(row['price_max_guess']).toBe(30);
