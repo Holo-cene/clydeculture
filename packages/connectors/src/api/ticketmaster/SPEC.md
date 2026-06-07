@@ -197,26 +197,52 @@ sweeps — re-check on each ingest run.
 The connector stores `event.classifications[0].segment.id` lowercased as `eventTypeGuess`.
 The normalisation pipeline (Step 3) looks this up in `source_type_category_map`.
 
-**Seeded mappings from B5 migration `20260606000000_source_category_map_seed.sql`:**
+**LIVE-VERIFIED segment IDs (smoke run 2026-06-07, Glasgow, size=20):**
 
-| Segment ID (lowercase as stored) | Segment name | `event_types.slug` |
-|---|---|---|
-| `kzfzniwnszyfz7v7nj` | Music | `live_music` |
-| `knvzfz7vavf` | Undefined / Club | `club_night` |
-| `kzfzniwnszyfz7v7ne` | Comedy | `comedy` |
-| `kzfzniwnszyfz7v7nn` | Film | `film` |
-| `kzfzniwnszyfz7v7na` | Arts & Theatre | `arts_exhibition` |
+| Segment ID (live, lowercase) | Segment name | `event_types.slug` | Status |
+|---|---|---|---|
+| `kzfzniwnsyzfz7v7nj` | Music | `live_music` | ✓ confirmed live |
+| `knvzfz7vavf` | Undefined / Club | `club_night` | not seen in smoke sample |
+| `kzfzniwnsyzfz7v7ne` | Comedy | `comedy` | not seen in smoke sample |
+| `kzfzniwnsyzfz7v7nn` | Film | `film` | not seen in smoke sample |
+| `kzfzniwnsyzfz7v7na` | Arts & Theatre | `arts_exhibition` | not seen in smoke sample |
+| `kzfzniwnsyzfz7v7n1` | Miscellaneous | unmapped (expected) | observed in smoke sample |
+
+**CRITICAL — B5 seed has incorrect segment IDs (typo: `szy` should be `syz`):**
+
+The smoke run (2026-06-07) returned segment ID `kzfzniwnsyzfz7v7nj` for Music.
+The B5 migration seeded `kzfzniwnszyfz7v7nj` — positions 10–11 are transposed (`zy` vs `yz`).
+The same transposition affects all four `kzfzniwnS...` IDs in the B5 seed.
+
+Corrected ID table (all four affected):
+
+| B5 seed (WRONG) | Live API (CORRECT) |
+|---|---|
+| `kzfzniwnszyfz7v7nj` | `kzfzniwnsyzfz7v7nj` |
+| `kzfzniwnszyfz7v7ne` | `kzfzniwnsyzfz7v7ne` |
+| `kzfzniwnszyfz7v7nn` | `kzfzniwnsyzfz7v7nn` |
+| `kzfzniwnszyfz7v7na` | `kzfzniwnsyzfz7v7na` |
+
+`knvzfz7vavf` (Undefined/Club) does not follow the `kzfzniwnS...` pattern and may be correct — verify
+when a club/undefined event appears in the result set.
+
+**Action required before first production sweep:**
+A corrective migration must UPDATE `source_type_category_map` to replace the four wrong IDs with
+the live-verified ones. Do not modify `20260606000000_source_category_map_seed.sql` directly —
+write a new migration file.
+
+**Comedy ID status:** `kzfzniwnsyzfz7v7ne` (corrected) — not seen in smoke sample (size=20, Music-heavy).
+Still unconfirmed but the structure is consistent with the verified Music ID. Validate before relying
+on comedy category mapping in production.
+
+**Miscellaneous segment (`kzfzniwnsyzfz7v7n1`):** Observed in smoke sample as "Venue Premium" upsell
+entries. Correctly unmapped — these are not cultural events. Will fall through to keyword matching
+or `other` in Step 3.
 
 **Known gap — Theatre:** No confirmed Ticketmaster segment ID exists for theatre.
 Theatre productions listed on Ticketmaster will appear under `arts_exhibition` (Arts &
 Theatre segment) for Phase 1. Acceptable; refine post-launch when real data reveals the
 genre breakdown.
-
-**Verification needed — Comedy ID:** The comedy segment ID `kzfzniwnszyfz7v7ne` is
-documented in BE-03 as "Comedy segment." This cannot be confirmed without a live API
-response. **Validate this ID against a real API response before the first production
-sweep.** If it maps to a different segment (e.g., Sports), the B5 seed migration and
-this SPEC must be updated.
 
 **Unmapped segments:** Sport, Family, Miscellaneous, and any future segments will fall
 through to keyword matching (Step 3 fallback) or `other`. These are unlikely to dominate
