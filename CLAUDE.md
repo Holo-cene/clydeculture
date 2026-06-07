@@ -165,6 +165,48 @@ the missing contract instead of guessing.
 
 ---
 
+## Supabase MCP
+
+A Supabase MCP server is configured in `.mcp.json` for this project (HTTP transport, project ref `jtgszhnqlhkiygtrwpqy`).
+
+**To authenticate:** run `claude /mcp` from a terminal, select `supabase`, choose `Authenticate`, complete the browser flow. Do not commit credentials or paste tokens into any file.
+
+### When to use Supabase MCP
+
+Use it before making or reviewing changes that touch: migrations, RLS policies, database functions/triggers/constraints, table or column names, enum/check-constraint values, seed data, or Supabase auth/storage/edge function assumptions.
+
+Claude Code may use it to: inspect table definitions, check RLS policies, review functions/triggers/constraints, and support SQL assertion writing.
+
+### When not to use Supabase MCP
+
+The repo is canonical for committed project state. Do not use MCP as a substitute for:
+
+- `supabase/migrations/*`
+- `docs/reference/SCHEMA_v5.sql`
+- `docs/NORMALISATION.md`, `docs/DEDUPLICATION.md`, `docs/PUBLISHING.md`
+- `supabase/tests/*`
+
+If live Supabase state differs from repo migrations, **stop and report the drift**. Do not silently update code based on live state not represented in migrations.
+
+### Safety rules
+
+- Never commit credentials, access tokens, or auth output.
+- Never use MCP to make destructive live changes unless explicitly instructed.
+- Prefer local migrations and `npx supabase db test` for validation.
+- Treat MCP as inspection/verification support — not the only source of truth.
+- For schema tasks, cite both MCP findings and migration-file evidence in the report.
+
+### Reusable note for future prompts
+
+```text
+Before changing Supabase schema, RLS, migrations, functions, triggers, constraints, or seed data,
+inspect the relevant migration files and use the Supabase MCP server for verification if available.
+If MCP/live state differs from repo migrations, stop and report the drift.
+Do not make destructive live Supabase changes.
+```
+
+---
+
 ## Useful references in this repo
 
 - `docs/prompts/01_PROMPTS_FOR_CLAUDE_CODE.md` — the prompt sequence used to build the initial docs set (historical; see archive notice in that file).
