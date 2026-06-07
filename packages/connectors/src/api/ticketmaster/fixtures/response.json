@@ -1,0 +1,226 @@
+{
+  "_links": {
+    "self": {
+      "href": "/discovery/v2/events.json?apikey=REDACTED&latlong=55.8642,-4.2518&radius=10&unit=km&countryCode=GB&startDateTime=2026-07-01T00:00:00Z&endDateTime=2026-07-14T23:59:59Z&size=200&page=0&sort=date,asc&locale=*{&sort}"
+    },
+    "next": {
+      "href": "/discovery/v2/events.json?apikey=REDACTED&latlong=55.8642,-4.2518&radius=10&unit=km&countryCode=GB&startDateTime=2026-07-01T00:00:00Z&endDateTime=2026-07-14T23:59:59Z&size=200&page=1&sort=date,asc&locale=*{&sort}"
+    }
+  },
+  "_embedded": {
+    "events": [
+      {
+        "id": "G5vYZpYd1bujA",
+        "name": "Mogwai",
+        "type": "event",
+        "url": "https://www.ticketmaster.co.uk/mogwai-tickets/artist/735616",
+        "locale": "en-gb",
+        "images": [
+          {
+            "ratio": "16_9",
+            "url": "https://s1.ticketimg.com/dam/a/b3e/1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d_EVENT_DETAIL_PAGE_16_9.jpg",
+            "width": 1024,
+            "height": 576,
+            "fallback": false
+          },
+          {
+            "ratio": "16_9",
+            "url": "https://s1.ticketimg.com/dam/a/b3e/1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d_RECOMENDATION_16_9.jpg",
+            "width": 640,
+            "height": 360,
+            "fallback": false
+          },
+          {
+            "ratio": "4_3",
+            "url": "https://s1.ticketimg.com/dam/a/b3e/1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d_CUSTOM.jpg",
+            "width": 305,
+            "height": 225,
+            "fallback": false
+          }
+        ],
+        "sales": {
+          "public": {
+            "startDateTime": "2026-02-15T10:00:00Z",
+            "startTBD": false,
+            "startTBA": false,
+            "endDateTime": "2026-07-05T18:00:00Z"
+          }
+        },
+        "dates": {
+          "start": {
+            "localDate": "2026-07-05",
+            "localTime": "19:00:00",
+            "dateTime": "2026-07-05T18:00:00Z",
+            "dateTBD": false,
+            "dateTBA": false,
+            "timeTBA": false,
+            "noSpecificTime": false
+          },
+          "doorOpenTime": "2026-07-05T17:30:00Z",
+          "timezone": "Europe/London",
+          "status": {
+            "code": "onsale"
+          },
+          "spanMultipleDays": false
+        },
+        "classifications": [
+          {
+            "primary": true,
+            "segment": {
+              "id": "KZFzniwnSyZfZ7v7nJ",
+              "name": "Music"
+            },
+            "genre": {
+              "id": "KnvZfZ7vAeA6",
+              "name": "Rock"
+            },
+            "subGenre": {
+              "id": "KZazBEonSMnZfZ7vkvl",
+              "name": "Indie Rock"
+            },
+            "family": false
+          }
+        ],
+        "priceRanges": [
+          {
+            "type": "standard",
+            "currency": "GBP",
+            "min": 22.50,
+            "max": 30.00
+          }
+        ],
+        "_embedded": {
+          "venues": [
+            {
+              "name": "Barrowland Ballroom",
+              "type": "venue",
+              "id": "KovZpZA6LLAA",
+              "url": "https://www.ticketmaster.co.uk/venue/barrowland-ballroom-tickets-glasgow/KovZpZA6LLAA",
+              "locale": "en-gb",
+              "postalCode": "G4 0TT",
+              "timezone": "Europe/London",
+              "city": {
+                "name": "Glasgow"
+              },
+              "state": {
+                "name": "Scotland"
+              },
+              "country": {
+                "name": "United Kingdom",
+                "countryCode": "GB"
+              },
+              "address": {
+                "line1": "244 Gallowgate"
+              },
+              "location": {
+                "longitude": "-4.2375",
+                "latitude": "55.8569"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "G5vYZdZ4kdAef",
+        "name": "Scottish Ballet: Swan Lake",
+        "type": "event",
+        "url": "https://www.ticketmaster.co.uk/scottish-ballet-swan-lake-glasgow/event/350060BFFB3B3B89",
+        "locale": "en-gb",
+        "images": [
+          {
+            "ratio": "16_9",
+            "url": "https://s1.ticketimg.com/dam/a/f9c/9f8e7d6c-5b4a-3c2d-1e0f-9a8b7c6d5e4f_EVENT_DETAIL_PAGE_16_9.jpg",
+            "width": 1024,
+            "height": 576,
+            "fallback": false
+          },
+          {
+            "ratio": "3_2",
+            "url": "https://s1.ticketimg.com/dam/a/f9c/9f8e7d6c-5b4a-3c2d-1e0f-9a8b7c6d5e4f_RETINA_PORTRAIT_3_2.jpg",
+            "width": 640,
+            "height": 427,
+            "fallback": false
+          }
+        ],
+        "dates": {
+          "start": {
+            "localDate": "2026-07-10",
+            "localTime": "19:30:00",
+            "dateTime": "2026-07-10T18:30:00Z",
+            "dateTBD": false,
+            "dateTBA": false,
+            "timeTBA": false,
+            "noSpecificTime": false
+          },
+          "timezone": "Europe/London",
+          "status": {
+            "code": "onsale"
+          },
+          "spanMultipleDays": false
+        },
+        "classifications": [
+          {
+            "primary": true,
+            "segment": {
+              "id": "KZFzniwnSyZfZ7v7na",
+              "name": "Arts & Theatre"
+            },
+            "genre": {
+              "id": "KnvZfZ7vAkA",
+              "name": "Ballet"
+            },
+            "subGenre": {
+              "id": "KZazBEonSMnZfZ7vk1l",
+              "name": "Classical"
+            },
+            "family": false
+          }
+        ],
+        "priceRanges": [
+          {
+            "type": "standard",
+            "currency": "GBP",
+            "min": 18.00,
+            "max": 52.00
+          }
+        ],
+        "_embedded": {
+          "venues": [
+            {
+              "name": "Theatre Royal Glasgow",
+              "type": "venue",
+              "id": "KovZpZA7aJeA",
+              "url": "https://www.ticketmaster.co.uk/venue/theatre-royal-glasgow-tickets/KovZpZA7aJeA",
+              "locale": "en-gb",
+              "postalCode": "G2 3NY",
+              "timezone": "Europe/London",
+              "city": {
+                "name": "Glasgow"
+              },
+              "state": {
+                "name": "Scotland"
+              },
+              "country": {
+                "name": "United Kingdom",
+                "countryCode": "GB"
+              },
+              "address": {
+                "line1": "282 Hope Street"
+              },
+              "location": {
+                "longitude": "-4.2644",
+                "latitude": "55.8636"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "page": {
+    "size": 200,
+    "totalElements": 2,
+    "totalPages": 1,
+    "number": 0
+  }
+}

@@ -2,8 +2,30 @@
 
 **Priority:** P1  
 **Area:** Connectors  
-**Status:** Open  
+**Status:** Complete — see `packages/connectors/src/api/ticketmaster/SPEC.md`
 **Depends on:** BE-01
+
+## E1 Pre-flight Findings (2026-06-07)
+
+Full specification: `packages/connectors/src/api/ticketmaster/SPEC.md`
+Fixture: `packages/connectors/src/api/ticketmaster/fixtures/response.json`
+
+**Geo filter resolved:** Use `latlong=55.8642,-4.2518` + `radius=10` + `unit=km` +
+`countryCode=GB`. DMA/market IDs confirmed as US/North America only — not applicable
+for Glasgow. `geoPoint` (geohash) rejected in favour of `latlong` for auditability.
+
+**Deep paging:** Confirmed 1,000-result hard cap. Mitigation: 14-day rolling windows
+(5 windows × 60-day lookahead). Each window paged independently; truncation sentinel
+logged as a non-fatal warning.
+
+**Quota:** 5,000 calls/day. Worst-case Phase 1 estimate: 50 calls/day (1% of quota).
+
+**Attribution:** Hardcode `ticketUrlLabelGuess = "Buy on Ticketmaster"`. Link to
+`event.url` from every listing satisfies the trademark display requirement.
+
+**Open question:** Comedy segment ID `KZFzniwnSyZfZ7v7nE` (documented in BE-03 as
+"Comedy segment") is unverified against a live API response. Validate with API Explorer
+or a real key before the first production sweep.
 
 ## Why this matters
 
