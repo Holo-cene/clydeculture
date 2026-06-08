@@ -8,6 +8,8 @@ const GLASGOW_PARAMS: Record<string, string> = {
   radius: '10',
   unit: 'km',
   countryCode: 'GB',
+  sort: 'date,asc',
+  locale: '*',
 };
 
 export interface TicketmasterPageParams {
