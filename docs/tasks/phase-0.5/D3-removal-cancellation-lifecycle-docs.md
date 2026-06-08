@@ -51,7 +51,10 @@ The docs currently use "N missed runs" as a placeholder for when a missing event
    **`ingest_alerts` for sustained drops vs. single-run anomalies:**
    - Single-run count drop: `count_drop` alert.
    - Zero result on first run: `cold_start_zero` alert.
-   - Sustained drop (3+ consecutive): `connector_break` alert.
+   - Sustained drop (3+ consecutive): no separate Phase 1 sustained-failure alert type. Track via
+     multiple unresolved `count_drop` alerts for the same source plus
+     `sources.status = 'broken'` when the connector is consistently producing no
+     usable records.
 
 4. Remove all "N missed runs" placeholder text.
 
@@ -67,7 +70,8 @@ git diff docs/INGESTION.md docs/PUBLISHING.md
 - [ ] Tier-specific missed-run thresholds are documented (Tier 1/2: 3, Tier 3: 5).
 - [ ] Multi-source cancellation behaviour is documented.
 - [ ] Tier 1 explicit cancel override is documented.
-- [ ] `ingest_alerts` alert types for sustained vs. single drops are defined.
+- [ ] Sustained failure handling is documented using schema-supported alert types
+      and source status.
 
 ## Stop condition
 Stop after both files are updated. Report:

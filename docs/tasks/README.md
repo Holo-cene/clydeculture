@@ -13,8 +13,10 @@ Work tasks in priority order; respect the dependency column.
 3. Tick off the acceptance criteria before marking the task done.
 4. Update this README when a task resolves — move it to the Done section.
 
-**Sprint 0 first.** Do not start any Build task until every Sprint 0 row is ticked.
-Sprint 0 is the pre-development cleanup sprint. Plan: `docs/prompts/03_SPRINT_0_PLAN.md`.
+This README is a backlog index, not a live gate. Some Sprint 0 rows are historical
+planning entries whose work has since landed through migrations, docs, and package
+commits. Before using an older task as a blocker, check the current migrations, ADRs,
+phase task files, and package tests.
 
 ---
 
@@ -55,9 +57,11 @@ These tasks are closed. The closing artefact (ADR, doc, or migration) is listed.
 
 ---
 
-## 🔴 Sprint 0 — Pre-development cleanup
+## Historical Sprint 0 — pre-development cleanup snapshot
 
-Run these before any implementation code. Full prompts in `docs/prompts/03_SPRINT_0_PLAN.md`.
+These rows are retained for traceability to `docs/prompts/03_SPRINT_0_PLAN.md`. Do not
+treat this table as the current build gate without verifying the task file and committed
+artefacts.
 
 | ID | Title | Priority | Status | Depends on |
 |---|---|---|---|---|

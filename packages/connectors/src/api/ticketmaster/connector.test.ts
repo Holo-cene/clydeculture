@@ -523,6 +523,37 @@ describe('ticketmasterConnector — partial failure resilience', () => {
     expect(ids).toContain('good-b');
     expect(ids).not.toContain('bad');
   });
+
+  it('adds a diagnostic error when a no-date/dateTBA event is skipped', async () => {
+    const noDateEvent = makeTmEvent('date-tba', {
+      dates: {
+        start: {
+          dateTBA: true,
+          dateTBD: true,
+          timeTBA: true,
+          noSpecificTime: true,
+        },
+        status: { code: 'onsale' },
+      },
+    });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(
+        okResponse(makeTmPage([makeTmEvent('good'), noDateEvent], 0, 1))
+      )
+      .mockResolvedValue(okResponse(makeTmPage([], 0, 1)));
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const c = createTicketmasterConnector({ apiKey: TEST_API_KEY, startDate: START_DATE, pageSleepMs: 0 });
+    const result = await c.run();
+
+    expect(result.items.map((item) => item.externalId)).not.toContain('date-tba');
+    expect(
+      result.errors.some((error) =>
+        /date-tba/i.test(error) && /dateTBA|missing start|no date/i.test(error)
+      )
+    ).toBe(true);
+  });
 });
 
 // ============================================================================

@@ -1,5 +1,5 @@
 import type { Connector, IngestResult, RawEvent } from '../../connector.js';
-import { parseTicketmasterEvents } from './parse.js';
+import { describeTicketmasterDateSkip, parseTicketmasterEvents } from './parse.js';
 import { buildTicketmasterUrl } from './fetch.js';
 
 const WINDOW_COUNT = 5;
@@ -114,6 +114,10 @@ export function createTicketmasterConnector(
             const pageItems = parseTicketmasterEvents({
               _embedded: { events: pageEvents },
             });
+            for (const pageEvent of pageEvents) {
+              const dateSkip = describeTicketmasterDateSkip(pageEvent);
+              if (dateSkip !== undefined) errors.push(dateSkip);
+            }
             items.push(...pageItems);
             pagesInWindow++;
 

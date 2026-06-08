@@ -10,6 +10,7 @@ interface TmImage {
 interface TmClassification {
   primary?: boolean;
   segment?: { id: string };
+  genre?: { name?: string };
 }
 
 interface TmPriceRange {
@@ -23,9 +24,17 @@ interface TmEvent {
   url: string;
   images?: TmImage[];
   dates?: {
-    start?: { dateTime?: string };
+    start?: {
+      dateTime?: string;
+      localDate?: string;
+      localTime?: string;
+      dateTBA?: boolean;
+      dateTBD?: boolean;
+      timeTBA?: boolean;
+    };
     doorOpenTime?: string;
     status?: { code?: string };
+    timezone?: string;
   };
   classifications?: TmClassification[];
   priceRanges?: TmPriceRange[];
@@ -44,25 +53,136 @@ function isTmEvent(event: unknown): event is TmEvent {
 
 function selectImage(images: TmImage[] | undefined): string | undefined {
   if (!images) return undefined;
+
   const candidates = images
     .filter(img => img.ratio === '16_9' && img.width >= 640 && isValidHttpsUrl(img.url))
     .sort((a, b) => b.width - a.width);
-  return candidates[0]?.url;
+  if (candidates[0]?.url !== undefined) return candidates[0].url;
+
+  const fallbackCandidates = images
+    .filter(img => img.width >= 640 && isValidHttpsUrl(img.url))
+    .sort((a, b) => b.width - a.width);
+  return fallbackCandidates[0]?.url;
+}
+
+function primaryClassification(
+  classifications: TmClassification[] | undefined
+): TmClassification | undefined {
+  if (!classifications || classifications.length === 0) return undefined;
+  return classifications.find(c => c.primary === true) ?? classifications[0];
 }
 
 function primarySegmentId(classifications: TmClassification[] | undefined): string | undefined {
-  if (!classifications || classifications.length === 0) return undefined;
-  const cls = classifications.find(c => c.primary === true) ?? classifications[0];
+  const cls = primaryClassification(classifications);
   const id = cls?.segment?.id;
   return id !== undefined ? id.toLowerCase() : undefined;
 }
 
-/**
- * Maps a Ticketmaster Discovery API response to RawEvent[].
- *
- * Implements Step 1 of the startAt fallback chain only (dateTime already UTC).
- * TODO: add localDate+localTime fallback and timeTBA midnight placeholder when needed.
- */
+function primaryGenreName(classifications: TmClassification[] | undefined): string | undefined {
+  const name = primaryClassification(classifications)?.genre?.name?.trim();
+  if (!name || name.toLowerCase() === 'undefined') return undefined;
+  return name;
+}
+
+function parseLocalDate(localDate: string): [number, number, number] | undefined {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(localDate);
+  if (!match) return undefined;
+  return [Number(match[1]), Number(match[2]), Number(match[3])];
+}
+
+function parseLocalTime(localTime: string): [number, number, number] | undefined {
+  const match = /^(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(localTime);
+  if (!match) return undefined;
+  return [Number(match[1]), Number(match[2]), Number(match[3] ?? '0')];
+}
+
+function offsetMsAt(date: Date, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    hourCycle: 'h23',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).formatToParts(date);
+
+  const values: Record<string, string> = {};
+  for (const part of parts) {
+    if (part.type !== 'literal') values[part.type] = part.value;
+  }
+
+  const wallClockAsUtc = Date.UTC(
+    Number(values['year']),
+    Number(values['month']) - 1,
+    Number(values['day']),
+    Number(values['hour']),
+    Number(values['minute']),
+    Number(values['second'])
+  );
+
+  return wallClockAsUtc - date.getTime();
+}
+
+function localDateTimeToUtcIso(
+  localDate: string,
+  localTime: string,
+  timeZone: string
+): string | undefined {
+  const date = parseLocalDate(localDate);
+  const time = parseLocalTime(localTime);
+  if (!date || !time) return undefined;
+
+  const localAsUtc = Date.UTC(date[0], date[1] - 1, date[2], time[0], time[1], time[2]);
+  const offset = offsetMsAt(new Date(localAsUtc), timeZone);
+  let utc = localAsUtc - offset;
+
+  const adjustedOffset = offsetMsAt(new Date(utc), timeZone);
+  if (adjustedOffset !== offset) {
+    utc = localAsUtc - adjustedOffset;
+  }
+
+  return new Date(utc).toISOString().replace('.000Z', 'Z');
+}
+
+function ticketmasterStartAt(event: TmEvent): string | undefined {
+  const start = event.dates?.start;
+  if (!start) return undefined;
+
+  if (start.dateTime) return start.dateTime;
+
+  const timeZone = event.dates?.timezone ?? 'Europe/London';
+  if (start.localDate && start.localTime) {
+    return localDateTimeToUtcIso(start.localDate, start.localTime, timeZone);
+  }
+
+  if (start.localDate && start.timeTBA === true) {
+    return localDateTimeToUtcIso(start.localDate, '00:00:00', timeZone);
+  }
+
+  return undefined;
+}
+
+export function describeTicketmasterDateSkip(raw: unknown): string | undefined {
+  if (!isTmEvent(raw) || !isValidHttpsUrl(raw.url)) return undefined;
+  if (ticketmasterStartAt(raw) !== undefined) return undefined;
+
+  const start = raw.dates?.start;
+  if (!start) return `Skipped Ticketmaster event ${raw.id}: missing start date`;
+
+  const flags: string[] = [];
+  if (start.dateTBA === true) flags.push('dateTBA');
+  if (start.dateTBD === true) flags.push('dateTBD');
+  if (start.timeTBA === true) flags.push('timeTBA');
+
+  const reason = flags.length > 0
+    ? `unresolved ${flags.join('/')}`
+    : 'missing start dateTime/localDate';
+  return `Skipped Ticketmaster event ${raw.id}: ${reason}`;
+}
+
+/** Maps a Ticketmaster Discovery API response to RawEvent[]. */
 export function parseTicketmasterEvents(
   response: { _embedded: { events: unknown[] } }
 ): RawEvent[] {
@@ -74,9 +194,7 @@ export function parseTicketmasterEvents(
     const externalUrl = raw.url;
     if (!isValidHttpsUrl(externalUrl)) continue;
 
-    // Fallback chain step 1: use dateTime when present (already UTC).
-    // Events where no dateTime is available are skipped per SPEC §4.
-    const startAt = raw.dates?.start?.dateTime;
+    const startAt = ticketmasterStartAt(raw);
     if (!startAt) continue;
 
     const priceRange = raw.priceRanges?.[0];
@@ -99,6 +217,9 @@ export function parseTicketmasterEvents(
 
     const segmentId = primarySegmentId(raw.classifications);
     if (segmentId !== undefined) item.eventTypeGuess = segmentId;
+
+    const genreName = primaryGenreName(raw.classifications);
+    if (genreName !== undefined) item.tagsGuess = [genreName];
 
     if (priceRange !== undefined) {
       item.priceMinGuess = priceRange.min;

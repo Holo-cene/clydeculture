@@ -61,7 +61,7 @@ The authoritative registry of every connector and its current health. Every row 
 |---|---|---|
 | id | uuid PK | |
 | slug | text unique | Machine name; used to look up the connector at runtime |
-| source_type | text | `api`, `rss`, `ical`, `html`, `manual` |
+| source_type | text | Connector type; see allowed values below. |
 | tier | smallint 1–4 | Data quality / confidence tier. Tier 1 = structured API (Ticketmaster). Tier 4 = LLM-extracted RSS. Feeds the confidence score during normalisation. |
 | config | jsonb | Connector-specific settings (endpoint, query params, pagination). Credentials are in Vault/env — never here. |
 | status | text | `ok`, `degraded`, `broken`, `disabled` — the connector's aggregated health state |
@@ -72,6 +72,8 @@ The authoritative registry of every connector and its current health. Every row 
 | last_error | text | Last error message, for diagnostics |
 
 `status` is coarser than individual run outcomes. A single failed run does not flip the connector to `degraded`. Break detection flips it when `parsed_count` drops more than 70% below the 14-day median.
+
+Allowed `source_type` values are `api`, `rss`, `ical`, `html`, `apify`, and `manual`.
 
 ### source_type_category_map
 
@@ -307,7 +309,7 @@ A cancelled event keeps `visibility = 'published'` — users who booked need to 
 
 ---
 
-## Denormalised Fields on events (v5 schema — pending migration)
+## Denormalised Fields on events (post-CC-NEW-1)
 
 The v5 schema carries 13 fields that are derivable from foreign-key relationships:
 `event_type_label`, `venue_name_display`, `venue_slug_display`, `festival_name_display`,
@@ -366,9 +368,9 @@ When two canonical events share a venue and a time bucket but have different tit
 
 ---
 
-## Publishing (tables retired — pending schema migration)
+## Publishing (tables retired)
 
-The following three tables exist in the v5 schema but are retired under ADR 0001
+The following three tables existed in the v5 baseline schema but are retired under ADR 0001
 (Astro + Supabase direct read). They were dropped in the CC-NEW-1 migration.
 Do not write new code that depends on these tables.
 
@@ -420,10 +422,11 @@ Append-only audit trail across all entity types. No updates or deletes.
 
 RLS is enabled on all 20 tables. Public policies:
 
-- `event_types`, `tags`, `venue_aliases`, `festivals`, `event_series` — public read
+- `event_types`, `tags`, `festivals`, `event_series` — public read
 - `venues` — public read where `status IN ('active', 'temporary')`
+- `venue_aliases` — public read only when the parent venue has `status IN ('active', 'temporary')`
 - `events` — public read where `visibility = 'published' AND confidence >= 60` (the CC-NEW-1 migration tightens the v5 policy to add the confidence check)
-- `event_tags` — public read where the parent event is published
+- `event_tags` — public read where the parent event has `visibility = 'published' AND confidence >= 60` (explicit since migration `20260606001000_a3_event_tags_explicit_confidence.sql`)
 - `event_submissions` — public insert (no read)
 
 All other tables (sources, external_events, ingestion, publishing, community moderation) have no public policies; access is via the service role key in Trigger.dev tasks only.
