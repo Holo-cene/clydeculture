@@ -163,6 +163,29 @@ describe('validateIngestResult', () => {
     expect(validated.errors).toContain('upstream: rate limit hit');
   });
 
+  it('parsedCount reflects valid retained items after URL filtering, not raw parse attempts', () => {
+    // Regression: validateIngestResult filters out invalid-URL items but previously
+    // left parsedCount at the connector-supplied value (raw parse attempts). Break
+    // detection uses parsedCount, so a connector returning all-invalid URLs would
+    // never trigger a break flag. parsedCount must equal items.length after filtering.
+    const result: IngestResult = {
+      fetchedCount: 3,
+      parsedCount: 3, // connector reported 3 raw parse attempts
+      items: [
+        { externalId: 'a', externalUrl: 'https://example.com/a', title: 'A', raw: {} },
+        { externalId: 'b', externalUrl: 'http://example.com/b', title: 'B (non-https)', raw: {} },
+        { externalId: 'c', externalUrl: '', title: 'C (no url)', raw: {} },
+      ],
+      errors: [],
+    };
+
+    const validated = validateIngestResult(result);
+
+    // Only item 'a' is valid — parsedCount must reflect retained items, not raw attempts
+    expect(validated.items).toHaveLength(1);
+    expect(validated.parsedCount).toBe(1); // currently fails: returns 3
+  });
+
   it('handles an empty items array without error', () => {
     const result: IngestResult = {
       fetchedCount: 0,

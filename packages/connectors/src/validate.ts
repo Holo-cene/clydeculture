@@ -19,5 +19,5 @@ export function validateIngestResult(result: IngestResult): IngestResult {
     }
     return true;
   });
-  return { ...result, items, errors };
+  return { ...result, items, parsedCount: items.length, errors };
 }
