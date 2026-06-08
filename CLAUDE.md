@@ -173,11 +173,15 @@ A Supabase MCP server is configured in `.mcp.json` for this project (HTTP transp
 
 ### When to use Supabase MCP
 
+Use Supabase MCP for inspection and read-only verification by default.
+
 Use it before making or reviewing changes that touch: migrations, RLS policies, database functions/triggers/constraints, table or column names, enum/check-constraint values, seed data, or Supabase auth/storage/edge function assumptions.
 
 Claude Code may use it to: inspect table definitions, check RLS policies, review functions/triggers/constraints, and support SQL assertion writing.
 
 ### When not to use Supabase MCP
+
+Do not mutate remote data, apply migrations, or change production state unless explicitly instructed.
 
 The repo is canonical for committed project state. Do not use MCP as a substitute for:
 

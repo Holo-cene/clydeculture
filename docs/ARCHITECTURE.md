@@ -113,7 +113,7 @@ Trigger.dev replaces `packages/ingestion`. It handles:
 - Daily cron trigger for the connector sweep
 - Per-connector task isolation (a failing task does not affect others)
 - Retries, exponential backoff, and failure alerting
-- Fan-out for parallel connector runs
+- Sequential connector execution per sweep run (no fan-out in Phase 1; see `docs/NORMALISATION.md` Step 2)
 - Realtime run logs
 
 Each connector's `run()` method is called inside a Trigger.dev task. The task writes

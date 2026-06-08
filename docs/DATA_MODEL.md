@@ -318,16 +318,13 @@ The first 7 of these (`event_type_label`, `venue_name_display`, `venue_slug_disp
 `festival_name_display`, `festival_slug_display`, `tags_display`, `location_display`)
 existed solely to give the Webflow sync job a flat document to push. **ADR 0001
 (accepted 2026-06-02) selected Astro + Supabase direct read and rejected Webflow.**
-These 7 fields are therefore redundant and will be dropped in the schema migration
-(Milestone 6 / CC-NEW-1). The Astro frontend derives these values via joins at query time.
+These 7 fields were therefore redundant and were dropped in the CC-NEW-1 migration. The Astro frontend derives these values via joins at query time.
 
 The remaining generated booleans (`has_image`, `is_festival_event`, `is_sold_out`) remain
 useful regardless of frontend choice — they enable partial indexes and clean WHERE clauses
 without repeating the expression in every query.
 
-`validate_event_consistency()` was designed to check denormalised field consistency before
-a Webflow sync run. It checks the Webflow-specific fields and will be updated or removed
-as part of the CC-NEW-1 migration.
+`validate_event_consistency()` was updated in the CC-NEW-1 migration to remove the Webflow-era checks. It now checks only two invariants: `is_free = true` requires a non-empty `price_display`, and `image_url` must not be an empty string.
 
 ---
 
@@ -372,7 +369,7 @@ When two canonical events share a venue and a time bucket but have different tit
 ## Publishing (tables retired — pending schema migration)
 
 The following three tables exist in the v5 schema but are retired under ADR 0001
-(Astro + Supabase direct read). They will be dropped in the CC-NEW-1 schema migration.
+(Astro + Supabase direct read). They were dropped in the CC-NEW-1 migration.
 Do not write new code that depends on these tables.
 
 ### publish_mappings
@@ -414,7 +411,7 @@ Append-only audit trail across all entity types. No updates or deletes.
 | `compute_dedupe_key(uuid, timestamptz, text)` | Computes the SHA-256 cross-source dedupe hash. Immutable. |
 | `resolve_venue(text)` | Looks up a venue by name then alias; returns uuid or null |
 | `auto_create_venue(text, text)` | Creates a bare venue record with `auto_created=true`, `needs_review=true`, `status='pending'` when resolve_venue returns null. Race condition documented in the schema; safe with sequential Edge Functions. |
-| `validate_event_consistency(uuid)` | Checks denormalised fields are consistent (v5 schema, Webflow-era). Returns false if venue_name_display is missing when venue_id is set, festival_name_display is missing when festival_id is set, event_type_label is empty, or is_free is true without a price_display. This function checks the Webflow-specific denormalised fields that will be dropped in the CC-NEW-1 migration; it will be updated or removed at that point. |
+| `validate_event_consistency(uuid)` | Checks two post-CC-NEW-1 invariants: `is_free = true` requires a non-empty `price_display`; `image_url` must not be an empty string. Updated in the CC-NEW-1 migration; the Webflow-era checks (venue/festival display fields) were removed when those columns were dropped. |
 | `archive_past_events()` | Sets `visibility = 'archived'` on published events more than 7 days past `COALESCE(end_at, start_at)` |
 
 ---

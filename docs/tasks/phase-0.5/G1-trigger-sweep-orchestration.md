@@ -39,10 +39,10 @@ The sweep task in `trigger/tasks/sweep.ts` currently exists but may be a stub. T
 ## Required steps
 1. Read `trigger/tasks/sweep.ts` in full and assess its current state (stub, partial, or complete).
 2. Read `trigger/trigger.config.ts` for cron schedule definition.
-3. Read `docs/INGESTION.md` for break detection rules (count_drop < 0.30 * median, cold_start_zero, connector_break).
+3. Read `docs/INGESTION.md` for break detection rules (count_drop < 0.30 * median, cold_start_zero). Note: `connector_break` is not a valid `alert_type` in the schema; sustained failure is tracked via accumulated `count_drop` alerts.
 4. Read `docs/reference/SCHEMA_v5.sql` for `ingest_runs` and `ingest_alerts` schemas.
 5. Create `trigger/tasks/orchestrate.test.ts` with tests covering:
-   a. **Connector isolation:** one connector throws → that connector's `ingest_runs` row has `status = 'error'`; other connectors continue and succeed.
+   a. **Connector isolation:** one connector throws → that connector's `ingest_runs` row has `status = 'failed'`; other connectors continue and succeed.
    b. **`ingest_runs` row:** written with correct `fetched_count`, `parsed_count`, `errors_count`, `source_id`, and ISO timestamp.
    c. **`last_seen_at` update:** re-ingesting an existing `external_event` updates `last_seen_at` without creating a duplicate row.
    d. **Cold-start zero alert:** first-ever run of a connector returns 0 events → `ingest_alerts` row with `alert_type = 'cold_start_zero'`.

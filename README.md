@@ -12,8 +12,9 @@ layers do not depend on whether the public site is built in Webflow or in code.
 ```
 docs/            project documentation + architecture decision records (ADRs)
 supabase/        database migrations, edge functions, seed data
-packages/        the engine (shared, core, connectors, ingestion, publishing)
-apps/web/        frontend placeholder — populated once ADR 0001 is decided
+packages/        the engine (shared, core, connectors)
+trigger/         Trigger.dev v3 tasks — sweep and connector orchestration
+apps/web/        Astro frontend (do not populate until CC-NEW-1 migration is applied)
 scripts/         operational and one-off scripts
 tests/           cross-package tests
 ```

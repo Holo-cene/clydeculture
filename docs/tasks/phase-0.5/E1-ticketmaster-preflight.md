@@ -1,7 +1,7 @@
 # E1 — Ticketmaster Connector Pre-flight
 
 ## Status
-Open
+Complete — 2026-06-07
 
 ## Purpose
 Before any Ticketmaster connector code is written, the API geography filtering format, pagination limits, quota model, ToS attribution requirements, and image display permissions must be confirmed. An incorrect geo-filter or a misunderstood quota model could result in connector logic that works in testing but hits daily limits in production. This is a research/spike task. Produce a SPEC.md and a fixture response file.
@@ -55,11 +55,11 @@ git diff docs/tasks/API-02.md
 ```
 
 ## Acceptance criteria
-- [ ] `packages/connectors/src/api/ticketmaster/SPEC.md` exists and answers all 6 questions above.
-- [ ] `packages/connectors/src/api/ticketmaster/fixtures/response.json` exists with a plausible multi-event structure.
-- [ ] `docs/tasks/API-02.md` is updated with findings.
-- [ ] Worst-case daily call count is modelled.
-- [ ] Attribution requirements are quoted verbatim (or linked).
+- [x] `packages/connectors/src/api/ticketmaster/SPEC.md` exists and answers all 6 questions above.
+- [x] `packages/connectors/src/api/ticketmaster/fixtures/response.json` exists with a plausible multi-event structure.
+- [x] `docs/tasks/API-02.md` is updated with findings.
+- [x] Worst-case daily call count is modelled (50 calls/day, 1% of 5,000/day quota).
+- [x] Attribution requirements are quoted verbatim (`ticketUrlLabelGuess = "Buy on Ticketmaster"`).
 
 ## Stop condition
 Stop when SPEC.md and fixtures are written. Report:

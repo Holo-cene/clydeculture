@@ -151,14 +151,14 @@ Tests for deferred components (C2–C6, G1) are written after Step 6 below.
 
 ### Revised recommended sequence
 
-| Step | Task | Type |
-|------|------|------|
-| 1 | **E1 — Ticketmaster pre-flight** | Spike: API key, Glasgow geo query, response shape, quota limits |
-| 2 | **Ticketmaster fixture parsing (red test)** | TDD Step 1 — failing test against a real API response fixture |
-| 3 | **Minimal Ticketmaster connector** | TDD Step 2 — smallest implementation to pass the test |
-| 4 | **Minimal normalisation/upsert path** | Steps 1–4 of `NORMALISATION.md`; Tier 1 base score (50) sufficient for now |
-| 5 | **Astro listings page** | One route; `visibility = 'published'`; title + date + source URL |
-| 6 | **Review real data quality** | Inspect actual events in the DB; identify edge cases for C2–C6 and G1 |
+| Step | Task | Type | Status |
+|------|------|------|--------|
+| 1 | **E1 — Ticketmaster pre-flight** | Spike: API key, Glasgow geo query, response shape, quota limits | ✅ Complete (2026-06-07) |
+| 2 | **Ticketmaster fixture parsing (red test)** | TDD Step 1 — failing test against a real API response fixture | ✅ Complete — `parse.test.ts` (24 tests) |
+| 3 | **Minimal Ticketmaster connector** | TDD Step 2 — smallest implementation to pass the test | ✅ Complete — `parse.ts` + `fetch.ts` smoke path |
+| 4 | **Minimal normalisation/upsert path** | Steps 1–4 of `NORMALISATION.md`; Tier 1 base score (50) sufficient for now | 🔶 Partial — `upsertExternalEvents` done (20 tests); canonical `events` normalisation pending |
+| 5 | **Astro listings page** | One route; `visibility = 'published'`; title + date + source URL | ⬜ Not started |
+| 6 | **Review real data quality** | Inspect actual events in the DB; identify edge cases for C2–C6 and G1 | ⬜ Not started |
 
 After Step 6, resume remaining Phase 0.5 red-test work (C2–C6, G1) informed by real data shapes.
 
@@ -301,7 +301,7 @@ Phase 0.5 is complete when all of the following are ticked:
 - [x] [D6](D6-auto-create-venue-concurrency-docs.md) — `auto_create_venue()` race condition documented
 
 ### Group E — Connector pre-flights
-- [ ] [E1](E1-ticketmaster-preflight.md) — Ticketmaster SPEC.md and fixture written
+- [x] [E1](E1-ticketmaster-preflight.md) — Ticketmaster SPEC.md and fixture written
 - [ ] [E2](E2-skiddle-preflight.md) — Skiddle approval request sent, deadline set, fallback documented
 - [ ] [E3](E3-dice-apify-preflight.md) — DICE.fm Apify actor selected (or gap accepted), SPEC.md written
 - [ ] [E4](E4-eventbrite-preflight.md) — Eventbrite ToS assessed, go/no-go decision documented

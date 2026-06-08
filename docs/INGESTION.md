@@ -49,7 +49,7 @@ Each `RawEvent` must include an `externalId` — a stable upstream identifier (A
 
 ## Scheduled-job model
 
-Ingestion jobs are Trigger.dev tasks defined in the `trigger/` directory and run on the Trigger.dev cloud worker. Each connector maps to one Trigger.dev task; a parent sweep task fans out to per-connector tasks in parallel. Scheduling is configured via Trigger.dev's built-in cron triggers — no separate cron infrastructure is needed. Jobs can also be triggered manually via the Trigger.dev dashboard or CLI. See [ADR 0002](decisions/0002-ingestion-runtime.md) for the full rationale.
+Ingestion jobs are Trigger.dev tasks defined in the `trigger/` directory and run on the Trigger.dev cloud worker. Each connector maps to one Trigger.dev task; the parent sweep task runs per-connector tasks sequentially within a single sweep invocation. (See `docs/NORMALISATION.md` Step 2 for the concurrency note and venue race-condition rationale.) Scheduling is configured via Trigger.dev's built-in cron triggers — no separate cron infrastructure is needed. Jobs can also be triggered manually via the Trigger.dev dashboard or CLI. See [ADR 0002](decisions/0002-ingestion-runtime.md) for the full rationale.
 
 For each connector, the orchestrator:
 
@@ -106,15 +106,15 @@ After each run, the Trigger.dev sweep task computes a 14-day rolling median of `
 
 On a break event:
 
-1. `sources.status` is set to `degraded`.
+1. `sources.status` is set to `'degraded'` if `parsed_count > 0` (significant drop but still producing output), or `'broken'` if `parsed_count = 0` (total extraction failure on an established connector).
 2. A row is inserted into `ingest_alerts` with `alert_type = 'count_drop'`, referencing the `ingest_runs` row and recording the observed count, the median, and the percentage drop.
 3. An email notification is sent to the platform maintainers.
 
 `ingest_alerts` carries a partial index on `resolved = false`, so the active-alert query stays fast regardless of historical volume. Alerts are resolved manually once the underlying issue is fixed and a healthy run confirms recovery.
 
-**Cold-start exception.** New connectors have no 14-day baseline. During the cold-start period (fewer than 14 days of completed runs in `ingest_runs`), the percentage-drop rule cannot apply. Instead, a simpler rule governs: if `parsed_count = 0` on any run during the cold-start period, the connector is flagged immediately — `sources.status` is set to `degraded`, an `ingest_alerts` row is created with `alert_type = 'count_drop'` (the CC-NEW-1 migration will add a dedicated `'cold_start_zero'` value to the `alert_type` CHECK constraint), and a notification is sent. This catches a connector that was broken from day one before a baseline has accumulated.
+**Cold-start exception.** New connectors have no 14-day baseline. During the cold-start period (fewer than 14 days of completed runs in `ingest_runs`), the percentage-drop rule cannot apply. Instead, a simpler rule governs: if `parsed_count = 0` on any run during the cold-start period, the connector is flagged immediately — `sources.status` is set to `degraded`, an `ingest_alerts` row is created with `alert_type = 'cold_start_zero'`, and a notification is sent. This catches a connector that was broken from day one before a baseline has accumulated.
 
-**Sustained failure — connector_break.** A single-run anomaly (`count_drop`) may be transient — a flaky network call, a momentary upstream outage. When the drop persists across 3 or more consecutive runs, a second alert is created with `alert_type = 'connector_break'`. This distinguishes an ongoing failure from a one-off event. `connector_break` alerts are higher-priority: bulk `is_deleted` operations triggered while a `connector_break` alert is active SHOULD be held for review before being propagated to canonical event visibility (see "Event removal detection" below).
+**Sustained failure.** A single-run anomaly may be transient — a flaky network call, a momentary upstream outage. There is no separate Phase 1 `alert_type` for sustained failure; `'connector_break'` is not in the schema. Operators monitor sustained failure via multiple unresolved `count_drop` alerts on the same source. When a connector has been in `sources.status = 'broken'` across consecutive runs, bulk `is_deleted` operations SHOULD be held for review before visibility changes propagate to canonical events (see "Bulk removal safeguard" below).
 
 `sources.status` (`ok`, `degraded`, `broken`, `disabled`) is a separate field from `sources.enabled`. Status reflects observed health; `enabled` is the operational on/off switch. A connector can be `status = 'broken'` and `enabled = true` while a fix is being deployed, or `status = 'ok'` and `enabled = false` while temporarily paused. Disabling a connector stops all future scheduler runs for it without deleting the connector module, its `ingest_runs` history, or any `external_events` rows. Re-enabling resumes normal scheduling immediately.
 
@@ -140,6 +140,6 @@ A run counts toward the threshold only if:
 
 Runs where the connector is disabled (`sources.enabled = false`) or where `ingest_runs.status = 'failed'` do NOT count toward the threshold. Only absence from an otherwise-working run is evidence of removal.
 
-### Bulk removal and connector_break safeguard
+### Bulk removal safeguard
 
-If `external_events.is_deleted` is being set in bulk during a run where a `connector_break` alert is active on the same source, the normaliser SHOULD flag the affected canonical events with `needs_review = true` and SHOULD NOT immediately set `visibility = 'hidden'` on their canonical events. This prevents a scraper outage or feed failure from hiding large numbers of valid events that the connector simply could not reach. Human review confirms whether the removals are genuine. See "Break detection" above for alert types.
+If `external_events.is_deleted` is being set in bulk during a run where `sources.status = 'broken'` (or where multiple unresolved `count_drop` alerts exist for the source), the normaliser SHOULD flag the affected canonical events with `needs_review = true` and SHOULD NOT immediately set `visibility = 'hidden'` on their canonical events. This prevents a scraper outage or feed failure from hiding large numbers of valid events that the connector simply could not reach. Human review confirms whether the removals are genuine. See "Break detection" above.

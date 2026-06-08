@@ -50,6 +50,8 @@ These tasks are closed. The closing artefact (ADR, doc, or migration) is listed.
 | DB-07 | Add publish_mappings delete guard | ADR 0001 — `publish_mappings` table being dropped in CC-NEW-1; guard is moot |
 | SEC-01 | Enforce anon-key-only; document service_role blast radius | ADR 0001 + `docs/PUBLISHING.md` — anon key strategy and RLS table documented |
 | SEC-05 | Link-only source enforcement — schema flag and normalisation guard | `docs/NORMALISATION.md` Step 1 — hard constraint specified |
+| API-02 | SPIKE — Verify Ticketmaster Glasgow geo filter and paging guard | E1 pre-flight (2026-06-07) — `packages/connectors/src/api/ticketmaster/SPEC.md` and fixture written; `latlong` + 14-day rolling windows confirmed |
+| SEC-10 | SPIKE — Ticketmaster image licensing | ADR 0004 (2026-06-08) — Option B: attribution required ("Buy on Ticketmaster"), hot-link permitted; `ticketUrlLabelGuess` implements it |
 
 ---
 
@@ -99,7 +101,7 @@ Run these before any implementation code. Full prompts in `docs/prompts/03_SPRIN
 
 | ID | Title | Priority | Area | Status | Depends on |
 |---|---|---|---|---|---|
-| [API-02](API-02.md) | SPIKE — Verify Ticketmaster Glasgow geo filter and paging guard | P1 | Connectors | Open | INF-01 |
+| [API-02](API-02.md) | SPIKE — Verify Ticketmaster Glasgow geo filter and paging guard | P1 | Connectors | **Done** — see closed table | — |
 | [API-03](API-03.md) | Skiddle API — obtain commercial approval before connector build | P1 | Legal | Open | — |
 | [API-04](API-04.md) | iCal connector spec — RRULE, floating-time, and all-day events | P2 | Connectors | Open | INF-01 |
 | [API-05](API-05.md) | RSS connector policy — fix publication date bug; define article-vs-event rule | P1 | Connectors | Open | — |
@@ -141,7 +143,7 @@ Run these before any implementation code. Full prompts in `docs/prompts/03_SPRIN
 | [SEC-07](SEC-07.md) | HTML scraper legality — ToS review and per-connector compliance log | P1 | Legal | Open | — |
 | [SEC-08](SEC-08.md) | LLM prompt injection — Tier 4 connectors | P3 | Security | Open | — |
 | [SEC-09](SEC-09.md) | Admin MFA and operator onboarding | P2 | Security | Open | DB-12 |
-| [SEC-10](SEC-10.md) | SPIKE — Ticketmaster image licensing | P2 | Legal | Open | API-02 |
+| [SEC-10](SEC-10.md) | SPIKE — Ticketmaster image licensing | P2 | Legal | **Done** — see closed table | — |
 | [SEC-11](SEC-11.md) | Venue claim OTP verification (Phase 2) | P3 | Security | Open | DB-12 |
 
 ---
@@ -152,7 +154,7 @@ Run these before any implementation code. Full prompts in `docs/prompts/03_SPRIN
 
 | ID | Title | Priority | Area | Status | Depends on |
 |---|---|---|---|---|---|
-| [DOC-01](DOC-01.md) | Create per-source fixture files | P2 | Docs | Open | API-02, CC-NEW-2 |
+| [DOC-01](DOC-01.md) | Create per-source fixture files | P2 | Docs | Open | ~~API-02~~ (done), CC-NEW-2 |
 
 ---
 

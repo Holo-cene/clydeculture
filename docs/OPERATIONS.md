@@ -61,7 +61,7 @@ decision is documented in [ADR 0002](decisions/0002-ingestion-runtime.md).
 1. Install the SDK: `pnpm add @trigger.dev/sdk` in the relevant workspace package.
 2. Create `trigger.config.ts` at the repo root, pointing at the tasks directory.
 3. Define tasks in `trigger/tasks/` — one file per connector, plus a parent sweep
-   task that fans out to the per-connector tasks. Each connector's `run()` method
+   task that runs per-connector tasks sequentially. Each connector's `run()` method
    maps directly to a Trigger.dev task with no interface change.
 
 Cron schedules are configured in the task definition using Trigger.dev's built-in
