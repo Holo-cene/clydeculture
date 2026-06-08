@@ -1,8 +1,8 @@
 -- Clyde Culture MVP proof-of-concept demo data.
 --
--- This seed is intentionally demo-safe: source URLs point to example.org, raw
--- payloads are synthetic, and descriptions are short discovery summaries rather
--- than copied listings. It is idempotent and can be re-run against the local DB.
+-- This seed is intentionally demo-safe: source URLs point to real public venue pages
+-- for demo credibility, but events are synthetic demo data — not live-ingested.
+-- Payloads are synthetic, descriptions are short discovery summaries. Idempotent.
 
 insert into public.sources (
   id,
@@ -15,8 +15,8 @@ insert into public.sources (
   status
 ) values (
   '00000000-0600-4000-8000-000000000001'::uuid,
-  'Demo Eventbrite Feed',
-  'demo-eventbrite-feed',
+  'Clyde Culture Demo Data',
+  'clyde-culture-demo-data',
   'manual',
   1,
   '{"demo": true, "auto_publish": true, "timezone": "Europe/London"}'::jsonb,
@@ -80,7 +80,7 @@ with mvp_demo_events (
   starts_at,
   venue_id,
   event_type_slug,
-  source_path,
+  source_url,
   is_free,
   price_display,
   availability
@@ -96,7 +96,7 @@ with mvp_demo_events (
     '2026-07-10 19:30:00+01',
     '00000000-0601-4000-8000-000000000005',
     'live_music',
-    'southside-jazz-sketches',
+    'https://www.thegladcafe.co.uk/whats-on',
     false,
     '£8',
     'on_sale'
@@ -111,7 +111,7 @@ with mvp_demo_events (
     '2026-07-11 22:00:00+01',
     '00000000-0601-4000-8000-000000000002',
     'club_night',
-    'subcity-radio-night',
+    'https://www.stereocafebar.com/',
     false,
     '£6',
     'on_sale'
@@ -126,7 +126,7 @@ with mvp_demo_events (
     '2026-07-12 20:00:00+01',
     '00000000-0601-4000-8000-000000000001',
     'comedy',
-    'open-mic-comedy-room',
+    'https://www.theoldhairdressers.com/',
     true,
     'Free',
     'not_on_sale'
@@ -141,7 +141,7 @@ with mvp_demo_events (
     '2026-07-15 19:00:00+01',
     '00000000-0601-4000-8000-000000000003',
     'theatre',
-    'new-writing-scratch-night',
+    'https://www.cca-glasgow.com/programme/',
     false,
     '£5',
     'on_sale'
@@ -156,7 +156,7 @@ with mvp_demo_events (
     '2026-07-16 18:00:00+01',
     '00000000-0601-4000-8000-000000000007',
     'arts_exhibition',
-    'print-exchange-preview',
+    'https://www.thepipefactory.co.uk/whats-on',
     true,
     'Free',
     'not_on_sale'
@@ -171,7 +171,7 @@ with mvp_demo_events (
     '2026-07-18 14:00:00+01',
     '00000000-0601-4000-8000-000000000003',
     'workshop',
-    'zine-making-workshop',
+    'https://www.cca-glasgow.com/programme/',
     false,
     '£4',
     'on_sale'
@@ -186,7 +186,7 @@ with mvp_demo_events (
     '2026-07-21 18:30:00+01',
     '00000000-0601-4000-8000-000000000003',
     'talk_lecture',
-    'clyde-built-local-archives-talk',
+    'https://www.cca-glasgow.com/programme/',
     true,
     'Free',
     'not_on_sale'
@@ -201,7 +201,7 @@ with mvp_demo_events (
     '2026-07-24 18:15:00+01',
     '00000000-0601-4000-8000-000000000004',
     'film',
-    'neighbourhood-shorts-programme',
+    'https://www.glasgowfilm.org/whats-on',
     false,
     '£7',
     'on_sale'
@@ -216,7 +216,7 @@ with mvp_demo_events (
     '2026-07-26 10:30:00+01',
     '00000000-0601-4000-8000-000000000006',
     'family',
-    'family-drawing-morning',
+    'https://qpa.inhouse.scot/',
     true,
     'Free',
     'not_on_sale'
@@ -231,7 +231,7 @@ with mvp_demo_events (
     '2026-07-30 19:00:00+01',
     '00000000-0601-4000-8000-000000000005',
     'food_drink',
-    'community-kitchen-supper',
+    'https://www.thegladcafe.co.uk/whats-on',
     false,
     null,
     null
@@ -271,9 +271,9 @@ select
   e.slug,
   e.summary,
   null,
-  'https://example.org/clyde-culture-demo/events/' || e.source_path,
-  'https://example.org/clyde-culture-demo/events/' || e.source_path,
-  'Demo Eventbrite Feed',
+  e.source_url,
+  e.source_url,
+  'Clyde Culture Demo Data',
   case when e.is_free = false and e.price_display ~ '^£[0-9]+$'
     then replace(e.price_display, '£', '')::numeric
     else null

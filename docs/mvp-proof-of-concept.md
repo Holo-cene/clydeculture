@@ -10,12 +10,12 @@ It is not production ingestion. Ticketmaster/Eventbrite/RSS/iCal ingestion, mode
 
 `supabase/seed.sql` creates idempotent demo data:
 
-- one disabled demo source, `Demo Eventbrite Feed`
+- one disabled demo source, `Clyde Culture Demo Data`
 - active Glasgow venues
 - 10 synthetic cultural events across multiple existing taxonomy slugs
 - matching `external_events` rows linked to canonical `events`
 
-The event summaries are short placeholder discovery copy. Source URLs point to `https://example.org/clyde-culture-demo/...` and are safe for local demo use.
+The event summaries are short placeholder discovery copy. Source URLs point to real public venue pages for demo credibility, but the events are seeded demo data. They are not live-ingested events and should not be represented as Ticketmaster, Eventbrite, Skiddle, DICE, RSS, iCal, or scraper output.
 
 ## Prerequisites
 
@@ -89,7 +89,7 @@ Open the local Astro URL and verify:
 
 ## Known Limits
 
-- The demo source URLs are synthetic.
+- The demo source URLs point to real public venue pages for demo credibility. The events are seeded demo data, not live-ingested.
 - Production connector scheduling and live API credentials are not required for this proof.
 - Public submissions are stored as pending rows only; moderation workflows are not complete.
 - Abuse controls such as CAPTCHA and rate limiting are not implemented.

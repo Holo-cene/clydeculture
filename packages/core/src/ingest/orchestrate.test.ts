@@ -417,3 +417,43 @@ describe('runEnabledConnectors', () => {
     expect(result.alerts).toEqual([]);
   });
 });
+
+describe('ingest_alerts schema contract', () => {
+  // Sourced from the current applied schema — two migrations define this:
+  //   20260531000000_schema_v5_initial.sql (original, missing cold_start_zero)
+  //   20260603000000_cc_new_1_schema_corrections.sql BLOCK 4 (adds cold_start_zero)
+  // The effective constraint is: check (alert_type in ('count_drop', 'parse_failure',
+  //   'timeout', 'manual', 'cold_start_zero'))
+  const DB_ACCEPTED_ALERT_TYPES: readonly string[] = [
+    'count_drop',
+    'parse_failure',
+    'timeout',
+    'manual',
+    'cold_start_zero',
+  ];
+
+  it('cold_start_zero alert_type is accepted by the ingest_alerts.alert_type CHECK constraint', async () => {
+    const sourceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+
+    // Trigger the cold_start_zero code path: first-ever run, zero events, no prior runs.
+    const result = await orchestrateApi.runEnabledConnectors({
+      sources: [source({ id: sourceId, slug: 'cold-start-api' })],
+      connectors: {
+        'cold-start-api': connector('cold-start-api', async () => ({
+          fetchedCount: 0,
+          parsedCount: 0,
+          items: [],
+          errors: [],
+        })),
+      },
+      previousRunsBySourceId: {},
+      upsertExternalEvents: vi.fn(async () => ({ upserted_count: 0 })),
+      clock: fixedClock(['2026-06-08T14:00:00.000Z', '2026-06-08T14:00:01.000Z']),
+    });
+
+    expect(result.alerts).toHaveLength(1);
+    for (const alert of result.alerts) {
+      expect(DB_ACCEPTED_ALERT_TYPES).toContain(alert.alert_type);
+    }
+  });
+});
