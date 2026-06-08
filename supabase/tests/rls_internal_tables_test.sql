@@ -8,8 +8,8 @@
 --   3. The venue_aliases parent-status policy is enforced correctly.
 --   4. The event_tags policy correctly inherits the confidence threshold
 --      via PostgreSQL recursive RLS (see Section 4 notes).
---   5. event_submissions blocks anon SELECT; the unrestricted INSERT policy
---      is documented (pending F1 tightening).
+--   5. event_submissions blocks anon SELECT, accepts only public-safe anon
+--      submissions, and rejects moderation/review fields.
 --
 -- How to run (local Supabase with A1 migration applied):
 --
@@ -36,7 +36,7 @@
 -- =============================================================================
 
 BEGIN;
-SELECT plan(19);
+SELECT plan(25);
 
 
 -- =============================================================================
@@ -121,6 +121,18 @@ VALUES ('00000000-a200-0000-0000-000000000080'::uuid,
 INSERT INTO public.event_submissions (id, title, start_at)
 VALUES ('00000000-a200-0000-0000-000000000090'::uuid,
         'A2 Test Submission', now() + interval '7 days');
+
+CREATE OR REPLACE FUNCTION pg_temp.a2_rejects_insert(p_sql text)
+RETURNS boolean
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  EXECUTE p_sql;
+  RETURN false;
+EXCEPTION WHEN others THEN
+  RETURN true;
+END;
+$$;
 
 
 -- =============================================================================
@@ -360,14 +372,30 @@ SELECT ok(
 
 
 -- =============================================================================
--- SECTION 5: event_submissions — SELECT deny and INSERT gate (tests 16–17)
+-- SECTION 5: event_submissions — SELECT deny and INSERT gate (tests 18–25)
 --
 -- No SELECT policy exists → default-deny for anon.
--- INSERT policy "Public insert submissions" exists with WITH CHECK (true):
---   any anon INSERT is permitted without validation or rate limiting.
--- This is a known open gate; F1 will replace WITH CHECK (true) with a
--- restrictive check (honeypot field, required field validation, rate limiting).
+-- INSERT policy must allow minimal public submissions while preventing anon
+-- callers from setting moderation/review linkage fields.
 -- =============================================================================
+
+SET ROLE anon;
+
+INSERT INTO public.event_submissions (id, title, start_at)
+VALUES (
+  '00000000-a200-0000-0000-000000000091'::uuid,
+  'A2 Public Submission',
+  now() + interval '8 days'
+);
+
+RESET ROLE;
+
+SELECT is(
+  (SELECT status FROM public.event_submissions
+   WHERE id = '00000000-a200-0000-0000-000000000091'::uuid),
+  'pending',
+  'anon: minimal valid event_submissions insert succeeds and remains pending'
+);
 
 SET ROLE anon;
 
@@ -377,14 +405,82 @@ SELECT is(
   'anon: event_submissions is SELECT-deny (no SELECT policy exists)'
 );
 
-RESET ROLE;
-
--- Informational test: document the unrestricted INSERT gate.
--- This passes to record the current state; it is not a security guarantee.
--- F1 must tighten the INSERT policy before event_submissions is opened to users.
-SELECT pass(
-  'event_submissions INSERT gate documented: WITH CHECK (true) is unrestricted — F1 will add validation'
+SELECT ok(
+  pg_temp.a2_rejects_insert($sql$
+    INSERT INTO public.event_submissions (id, title, start_at, status)
+    VALUES (
+      '00000000-a200-0000-0000-000000000092'::uuid,
+      'A2 Forbidden Status',
+      now() + interval '8 days',
+      'approved'
+    )
+  $sql$),
+  'anon: event_submissions insert cannot set status'
 );
+
+SELECT ok(
+  pg_temp.a2_rejects_insert($sql$
+    INSERT INTO public.event_submissions (id, title, start_at, reviewed_at)
+    VALUES (
+      '00000000-a200-0000-0000-000000000093'::uuid,
+      'A2 Forbidden Reviewed At',
+      now() + interval '8 days',
+      now()
+    )
+  $sql$),
+  'anon: event_submissions insert cannot set reviewed_at'
+);
+
+SELECT ok(
+  pg_temp.a2_rejects_insert($sql$
+    INSERT INTO public.event_submissions (id, title, start_at, reviewed_by)
+    VALUES (
+      '00000000-a200-0000-0000-000000000094'::uuid,
+      'A2 Forbidden Reviewed By',
+      now() + interval '8 days',
+      '00000000-a200-0000-0000-000000000099'::uuid
+    )
+  $sql$),
+  'anon: event_submissions insert cannot set reviewed_by'
+);
+
+SELECT ok(
+  pg_temp.a2_rejects_insert($sql$
+    INSERT INTO public.event_submissions (id, title, start_at, event_id)
+    VALUES (
+      '00000000-a200-0000-0000-000000000095'::uuid,
+      'A2 Forbidden Event Link',
+      now() + interval '8 days',
+      '00000000-a200-0000-0000-000000000020'::uuid
+    )
+  $sql$),
+  'anon: event_submissions insert cannot set event_id'
+);
+
+SELECT ok(
+  pg_temp.a2_rejects_insert($sql$
+    INSERT INTO public.event_submissions (id, title, start_at)
+    VALUES (
+      '00000000-a200-0000-0000-000000000096'::uuid,
+      '   ',
+      now() + interval '8 days'
+    )
+  $sql$),
+  'anon: event_submissions insert rejects blank title'
+);
+
+SELECT ok(
+  pg_temp.a2_rejects_insert($sql$
+    INSERT INTO public.event_submissions (id, title)
+    VALUES (
+      '00000000-a200-0000-0000-000000000097'::uuid,
+      'A2 Missing Start'
+    )
+  $sql$),
+  'anon: event_submissions insert rejects missing start_at'
+);
+
+RESET ROLE;
 
 
 -- =============================================================================

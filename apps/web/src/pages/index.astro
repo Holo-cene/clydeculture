@@ -1,0 +1,70 @@
+---
+import { getPublishedEvents, type PublicEventFilters } from '@clydeculture/shared';
+import EventList from '../components/EventList.astro';
+import Layout from '../components/Layout.astro';
+import { getPublicQueryClient } from '../lib/supabase';
+import { asEventViews } from '../lib/viewData';
+
+export const prerender = false;
+
+const params = Astro.url.searchParams;
+const filters: PublicEventFilters = {};
+const startAt = params.get('start');
+const endAt = params.get('end');
+const eventTypeSlug = params.get('type');
+const venueSlug = params.get('venue');
+const festivalSlug = params.get('festival');
+const q = params.get('q');
+
+if (startAt && endAt) {
+  filters.dateRange = {
+    startAt: new Date(startAt).toISOString(),
+    endAt: new Date(endAt).toISOString(),
+  };
+}
+if (eventTypeSlug) filters.eventTypeSlug = eventTypeSlug;
+if (venueSlug) filters.venueSlug = venueSlug;
+if (festivalSlug) filters.festivalSlug = festivalSlug;
+if (q) filters.q = q;
+
+const events = asEventViews(await getPublishedEvents(getPublicQueryClient(), filters));
+---
+
+<Layout title="Events">
+  <section class="page-heading">
+    <h1>Glasgow events, gathered in one place.</h1>
+    <p class="lede">
+      Search published listings from Clyde Culture and follow the source link for details and booking.
+    </p>
+  </section>
+
+  <form class="toolbar" method="get">
+    <label>
+      Search
+      <input name="q" type="search" value={q ?? ''} placeholder="jazz workshop" />
+    </label>
+    <label>
+      From
+      <input name="start" type="datetime-local" value={startAt ?? ''} />
+    </label>
+    <label>
+      Until
+      <input name="end" type="datetime-local" value={endAt ?? ''} />
+    </label>
+    <label>
+      Type
+      <input name="type" value={eventTypeSlug ?? ''} placeholder="live_music" />
+    </label>
+    <label>
+      Venue
+      <input name="venue" value={venueSlug ?? ''} placeholder="barrowland-ballroom" />
+    </label>
+    <label>
+      Festival
+      <input name="festival" value={festivalSlug ?? ''} placeholder="celtic-connections" />
+    </label>
+    <button type="submit">Apply filters</button>
+  </form>
+
+  <EventList events={events} />
+</Layout>

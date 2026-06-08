@@ -1,0 +1,20 @@
+---
+import { getPublishedEvents, getTonightDateRange } from '@clydeculture/shared';
+import EventList from '../components/EventList.astro';
+import Layout from '../components/Layout.astro';
+import { getPublicQueryClient } from '../lib/supabase';
+import { asEventViews } from '../lib/viewData';
+
+export const prerender = false;
+
+const dateRange = getTonightDateRange(new Date());
+const events = asEventViews(await getPublishedEvents(getPublicQueryClient(), { dateRange }));
+---
+
+<Layout title="Tonight">
+  <section class="page-heading">
+    <h1>Tonight</h1>
+    <p class="lede">Published events listed for later today.</p>
+  </section>
+  <EventList events={events} />
+</Layout>

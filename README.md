@@ -3,23 +3,50 @@
 Glasgow's shared cultural noticeboard — a low-maintenance, link-first platform that
 aggregates "what's on" across the city into one structured, searchable index.
 
-This repository is the **engine and documentation** for the platform. It is designed
-to be frontend-agnostic: the ingestion, normalisation, deduplication, and publishing
-layers do not depend on whether the public site is built in Webflow or in code.
+This repository is the **engine, documentation, and MVP Astro proof-of-concept** for
+the platform. The ingestion, normalisation, deduplication, and publishing layers are
+kept separate from the public presentation layer.
 
 ## Repository layout
 
 ```
 docs/            project documentation + architecture decision records (ADRs)
-supabase/        database migrations, edge functions, seed data
+supabase/        database migrations, tests, and local MVP seed data
 packages/        the engine (shared, core, connectors)
 trigger/         Trigger.dev v3 tasks — sweep and connector orchestration
-apps/web/        Astro frontend (do not populate until CC-NEW-1 migration is applied)
+apps/web/        Astro frontend for the MVP public directory
 scripts/         operational and one-off scripts
 tests/           cross-package tests
 ```
 
 See `CLAUDE.md` for the working context every Claude Code session should start from.
+
+## MVP proof-of-concept
+
+The current public proof uses demo-safe seeded data, Supabase RLS, shared public query
+helpers, and the Astro app in `apps/web`.
+
+```bash
+pnpm install
+supabase start
+supabase db reset
+supabase db test
+pnpm test
+pnpm typecheck
+pnpm lint
+pnpm --filter @clydeculture/web build
+```
+
+Then run the web app with the local public Supabase values from `supabase status`:
+
+```bash
+PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 \
+PUBLIC_SUPABASE_ANON_KEY=<Publishable key from supabase status> \
+pnpm --filter @clydeculture/web dev
+```
+
+See `docs/mvp-proof-of-concept.md` for the full demo runbook, seed command, and known
+limitations.
 
 ## First steps (before writing code)
 
@@ -33,7 +60,8 @@ See `CLAUDE.md` for the working context every Claude Code session should start f
 
 - Node 20+ and pnpm
 - Supabase CLI (`supabase`) for local DB and migrations
-- API credentials for Ticketmaster, Skiddle, Eventbrite (see `.env.example`)
+- API credentials for production connectors when enabling them (see `.env.example`);
+  the local MVP proof does not require live API keys
 
 ## Why "engine-first"
 

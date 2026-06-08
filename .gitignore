@@ -16,6 +16,8 @@ scratch/**
 
 # Generated files
 packages/shared/src/database.types.ts
+.astro/
+apps/*/.astro/
 
 # Dependencies
 node_modules/

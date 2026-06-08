@@ -15,6 +15,7 @@
     "db:reset": "supabase db reset",
     "supabase:start": "supabase start",
     "supabase:reset": "supabase db reset",
+    "mvp:seed": "psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/seed.sql",
     "supabase:types": "supabase gen types typescript --local > packages/shared/src/database.types.ts",
     "ingest": "npx trigger.dev@latest dev"
   },

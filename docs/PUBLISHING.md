@@ -107,7 +107,7 @@ These policies must be correct before any route in `apps/web` is deployed.
 | `festivals` | Public read | All rows |
 | `event_series` | Public read | All rows |
 | `venue_aliases` | Public read | Parent venue `status IN ('active', 'temporary')` |
-| `event_submissions` | Public insert | No read |
+| `event_submissions` | Public insert | Title/start time required; blank titles rejected; moderation fields cannot be set; no read |
 | All other tables | No public access | Service role only |
 
 The service role key (`SUPABASE_SERVICE_ROLE_KEY`) is used by Trigger.dev tasks
