@@ -1,0 +1,23 @@
+[
+  {
+    "event_id": "99999999-9999-4999-8999-999999999999",
+    "status": "deleted",
+    "name": "Synthetic Removed Event",
+    "website": "https://example.test/events/synthetic-removed-event",
+    "tags": ["film"],
+    "schedules": [
+      {
+        "place_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "place": {
+          "place_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "name": "Example Cinema"
+        },
+        "performances": [
+          {
+            "ts": "2026-11-12T20:00:00Z"
+          }
+        ]
+      }
+    ]
+  }
+]

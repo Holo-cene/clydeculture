@@ -1,0 +1,42 @@
+[
+  {
+    "event_id": "33333333-3333-4333-8333-333333333333",
+    "status": "live",
+    "name": "Synthetic Theatre Run",
+    "website": "https://example.test/events/synthetic-theatre-run",
+    "tags": ["theatre"],
+    "schedules": [
+      {
+        "place_id": "44444444-4444-4444-8444-444444444444",
+        "place": {
+          "place_id": "44444444-4444-4444-8444-444444444444",
+          "name": "Example Studio"
+        },
+        "performances": [
+          {
+            "ts": "2026-08-01T14:00:00+01:00",
+            "duration": "90",
+            "tickets": [
+              {
+                "currency": "GBP",
+                "min_price": 8,
+                "max_price": 12
+              }
+            ]
+          },
+          {
+            "ts": "2026-08-01T19:30:00+01:00",
+            "duration": "90",
+            "tickets": [
+              {
+                "currency": "GBP",
+                "min_price": 8,
+                "max_price": 12
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

@@ -1,0 +1,23 @@
+[
+  {
+    "event_id": "55555555-5555-4555-8555-555555555555",
+    "status": "live",
+    "name": "Synthetic Price TBC",
+    "website": "https://example.test/events/synthetic-price-tbc",
+    "tags": ["talks"],
+    "schedules": [
+      {
+        "place_id": "66666666-6666-4666-8666-666666666666",
+        "place": {
+          "place_id": "66666666-6666-4666-8666-666666666666",
+          "name": "Example Library"
+        },
+        "performances": [
+          {
+            "ts": "2026-09-03T18:30:00+01:00"
+          }
+        ]
+      }
+    ]
+  }
+]
