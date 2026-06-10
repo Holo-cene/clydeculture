@@ -1,15 +1,16 @@
 import { task } from '@trigger.dev/sdk/v3';
-import { runSweepIntegration, normaliseExternalEventsForSource } from '@clydeculture/core';
+import { runSweepIntegration } from '@clydeculture/core';
+import { normaliseExternalEventsForSource } from '@clydeculture/ingestion';
 import { createTicketmasterConnector } from '@clydeculture/connectors';
 import { createClient, upsertExternalEvents } from '@clydeculture/shared';
 import type {
   HistoricalIngestRun,
   IngestAlertDraft,
   IngestRunDraft,
-  NormaliseDbClient,
   Source,
   UpsertExternalEventsPayload,
 } from '@clydeculture/core';
+import type { NormaliseDbClient } from '@clydeculture/ingestion';
 
 export const sweepTask = task({
   id: 'sweep',

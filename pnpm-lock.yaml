@@ -69,6 +69,25 @@ importers:
         specifier: ^2
         version: 2.1.9(@types/node@25.9.1)
 
+  packages/ingestion:
+    dependencies:
+      '@clydeculture/core':
+        specifier: workspace:*
+        version: link:../core
+      '@clydeculture/shared':
+        specifier: workspace:*
+        version: link:../shared
+    devDependencies:
+      '@vitest/coverage-v8':
+        specifier: ^2
+        version: 2.1.9(vitest@2.1.9(@types/node@25.9.1))
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vitest:
+        specifier: ^2
+        version: 2.1.9(@types/node@25.9.1)
+
   packages/shared:
     dependencies:
       '@supabase/supabase-js':
@@ -90,6 +109,9 @@ importers:
       '@clydeculture/core':
         specifier: workspace:*
         version: link:../packages/core
+      '@clydeculture/ingestion':
+        specifier: workspace:*
+        version: link:../packages/ingestion
       '@clydeculture/shared':
         specifier: workspace:*
         version: link:../packages/shared

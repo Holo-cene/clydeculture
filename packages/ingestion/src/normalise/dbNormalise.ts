@@ -1,11 +1,11 @@
-import { deriveDedupeKey } from '../dedupe/dedupe.js';
 import {
+  deriveDedupeKey,
   calculateConfidence,
   normaliseImageUrl,
   normaliseTitle,
   type SourceTier,
   type TypeSource,
-} from './normalise.js';
+} from '@clydeculture/core';
 
 type Row = Record<string, unknown>;
 

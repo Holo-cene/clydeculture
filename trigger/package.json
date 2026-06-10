@@ -10,6 +10,7 @@
   "dependencies": {
     "@clydeculture/connectors": "workspace:*",
     "@clydeculture/core": "workspace:*",
+    "@clydeculture/ingestion": "workspace:*",
     "@clydeculture/shared": "workspace:*",
     "@trigger.dev/sdk": "^3.0.0"
   }

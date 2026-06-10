@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deriveDedupeKey } from '../dedupe/dedupe.js';
+import { deriveDedupeKey } from '@clydeculture/core';
 
 const TICKETMASTER_SOURCE_ID = '11111111-1111-4111-8111-111111111111';
 const OTHER_SOURCE_ID = '22222222-2222-4222-8222-222222222222';
@@ -45,7 +45,7 @@ class FakeSupabaseClient {
   readonly calls: QueryCall[] = [];
   readonly rpcCalls: { name: string; args: Row }[] = [];
   readonly rows: Record<string, Row[]>;
-  readonly upsertShouldFailIf?: (table: string, row: Row) => boolean;
+  readonly upsertShouldFailIf: ((table: string, row: Row) => boolean) | undefined;
 
   constructor(
     rows: Record<string, Row[]>,
@@ -174,10 +174,11 @@ class FakeQueryBuilder implements PromiseLike<QueryResult<Row[]>> {
     });
 
     if (this.action === 'upsert') {
-      if (this.client.upsertShouldFailIf) {
+      const failIf = this.client.upsertShouldFailIf;
+      if (failIf) {
         const incomingRows = Array.isArray(this.values) ? this.values : [this.values];
         const shouldFail = incomingRows.some(
-          (row): row is Row => !!row && this.client.upsertShouldFailIf!(this.table, row),
+          (row): row is Row => !!row && failIf(this.table, row),
         );
         if (shouldFail) {
           return { data: [], error: { message: 'simulated upsert error' } };

@@ -1,10 +1,23 @@
-// @clydeculture/core — normalisation, deduplication, and festival detection
-export { normaliseExternalEventsForSource } from './normalise/dbNormalise.js';
+// @clydeculture/core — pure normalisation, deduplication, and orchestration logic
+export { deriveDedupeKey } from './dedupe/dedupe.js';
+export {
+  normaliseTitle,
+  normaliseVenueName,
+  calculateConfidence,
+  normaliseImageUrl,
+  mapSourceCategoryToEventType,
+  buildCanonicalEventDraft,
+  type SourceTier,
+  type TypeSource,
+  type SourceCategoryMapping,
+  type EventTypeResolution,
+  type ConfidenceInput,
+  type ConfidenceInputs,
+  type ConfidenceResult,
+  type ExternalEventDraft,
+  type CanonicalEventDraft,
+} from './normalise/normalise.js';
 export { runSweepIntegration } from './ingest/sweep.js';
-export type {
-  NormaliseDbClient,
-  NormaliseExternalEventsForSourceInput,
-} from './normalise/dbNormalise.js';
 export type { SweepIntegrationInput } from './ingest/sweep.js';
 export type {
   HistoricalIngestRun,
