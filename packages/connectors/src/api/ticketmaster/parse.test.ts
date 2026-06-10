@@ -12,7 +12,7 @@ const fixture = JSON.parse(
   readFileSync(join(__dirname, 'fixtures/response.json'), 'utf-8')
 ) as { _embedded: { events: unknown[] } };
 
-// All 17 fields from the RawEvent interface — used to verify no extraneous keys
+// All 18 fields from the RawEvent interface — used to verify no extraneous keys
 const RAW_EVENT_KEYS: ReadonlyArray<keyof RawEvent> = [
   'externalId',
   'externalUrl',
@@ -30,6 +30,7 @@ const RAW_EVENT_KEYS: ReadonlyArray<keyof RawEvent> = [
   'ticketUrlLabelGuess',
   'imageUrlGuess',
   'availabilityGuess',
+  'timeTba',
   'raw',
 ];
 
@@ -160,6 +161,83 @@ describe('parseTicketmasterEvents', () => {
 
       expect(result).toHaveLength(1);
       expect(result[0]?.startAt).toBe('2026-07-09T23:00:00Z');
+    });
+  });
+
+  describe('timeTba flag', () => {
+    it('preserves Ticketmaster timeTBA as RawEvent.timeTba', () => {
+      // Arrangement: TBA event — known localDate but timeTBA=true, no reliable time.
+      // The placeholder convention: localDate + midnight in Europe/London → UTC.
+      // The flag is what prevents this midnight timestamp from being treated as a real event time.
+      const response = makeParserResponse(
+        makeParserEvent({
+          dates: {
+            start: {
+              localDate: '2026-07-10',
+              dateTBD: false,
+              dateTBA: false,
+              timeTBA: true,
+              noSpecificTime: false,
+            },
+            timezone: 'Europe/London',
+            status: { code: 'onsale' },
+          },
+        })
+      );
+
+      const result = parseTicketmasterEvents(response);
+
+      expect(result).toHaveLength(1);
+      // startAt uses the midnight placeholder convention
+      expect(result[0]?.startAt).toBe('2026-07-09T23:00:00Z');
+      // timeTba flag must be set to true — not absent, not false
+      expect(result[0]?.timeTba).toBe(true);
+    });
+
+    it('does not set timeTba when timeTBA is false (no extraneous flag on normal events)', () => {
+      const response = makeParserResponse(
+        makeParserEvent({
+          dates: {
+            start: {
+              dateTime: '2026-07-10T19:00:00Z',
+              localDate: '2026-07-10',
+              localTime: '20:00:00',
+              timeTBA: false,
+            },
+            timezone: 'Europe/London',
+            status: { code: 'onsale' },
+          },
+        })
+      );
+
+      const result = parseTicketmasterEvents(response);
+
+      expect(result).toHaveLength(1);
+      // timeTba must be absent (undefined) — not false — consistent with optional-field pattern
+      expect(result[0]?.timeTba).toBeUndefined();
+    });
+
+    it('timeTba events still pass the recognised-keys contract', () => {
+      const response = makeParserResponse(
+        makeParserEvent({
+          dates: {
+            start: {
+              localDate: '2026-07-10',
+              timeTBA: true,
+            },
+            timezone: 'Europe/London',
+            status: { code: 'onsale' },
+          },
+        })
+      );
+
+      const result = parseTicketmasterEvents(response);
+      expect(result).toHaveLength(1);
+
+      const unknownKeys = Object.keys(result[0]!).filter(
+        k => !RAW_EVENT_KEYS.includes(k as keyof RawEvent)
+      );
+      expect(unknownKeys).toHaveLength(0);
     });
   });
 

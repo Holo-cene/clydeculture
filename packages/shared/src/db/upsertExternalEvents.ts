@@ -18,6 +18,8 @@ export interface ExternalEventInput {
   ticketUrlLabelGuess?: string;
   imageUrlGuess?: string;
   availabilityGuess?: string;
+  /** Mirrors RawEvent.timeTba — true when source date is known but time is TBA. */
+  timeTba?: boolean;
   raw: unknown;
 }
 
@@ -51,6 +53,7 @@ export async function upsertExternalEvents(
     }),
     ...(event.imageUrlGuess !== undefined && { image_url_guess: event.imageUrlGuess }),
     ...(event.availabilityGuess !== undefined && { availability_guess: event.availabilityGuess }),
+    ...(event.timeTba !== undefined && { time_tba_guess: event.timeTba }),
   }));
 
   await client.from('external_events').upsert(rows, { onConflict: 'source_id,external_id' });

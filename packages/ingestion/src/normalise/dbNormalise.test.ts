@@ -459,6 +459,52 @@ function makeClient(input: {
   });
 }
 
+// TBA placeholder: Europe/London midnight for 2026-07-10 → 2026-07-09T23:00:00.000Z
+const TBA_PLACEHOLDER_START_AT = '2026-07-09T23:00:00.000Z';
+
+function makeTimeTbaClient(): FakeSupabaseClient {
+  return new FakeSupabaseClient({
+    sources: [
+      {
+        id: TICKETMASTER_SOURCE_ID,
+        slug: 'ticketmaster',
+        source_type: 'api',
+        tier: 1,
+        config: { auto_publish: true, timezone: 'Europe/London' },
+      },
+    ],
+    external_events: [
+      {
+        id: 'ext-tba',
+        source_id: TICKETMASTER_SOURCE_ID,
+        external_id: 'tba-event-001',
+        external_url: 'https://www.ticketmaster.co.uk/event/tba-event-001',
+        title: 'TBA Time Concert at Barrowland',
+        start_at: TBA_PLACEHOLDER_START_AT,
+        time_tba_guess: true,
+        venue_id_guess: VENUE_ID,
+        event_type_guess: TICKETMASTER_MUSIC_SEGMENT_ID,
+        raw: {},
+        event_id: null,
+      },
+    ],
+    event_types: [
+      { id: EVENT_TYPE_ID, slug: 'live_music' },
+      { id: 99, slug: 'other' },
+    ],
+    venues: [{ id: VENUE_ID, name: 'Barrowland Ballroom', slug: 'barrowland-ballroom' }],
+    source_type_category_map: [
+      {
+        source_id: TICKETMASTER_SOURCE_ID,
+        source_category: TICKETMASTER_MUSIC_SEGMENT_ID,
+        event_type_id: EVENT_TYPE_ID,
+        event_types: { id: EVENT_TYPE_ID, slug: 'live_music' },
+      },
+    ],
+    events: [],
+  });
+}
+
 const OPTIONAL_FIELDS_END_AT = '2026-07-15T23:00:00.000Z';
 const OPTIONAL_FIELDS_DOORS_AT = '2026-07-15T19:00:00.000Z';
 
@@ -875,6 +921,34 @@ describe('normaliseExternalEventsForSource', () => {
     expect(event?.['is_free']).toBe(true);
     expect(event?.['price_min']).toBeUndefined();
     expect(event?.['price_max']).toBeUndefined();
+  });
+
+  it('writes time_tba true to canonical event when external event has time_tba_guess = true', async () => {
+    // Arrange: external event with time_tba_guess:true and a midnight placeholder start_at.
+    // The placeholder timestamp is deterministic (Europe/London midnight for the local date)
+    // but the flag is required to prevent this from being treated as a real midnight event.
+    const client = makeTimeTbaClient();
+    const { normaliseExternalEventsForSource } = await loadApi();
+
+    await normaliseExternalEventsForSource({ client, sourceId: TICKETMASTER_SOURCE_ID });
+
+    const event = eventRows(client)[0];
+    expect(event).toBeDefined();
+    expect(event?.['time_tba']).toBe(true);
+    expect(event?.['start_at']).toBe(TBA_PLACEHOLDER_START_AT);
+  });
+
+  it('sets needs_review=true and has_start_at=false in confidence inputs when time_tba_guess is true', async () => {
+    // calculateConfidence treats timeTba:true as "no reliable start time" (has_start_at=false)
+    // and always adds 'time_tba' to reviewReasons → needs_review=true regardless of other signals.
+    const client = makeTimeTbaClient();
+    const { normaliseExternalEventsForSource } = await loadApi();
+
+    await normaliseExternalEventsForSource({ client, sourceId: TICKETMASTER_SOURCE_ID });
+
+    const event = eventRows(client)[0];
+    expect(event?.['needs_review']).toBe(true);
+    expect((event?.['confidence_inputs'] as Record<string, unknown>)?.['has_start_at']).toBe(false);
   });
 
   it('unlinked external event still creates and links a canonical event after M-1 changes', async () => {

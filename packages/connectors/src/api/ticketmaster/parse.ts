@@ -233,6 +233,8 @@ export function parseTicketmasterEvents(
     const statusCode = raw.dates?.status?.code;
     if (statusCode !== undefined) item.availabilityGuess = statusCode;
 
+    if (raw.dates?.start?.timeTBA === true) item.timeTba = true;
+
     items.push(item);
   }
 

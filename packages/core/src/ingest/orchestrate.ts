@@ -25,6 +25,8 @@ export interface RawEvent {
   externalUrl: string;
   title: string;
   startAt?: string;
+  /** True when the source has a date but no reliable time (midnight placeholder in startAt). */
+  timeTba?: boolean;
   raw: unknown;
 }
 

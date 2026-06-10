@@ -65,6 +65,7 @@ interface ExternalEventRow extends Row {
   ticket_url_label_guess?: string | null;
   image_url_guess?: string | null;
   venue_name?: string | null;
+  time_tba_guess?: boolean | null;
   raw?: Row;
 }
 
@@ -100,11 +101,13 @@ export async function normaliseExternalEventsForSource(
       continue;
     }
 
+    const timeTba = externalEvent.time_tba_guess === true;
+
     const confidence = calculateConfidence({
       sourceTier: source.tier,
       title,
       startAt,
-      timeTba: false,
+      timeTba,
       sourceUrl: externalEvent.external_url ?? null,
       ticketUrl: externalEvent.ticket_url_guess ?? null,
       venue: { id: venue.id },
@@ -122,6 +125,7 @@ export async function normaliseExternalEventsForSource(
       source,
       title,
       startAt,
+      timeTba,
       venue,
       mappedType,
       confidence,
@@ -205,6 +209,7 @@ async function getAllExternalEventsForSource(
     ticket_url_guess: nullableString(row['ticket_url_guess']),
     ticket_url_label_guess: nullableString(row['ticket_url_label_guess']),
     image_url_guess: nullableString(row['image_url_guess']),
+    time_tba_guess: nullableBoolean(row['time_tba_guess']),
     raw: isRecord(row['raw']) ? row['raw'] : {},
   }));
 }
@@ -315,13 +320,14 @@ function buildEventRow(input: {
   source: SourceRow;
   title: string;
   startAt: string;
+  timeTba: boolean;
   venue: { id: string; needsReview: boolean };
   mappedType: { id: number; slug: string; typeSource: TypeSource; needsReview: boolean };
   confidence: ReturnType<typeof calculateConfidence>;
   needsReview: boolean;
   visibility: string;
 }): Row {
-  const { externalEvent, source, title, startAt, venue, mappedType, confidence, needsReview, visibility } = input;
+  const { externalEvent, source, title, startAt, timeTba, venue, mappedType, confidence, needsReview, visibility } = input;
 
   const isFree = externalEvent.is_free_guess === true ? true : externalEvent.is_free_guess === false ? false : undefined;
   const pricesAllowed = isFree !== true;
@@ -339,6 +345,7 @@ function buildEventRow(input: {
     start_at: startAt,
     end_at: externalEvent.end_at ?? undefined,
     doors_at: externalEvent.doors_at ?? undefined,
+    time_tba: timeTba,
     is_free: isFree,
     price_min: pricesAllowed && externalEvent.price_min_guess != null ? externalEvent.price_min_guess : undefined,
     price_max: pricesAllowed && externalEvent.price_max_guess != null ? externalEvent.price_max_guess : undefined,

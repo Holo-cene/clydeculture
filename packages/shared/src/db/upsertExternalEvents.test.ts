@@ -254,4 +254,26 @@ describe('upsertExternalEvents', () => {
       expect(calledTables).not.toContain('events');
     });
   });
+
+  describe('timeTba — TBA time flag', () => {
+    it('maps timeTba: true to time_tba_guess: true', async () => {
+      // timeTba mirrors RawEvent.timeTba from @clydeculture/connectors so direct pass-through works
+      const { client, mockUpsert } = makeClient();
+      await upsertExternalEvents(client, SOURCE_ID, [{ ...MOGWAI, timeTba: true }]);
+      expect(capturedRows(mockUpsert)[0]).toMatchObject({ time_tba_guess: true });
+    });
+
+    it('maps timeTba: false to time_tba_guess: false', async () => {
+      const { client, mockUpsert } = makeClient();
+      await upsertExternalEvents(client, SOURCE_ID, [{ ...MOGWAI, timeTba: false }]);
+      expect(capturedRows(mockUpsert)[0]).toMatchObject({ time_tba_guess: false });
+    });
+
+    it('omits time_tba_guess from the row when timeTba is absent (DB default handles false)', async () => {
+      // Consistent with the optional-field pattern used by isFreeGuess, endAt, etc.
+      const { client, mockUpsert } = makeClient();
+      await upsertExternalEvents(client, SOURCE_ID, [MOGWAI]);
+      expect(capturedRows(mockUpsert)[0]).not.toHaveProperty('time_tba_guess');
+    });
+  });
 });

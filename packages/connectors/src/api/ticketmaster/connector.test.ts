@@ -22,7 +22,7 @@ const TEST_API_KEY = 'test-api-key-12345';
 // Fixed "today" injected via startDate config so window dates are deterministic.
 const START_DATE = new Date('2026-07-01T00:00:00Z');
 
-// All 17 RawEvent keys — used to verify link-first compliance (no extra fields).
+// All 18 RawEvent keys — used to verify link-first compliance (no extra fields).
 const RAW_EVENT_KEYS: ReadonlyArray<keyof RawEvent> = [
   'externalId',
   'externalUrl',
@@ -40,6 +40,7 @@ const RAW_EVENT_KEYS: ReadonlyArray<keyof RawEvent> = [
   'ticketUrlLabelGuess',
   'imageUrlGuess',
   'availabilityGuess',
+  'timeTba',
   'raw',
 ];
 
@@ -757,7 +758,7 @@ describe('ticketmasterConnector — image URL handling (ADR 0004)', () => {
 // ============================================================================
 
 describe('ticketmasterConnector — link-first compliance', () => {
-  it('items contain only the 17 recognised RawEvent fields (no description, summary, or other extras)', async () => {
+  it('items contain only the 18 recognised RawEvent fields (no description, summary, or other extras)', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(okResponse(makeTmPage([makeTmEvent('e1'), makeTmEvent('e2')], 0, 1)))
       .mockResolvedValue(okResponse(makeTmPage([], 0, 1)));
