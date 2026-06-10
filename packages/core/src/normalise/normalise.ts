@@ -185,6 +185,33 @@ export function calculateConfidence(input: ConfidenceInput): ConfidenceResult {
   };
 }
 
+export type CanonicalAvailability =
+  | 'on_sale'
+  | 'sold_out'
+  | 'low_stock'
+  | 'postponed'
+  | 'rescheduled'
+  | 'cancelled'
+  | 'not_on_sale';
+
+const AVAILABILITY_MAP: Record<string, CanonicalAvailability> = {
+  onsale: 'on_sale',
+  offsale: 'not_on_sale',
+  cancelled: 'cancelled',
+  canceled: 'cancelled',
+  rescheduled: 'rescheduled',
+  postponed: 'postponed',
+  soldout: 'sold_out',
+  sold_out: 'sold_out',
+};
+
+export function mapAvailabilityGuessToCanonical(
+  guess: string | null | undefined,
+): CanonicalAvailability | undefined {
+  if (!guess) return undefined;
+  return AVAILABILITY_MAP[guess.trim().toLowerCase()];
+}
+
 export function normaliseImageUrl(input?: string | null): string | null {
   const trimmed = input?.trim();
   if (!trimmed) return null;

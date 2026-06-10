@@ -3,6 +3,7 @@ import {
   calculateConfidence,
   normaliseImageUrl,
   normaliseTitle,
+  mapAvailabilityGuessToCanonical,
   type SourceTier,
   type TypeSource,
 } from '@clydeculture/core';
@@ -52,6 +53,12 @@ interface ExternalEventRow extends Row {
   external_url?: string | null;
   title?: string | null;
   start_at?: string | null;
+  end_at?: string | null;
+  doors_at?: string | null;
+  price_min_guess?: number | null;
+  price_max_guess?: number | null;
+  is_free_guess?: boolean | null;
+  availability_guess?: string | null;
   venue_id_guess?: string | null;
   event_type_guess?: string | null;
   ticket_url_guess?: string | null;
@@ -110,26 +117,16 @@ export async function normaliseExternalEventsForSource(
         ? 'published'
         : 'draft';
 
-    const eventRow = stripUndefined({
+    const eventRow = buildEventRow({
+      externalEvent,
+      source,
       title,
-      normalised_title: normaliseTitle(title),
-      slug: slugFor(title, startAt),
-      summary: null,
-      description: null,
-      source_url: externalEvent.external_url ?? null,
-      ticket_url: externalEvent.ticket_url_guess ?? null,
-      ticket_url_label: externalEvent.ticket_url_label_guess ?? null,
-      image_url: normaliseImageUrl(externalEvent.image_url_guess),
-      start_at: startAt,
-      timezone: source.config?.timezone ?? 'Europe/London',
-      event_type_id: mappedType.id,
-      venue_id: venue.id,
-      primary_source_id: source.id,
-      confidence: confidence.score,
-      confidence_inputs: confidence.inputs,
-      needs_review: needsReview,
+      startAt,
+      venue,
+      mappedType,
+      confidence,
+      needsReview,
       visibility,
-      dedupe_key: deriveDedupeKey(venue.id, startAt, externalEvent.title ?? title),
     });
 
     if (externalEvent.event_id) {
@@ -196,6 +193,12 @@ async function getAllExternalEventsForSource(
     external_url: nullableString(row['external_url']),
     title: nullableString(row['title']),
     start_at: nullableString(row['start_at']),
+    end_at: nullableString(row['end_at']),
+    doors_at: nullableString(row['doors_at']),
+    price_min_guess: nullableNumber(row['price_min_guess']),
+    price_max_guess: nullableNumber(row['price_max_guess']),
+    is_free_guess: nullableBoolean(row['is_free_guess']),
+    availability_guess: nullableString(row['availability_guess']),
     venue_id_guess: nullableString(row['venue_id_guess']),
     venue_name: nullableString(row['venue_name']),
     event_type_guess: nullableString(row['event_type_guess']),
@@ -307,6 +310,51 @@ async function resolveEventType(
   };
 }
 
+function buildEventRow(input: {
+  externalEvent: ExternalEventRow;
+  source: SourceRow;
+  title: string;
+  startAt: string;
+  venue: { id: string; needsReview: boolean };
+  mappedType: { id: number; slug: string; typeSource: TypeSource; needsReview: boolean };
+  confidence: ReturnType<typeof calculateConfidence>;
+  needsReview: boolean;
+  visibility: string;
+}): Row {
+  const { externalEvent, source, title, startAt, venue, mappedType, confidence, needsReview, visibility } = input;
+
+  const isFree = externalEvent.is_free_guess === true ? true : externalEvent.is_free_guess === false ? false : undefined;
+  const pricesAllowed = isFree !== true;
+
+  return stripUndefined({
+    title,
+    normalised_title: normaliseTitle(title),
+    slug: slugFor(title, startAt),
+    summary: null,
+    description: null,
+    source_url: externalEvent.external_url ?? null,
+    ticket_url: externalEvent.ticket_url_guess ?? null,
+    ticket_url_label: externalEvent.ticket_url_label_guess ?? null,
+    image_url: normaliseImageUrl(externalEvent.image_url_guess),
+    start_at: startAt,
+    end_at: externalEvent.end_at ?? undefined,
+    doors_at: externalEvent.doors_at ?? undefined,
+    is_free: isFree,
+    price_min: pricesAllowed && externalEvent.price_min_guess != null ? externalEvent.price_min_guess : undefined,
+    price_max: pricesAllowed && externalEvent.price_max_guess != null ? externalEvent.price_max_guess : undefined,
+    availability: mapAvailabilityGuessToCanonical(externalEvent.availability_guess),
+    timezone: source.config?.timezone ?? 'Europe/London',
+    event_type_id: mappedType.id,
+    venue_id: venue.id,
+    primary_source_id: source.id,
+    confidence: confidence.score,
+    confidence_inputs: confidence.inputs,
+    needs_review: needsReview,
+    visibility,
+    dedupe_key: deriveDedupeKey(venue.id, startAt, externalEvent.title ?? title),
+  });
+}
+
 function slugFor(title: string, startAt: string): string {
   return `${normaliseTitle(title).replace(/\s+/g, '-')}-${startAt.slice(0, 10)}`;
 }
@@ -325,6 +373,14 @@ function nullableString(value: unknown): string | null {
 
 function numberValue(value: unknown): number {
   return typeof value === 'number' ? value : Number(value);
+}
+
+function nullableNumber(value: unknown): number | null {
+  return typeof value === 'number' ? value : null;
+}
+
+function nullableBoolean(value: unknown): boolean | null {
+  return typeof value === 'boolean' ? value : null;
 }
 
 function sourceTierValue(value: unknown): SourceTier {

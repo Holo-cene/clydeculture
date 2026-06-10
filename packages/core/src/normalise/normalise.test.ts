@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normaliseTitle, normaliseVenueName } from './normalise.js';
+import { normaliseTitle, normaliseVenueName, mapAvailabilityGuessToCanonical } from './normalise.js';
 
 // normaliseTitle must produce identical output to the SQL normalise_title() function:
 //   regexp_replace(lower(input), '[^[:alnum:][:space:]]', '', 'g') → collapse spaces
@@ -43,6 +43,32 @@ describe('normaliseTitle', () => {
   it('is idempotent — normalising twice gives the same result', () => {
     const once = normaliseTitle('Live @ SWG3!');
     expect(normaliseTitle(once)).toBe(once);
+  });
+});
+
+describe('mapAvailabilityGuessToCanonical', () => {
+  it('maps upstream availability guesses to canonical availability values', () => {
+    expect(mapAvailabilityGuessToCanonical('onsale')).toBe('on_sale');
+    expect(mapAvailabilityGuessToCanonical('offsale')).toBe('not_on_sale');
+    expect(mapAvailabilityGuessToCanonical('cancelled')).toBe('cancelled');
+    expect(mapAvailabilityGuessToCanonical('canceled')).toBe('cancelled');
+    expect(mapAvailabilityGuessToCanonical('rescheduled')).toBe('rescheduled');
+    expect(mapAvailabilityGuessToCanonical('postponed')).toBe('postponed');
+    expect(mapAvailabilityGuessToCanonical('soldout')).toBe('sold_out');
+    expect(mapAvailabilityGuessToCanonical('sold_out')).toBe('sold_out');
+  });
+
+  it('returns undefined for unknown, empty, or absent values', () => {
+    expect(mapAvailabilityGuessToCanonical('unknown_value')).toBeUndefined();
+    expect(mapAvailabilityGuessToCanonical('')).toBeUndefined();
+    expect(mapAvailabilityGuessToCanonical(null)).toBeUndefined();
+    expect(mapAvailabilityGuessToCanonical(undefined)).toBeUndefined();
+  });
+
+  it('is case-insensitive', () => {
+    expect(mapAvailabilityGuessToCanonical('ONSALE')).toBe('on_sale');
+    expect(mapAvailabilityGuessToCanonical('OnSale')).toBe('on_sale');
+    expect(mapAvailabilityGuessToCanonical('SOLDOUT')).toBe('sold_out');
   });
 });
 

@@ -459,6 +459,112 @@ function makeClient(input: {
   });
 }
 
+const OPTIONAL_FIELDS_END_AT = '2026-07-15T23:00:00.000Z';
+const OPTIONAL_FIELDS_DOORS_AT = '2026-07-15T19:00:00.000Z';
+
+function makeOptionalFieldsClient(): FakeSupabaseClient {
+  return new FakeSupabaseClient({
+    sources: [
+      {
+        id: TICKETMASTER_SOURCE_ID,
+        slug: 'ticketmaster',
+        source_type: 'api',
+        tier: 1,
+        config: { auto_publish: true, timezone: 'Europe/London' },
+      },
+    ],
+    external_events: [
+      {
+        id: 'ext-optional',
+        source_id: TICKETMASTER_SOURCE_ID,
+        external_id: 'optional-fields-event',
+        external_url: 'https://www.ticketmaster.co.uk/event/optional',
+        title: 'Optional Fields Event',
+        start_at: EVENT_START_AT,
+        end_at: OPTIONAL_FIELDS_END_AT,
+        doors_at: OPTIONAL_FIELDS_DOORS_AT,
+        price_min_guess: 22.5,
+        price_max_guess: 35.0,
+        is_free_guess: false,
+        availability_guess: 'onsale',
+        venue_id_guess: VENUE_ID,
+        event_type_guess: TICKETMASTER_MUSIC_SEGMENT_ID,
+        raw: {},
+        event_id: null,
+      },
+    ],
+    event_types: [
+      { id: EVENT_TYPE_ID, slug: 'live_music' },
+      { id: 99, slug: 'other' },
+    ],
+    venues: [{ id: VENUE_ID, name: 'Barrowland Ballroom', slug: 'barrowland-ballroom' }],
+    source_type_category_map: [
+      {
+        source_id: TICKETMASTER_SOURCE_ID,
+        source_category: TICKETMASTER_MUSIC_SEGMENT_ID,
+        event_type_id: EVENT_TYPE_ID,
+        event_types: { id: EVENT_TYPE_ID, slug: 'live_music' },
+      },
+    ],
+    events: [],
+  });
+}
+
+function makeOptionalFieldsUpdateClient(): FakeSupabaseClient {
+  return new FakeSupabaseClient({
+    sources: [
+      {
+        id: TICKETMASTER_SOURCE_ID,
+        slug: 'ticketmaster',
+        source_type: 'api',
+        tier: 1,
+        config: { auto_publish: true, timezone: 'Europe/London' },
+      },
+    ],
+    external_events: [
+      {
+        id: 'ext-optional-linked',
+        source_id: TICKETMASTER_SOURCE_ID,
+        external_id: 'optional-fields-linked',
+        external_url: 'https://www.ticketmaster.co.uk/event/optional-linked',
+        title: 'Optional Fields Linked Event',
+        start_at: EVENT_START_AT,
+        end_at: OPTIONAL_FIELDS_END_AT,
+        doors_at: OPTIONAL_FIELDS_DOORS_AT,
+        price_min_guess: 22.5,
+        price_max_guess: 35.0,
+        is_free_guess: false,
+        availability_guess: 'onsale',
+        venue_id_guess: VENUE_ID,
+        event_type_guess: TICKETMASTER_MUSIC_SEGMENT_ID,
+        raw: {},
+        event_id: LINKED_CANONICAL_ID,
+      },
+    ],
+    event_types: [
+      { id: EVENT_TYPE_ID, slug: 'live_music' },
+      { id: 99, slug: 'other' },
+    ],
+    venues: [{ id: VENUE_ID, name: 'Barrowland Ballroom', slug: 'barrowland-ballroom' }],
+    source_type_category_map: [
+      {
+        source_id: TICKETMASTER_SOURCE_ID,
+        source_category: TICKETMASTER_MUSIC_SEGMENT_ID,
+        event_type_id: EVENT_TYPE_ID,
+        event_types: { id: EVENT_TYPE_ID, slug: 'live_music' },
+      },
+    ],
+    events: [
+      {
+        id: LINKED_CANONICAL_ID,
+        title: 'Optional Fields Linked Event',
+        start_at: EVENT_START_AT,
+        dedupe_key: deriveDedupeKey(VENUE_ID, EVENT_START_AT, 'Optional Fields Linked Event'),
+      },
+    ],
+  });
+}
+
 function eventRows(client: FakeSupabaseClient): Row[] {
   return client.rows['events'] ?? [];
 }
@@ -718,6 +824,57 @@ describe('normaliseExternalEventsForSource', () => {
         }),
       }),
     });
+  });
+
+  it('writes optional external event fields to canonical event (unlinked create path)', async () => {
+    const client = makeOptionalFieldsClient();
+    const { normaliseExternalEventsForSource } = await loadApi();
+
+    await normaliseExternalEventsForSource({ client, sourceId: TICKETMASTER_SOURCE_ID });
+
+    const event = eventRows(client)[0];
+    expect(event).toMatchObject({
+      end_at: OPTIONAL_FIELDS_END_AT,
+      doors_at: OPTIONAL_FIELDS_DOORS_AT,
+      price_min: 22.5,
+      price_max: 35.0,
+      is_free: false,
+      availability: 'on_sale',
+    });
+  });
+
+  it('writes optional external event fields to canonical event (linked update path)', async () => {
+    const client = makeOptionalFieldsUpdateClient();
+    const { normaliseExternalEventsForSource } = await loadApi();
+
+    await normaliseExternalEventsForSource({ client, sourceId: TICKETMASTER_SOURCE_ID });
+
+    const event = eventRows(client)[0];
+    expect(event).toMatchObject({
+      end_at: OPTIONAL_FIELDS_END_AT,
+      doors_at: OPTIONAL_FIELDS_DOORS_AT,
+      price_min: 22.5,
+      price_max: 35.0,
+      is_free: false,
+      availability: 'on_sale',
+    });
+  });
+
+  it('suppresses positive prices when is_free_guess is true', async () => {
+    const client = makeOptionalFieldsClient();
+    const ext = (client.rows['external_events'] ?? [])[0];
+    if (!ext) throw new Error('Expected fixture external event');
+    ext['is_free_guess'] = true;
+    ext['price_min_guess'] = 15;
+    ext['price_max_guess'] = 20;
+
+    const { normaliseExternalEventsForSource } = await loadApi();
+    await normaliseExternalEventsForSource({ client, sourceId: TICKETMASTER_SOURCE_ID });
+
+    const event = eventRows(client)[0];
+    expect(event?.['is_free']).toBe(true);
+    expect(event?.['price_min']).toBeUndefined();
+    expect(event?.['price_max']).toBeUndefined();
   });
 
   it('unlinked external event still creates and links a canonical event after M-1 changes', async () => {
