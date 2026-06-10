@@ -17,7 +17,7 @@ type Row = Record<string, unknown>;
 
 interface QueryResult<T> {
   data: T;
-  error: null;
+  error: unknown;
 }
 
 interface QueryFilter {
@@ -45,9 +45,14 @@ class FakeSupabaseClient {
   readonly calls: QueryCall[] = [];
   readonly rpcCalls: { name: string; args: Row }[] = [];
   readonly rows: Record<string, Row[]>;
+  readonly upsertShouldFailIf?: (table: string, row: Row) => boolean;
 
-  constructor(rows: Record<string, Row[]>) {
+  constructor(
+    rows: Record<string, Row[]>,
+    options?: { upsertShouldFailIf?: (table: string, row: Row) => boolean },
+  ) {
     this.rows = rows;
+    this.upsertShouldFailIf = options?.upsertShouldFailIf;
   }
 
   from(table: string): FakeQueryBuilder {
@@ -137,6 +142,9 @@ class FakeQueryBuilder implements PromiseLike<QueryResult<Row[]>> {
 
   async single(): Promise<QueryResult<Row>> {
     const result = await this.execute();
+    if (result.error) {
+      return { data: {} as Row, error: result.error };
+    }
     const first = result.data[0];
     if (!first) throw new Error(`Expected one row from ${this.table}`);
     return { data: first, error: null };
@@ -166,6 +174,15 @@ class FakeQueryBuilder implements PromiseLike<QueryResult<Row[]>> {
     });
 
     if (this.action === 'upsert') {
+      if (this.client.upsertShouldFailIf) {
+        const incomingRows = Array.isArray(this.values) ? this.values : [this.values];
+        const shouldFail = incomingRows.some(
+          (row): row is Row => !!row && this.client.upsertShouldFailIf!(this.table, row),
+        );
+        if (shouldFail) {
+          return { data: [], error: { message: 'simulated upsert error' } };
+        }
+      }
       return { data: this.executeUpsert(), error: null };
     }
 
@@ -233,6 +250,133 @@ function matchesFilter(row: Row, filter: QueryFilter): boolean {
   if (filter.kind === 'eq') return row[filter.column] === filter.value;
   if (filter.value === null) return row[filter.column] === null || row[filter.column] === undefined;
   return row[filter.column] === filter.value;
+}
+
+function makeThreeEventsClient(): FakeSupabaseClient {
+  return new FakeSupabaseClient(
+    {
+      sources: [
+        {
+          id: TICKETMASTER_SOURCE_ID,
+          slug: 'ticketmaster',
+          source_type: 'api',
+          tier: 1,
+          config: { auto_publish: true, timezone: 'Europe/London' },
+        },
+      ],
+      external_events: [
+        {
+          id: 'ext-1',
+          source_id: TICKETMASTER_SOURCE_ID,
+          external_id: 'event-1',
+          external_url: 'https://www.ticketmaster.co.uk/event/1',
+          title: 'Event One',
+          start_at: '2026-07-15T19:00:00.000Z',
+          venue_id_guess: VENUE_ID,
+          event_type_guess: TICKETMASTER_MUSIC_SEGMENT_ID,
+          raw: {},
+          event_id: null,
+        },
+        {
+          id: 'ext-2',
+          source_id: TICKETMASTER_SOURCE_ID,
+          external_id: 'event-2',
+          external_url: 'https://www.ticketmaster.co.uk/event/2',
+          title: 'Event Two',
+          start_at: '2026-07-15T20:00:00.000Z',
+          venue_id_guess: VENUE_ID,
+          event_type_guess: TICKETMASTER_MUSIC_SEGMENT_ID,
+          raw: {},
+          event_id: null,
+        },
+        {
+          id: 'ext-3',
+          source_id: TICKETMASTER_SOURCE_ID,
+          external_id: 'event-3',
+          external_url: 'https://www.ticketmaster.co.uk/event/3',
+          title: 'Event Three',
+          start_at: '2026-07-15T21:00:00.000Z',
+          venue_id_guess: VENUE_ID,
+          event_type_guess: TICKETMASTER_MUSIC_SEGMENT_ID,
+          raw: {},
+          event_id: null,
+        },
+      ],
+      event_types: [
+        { id: EVENT_TYPE_ID, slug: 'live_music' },
+        { id: 99, slug: 'other' },
+      ],
+      venues: [{ id: VENUE_ID, name: 'Barrowland Ballroom', slug: 'barrowland-ballroom' }],
+      source_type_category_map: [
+        {
+          source_id: TICKETMASTER_SOURCE_ID,
+          source_category: TICKETMASTER_MUSIC_SEGMENT_ID,
+          event_type_id: EVENT_TYPE_ID,
+          event_types: { id: EVENT_TYPE_ID, slug: 'live_music' },
+        },
+      ],
+      events: [],
+    },
+    {
+      upsertShouldFailIf: (table, row) => table === 'events' && row['title'] === 'Event Two',
+    },
+  );
+}
+
+const UPDATED_START_AT = '2026-06-12T20:00:00.000Z';
+const ORIGINAL_START_AT = '2026-06-12T19:00:00.000Z';
+const LINKED_CANONICAL_ID = 'canonical-1';
+
+function makeUpdateClient(): FakeSupabaseClient {
+  return new FakeSupabaseClient({
+    sources: [
+      {
+        id: TICKETMASTER_SOURCE_ID,
+        slug: 'ticketmaster',
+        source_type: 'api',
+        tier: 1,
+        config: { auto_publish: true, timezone: 'Europe/London' },
+      },
+    ],
+    external_events: [
+      {
+        id: 'external-rescheduled',
+        source_id: TICKETMASTER_SOURCE_ID,
+        external_id: 'G5vYZpYd1bujA',
+        external_url: 'https://www.ticketmaster.co.uk/event/G5vYZpYd1bujA',
+        title: 'Mogwai at Barrowland',
+        start_at: UPDATED_START_AT,
+        venue_id_guess: VENUE_ID,
+        event_type_guess: TICKETMASTER_MUSIC_SEGMENT_ID,
+        ticket_url_guess: 'https://www.ticketmaster.co.uk/event/G5vYZpYd1bujA',
+        ticket_url_label_guess: 'Book from Ticketmaster',
+        image_url_guess: 'https://s1.ticketm.net/dam/a/image.jpg',
+        raw: {},
+        event_id: LINKED_CANONICAL_ID,
+      },
+    ],
+    event_types: [
+      { id: EVENT_TYPE_ID, slug: 'live_music' },
+      { id: 99, slug: 'other' },
+    ],
+    venues: [{ id: VENUE_ID, name: 'Barrowland Ballroom', slug: 'barrowland-ballroom' }],
+    source_type_category_map: [
+      {
+        source_id: TICKETMASTER_SOURCE_ID,
+        source_category: TICKETMASTER_MUSIC_SEGMENT_ID,
+        event_type_id: EVENT_TYPE_ID,
+        event_types: { id: EVENT_TYPE_ID, slug: 'live_music' },
+      },
+    ],
+    events: [
+      {
+        id: LINKED_CANONICAL_ID,
+        title: 'Mogwai at Barrowland',
+        start_at: ORIGINAL_START_AT,
+        dedupe_key: deriveDedupeKey(VENUE_ID, ORIGINAL_START_AT, 'Mogwai at Barrowland'),
+      },
+    ],
+  });
 }
 
 function makeClient(input: {
@@ -347,8 +491,10 @@ describe('normaliseExternalEventsForSource', () => {
     expect(externalEventsSelect?.filters).toEqual(
       expect.arrayContaining([
         { kind: 'eq', column: 'source_id', value: TICKETMASTER_SOURCE_ID },
-        { kind: 'is', column: 'event_id', value: null },
       ]),
+    );
+    expect(externalEventsSelect?.filters).not.toContainEqual(
+      { kind: 'is', column: 'event_id', value: null },
     );
 
     const eventUpsert = client.calls.find(
@@ -503,5 +649,97 @@ describe('normaliseExternalEventsForSource', () => {
         }),
       }),
     });
+  });
+
+  it('updates existing canonical event when linked external event changes', async () => {
+    const client = makeUpdateClient();
+    const { normaliseExternalEventsForSource } = await loadApi();
+
+    await normaliseExternalEventsForSource({ client, sourceId: TICKETMASTER_SOURCE_ID });
+
+    // Exactly one canonical event row — no new row was inserted
+    const events = eventRows(client);
+    expect(events).toHaveLength(1);
+
+    // The existing canonical row is updated in place with the new start_at
+    expect(events[0]).toMatchObject({
+      id: LINKED_CANONICAL_ID,
+      start_at: UPDATED_START_AT,
+    });
+
+    // No upsert was performed against events (only an update)
+    const eventUpserts = client.calls.filter(
+      (call) => call.table === 'events' && call.action === 'upsert',
+    );
+    expect(eventUpserts).toHaveLength(0);
+
+    // An update was performed targeting the linked canonical id
+    const eventUpdates = client.calls.filter(
+      (call) => call.table === 'events' && call.action === 'update',
+    );
+    expect(eventUpdates).toHaveLength(1);
+    expect(eventUpdates[0]?.filters).toContainEqual({
+      kind: 'eq',
+      column: 'id',
+      value: LINKED_CANONICAL_ID,
+    });
+
+    // External row remains linked to the same canonical id
+    expect(externalRows(client).find((row) => row['id'] === 'external-rescheduled')).toMatchObject({
+      event_id: LINKED_CANONICAL_ID,
+    });
+  });
+
+  it('continues normalising remaining events when canonical upsert fails', async () => {
+    const client = makeThreeEventsClient();
+    const { normaliseExternalEventsForSource } = await loadApi();
+
+    await expect(
+      normaliseExternalEventsForSource({ client, sourceId: TICKETMASTER_SOURCE_ID }),
+    ).resolves.toBeUndefined();
+
+    // Events 1 and 3 were created and linked; event 2 failed and was skipped
+    const events = eventRows(client);
+    expect(events).toHaveLength(2);
+    expect(externalRows(client).find((r) => r['id'] === 'ext-1')).toMatchObject({
+      event_id: expect.any(String),
+    });
+    expect(externalRows(client).find((r) => r['id'] === 'ext-3')).toMatchObject({
+      event_id: expect.any(String),
+    });
+
+    // Event 2 was skipped with a canonical_upsert_failed reason
+    expect(externalRows(client).find((r) => r['id'] === 'ext-2')).toMatchObject({
+      event_id: null,
+      raw: expect.objectContaining({
+        normalisation_skip: expect.objectContaining({
+          reason: 'canonical_upsert_failed',
+        }),
+      }),
+    });
+  });
+
+  it('unlinked external event still creates and links a canonical event after M-1 changes', async () => {
+    const client = makeClient({ autoPublish: true });
+    // Use only the clearly-unlinked row for this test
+    client.rows['external_events'] = (client.rows['external_events'] ?? []).filter(
+      (row) => row['id'] === 'external-1',
+    );
+    const { normaliseExternalEventsForSource } = await loadApi();
+
+    await normaliseExternalEventsForSource({ client, sourceId: TICKETMASTER_SOURCE_ID });
+
+    // A new canonical event is created
+    expect(eventRows(client)).toHaveLength(1);
+    // The external row is linked back to the new canonical event
+    expect(externalRows(client).find((row) => row['id'] === 'external-1')).toMatchObject({
+      event_id: expect.any(String),
+    });
+    // The canonical event is created via upsert (dedupe_key conflict target)
+    const eventUpserts = client.calls.filter(
+      (call) => call.table === 'events' && call.action === 'upsert',
+    );
+    expect(eventUpserts).toHaveLength(1);
+    expect(eventUpserts[0]?.options).toMatchObject({ onConflict: 'dedupe_key' });
   });
 });

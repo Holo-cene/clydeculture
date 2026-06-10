@@ -48,6 +48,7 @@ interface ExternalEventRow extends Row {
   id: string;
   source_id: string;
   external_id: string;
+  event_id?: string | null;
   external_url?: string | null;
   title?: string | null;
   start_at?: string | null;
@@ -71,7 +72,7 @@ export async function normaliseExternalEventsForSource(
   input: NormaliseExternalEventsForSourceInput,
 ): Promise<void> {
   const source = await getSource(input.client, input.sourceId);
-  const externalEvents = await getUnlinkedExternalEvents(input.client, input.sourceId);
+  const externalEvents = await getAllExternalEventsForSource(input.client, input.sourceId);
 
   for (const externalEvent of externalEvents) {
     const mappedType = await resolveEventType(input.client, source, externalEvent.event_type_guess);
@@ -131,21 +132,37 @@ export async function normaliseExternalEventsForSource(
       dedupe_key: deriveDedupeKey(venue.id, startAt, externalEvent.title ?? title),
     });
 
-    const { data: canonicalEvent } = await input.client
-      .from('events')
-      .upsert(eventRow, { onConflict: 'dedupe_key' })
-      .select('id')
-      .single();
+    if (externalEvent.event_id) {
+      const { error: updateError } = await input.client
+        .from('events')
+        .update(eventRow)
+        .eq('id', externalEvent.event_id);
 
-    const eventId = canonicalEvent['id'];
-    if (typeof eventId !== 'string') {
-      continue;
+      if (updateError) {
+        await markNormalisationSkip(input.client, externalEvent, 'update_failed');
+      }
+    } else {
+      const { data: canonicalEvent, error: upsertError } = await input.client
+        .from('events')
+        .upsert(eventRow, { onConflict: 'dedupe_key' })
+        .select('id')
+        .single();
+
+      if (upsertError || !canonicalEvent) {
+        await markNormalisationSkip(input.client, externalEvent, 'canonical_upsert_failed');
+        continue;
+      }
+
+      const eventId = canonicalEvent['id'];
+      if (typeof eventId !== 'string') {
+        continue;
+      }
+
+      await input.client
+        .from('external_events')
+        .update({ event_id: eventId })
+        .eq('id', externalEvent.id);
     }
-
-    await input.client
-      .from('external_events')
-      .update({ event_id: eventId })
-      .eq('id', externalEvent.id);
   }
 }
 
@@ -161,21 +178,21 @@ async function getSource(client: NormaliseDbClient, sourceId: string): Promise<S
   };
 }
 
-async function getUnlinkedExternalEvents(
+async function getAllExternalEventsForSource(
   client: NormaliseDbClient,
   sourceId: string,
 ): Promise<ExternalEventRow[]> {
   const { data } = await client
     .from('external_events')
     .select('*')
-    .eq('source_id', sourceId)
-    .is('event_id', null);
+    .eq('source_id', sourceId);
 
   return data.map((row) => ({
     ...row,
     id: stringValue(row['id']),
     source_id: stringValue(row['source_id']),
     external_id: stringValue(row['external_id']),
+    event_id: nullableString(row['event_id']),
     external_url: nullableString(row['external_url']),
     title: nullableString(row['title']),
     start_at: nullableString(row['start_at']),

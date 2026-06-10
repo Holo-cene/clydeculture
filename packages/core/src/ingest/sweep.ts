@@ -49,7 +49,12 @@ export async function runSweepIntegration(
   await input.persistIngestRuns(result.runs);
 
   for (const sourceId of sourcesToNormalise) {
-    await input.normaliseExternalEventsForSource(sourceId);
+    try {
+      await input.normaliseExternalEventsForSource(sourceId);
+    } catch {
+      // Normalisation failure for one source must not abort remaining sources
+      // or prevent alert persistence from running.
+    }
   }
 
   await input.persistIngestAlerts(result.alerts);

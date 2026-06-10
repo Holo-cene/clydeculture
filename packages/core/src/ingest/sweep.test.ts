@@ -246,4 +246,73 @@ describe('runSweepIntegration', () => {
       }),
     ]);
   });
+
+  it('continues normalising later sources when one source normalisation throws', async () => {
+    const sourceAItem = {
+      externalId: 'a-1',
+      externalUrl: 'https://example.com/a-1',
+      title: 'Source A Event',
+      startAt: '2026-07-15T19:00:00.000Z',
+      raw: { id: 'a-1' },
+    };
+    const sourceBItem = {
+      externalId: 'b-1',
+      externalUrl: 'https://example.com/b-1',
+      title: 'Source B Event',
+      startAt: '2026-07-16T19:00:00.000Z',
+      raw: { id: 'b-1' },
+    };
+
+    const normaliseExternalEventsForSource = vi.fn(async (sourceId: string) => {
+      if (sourceId === brokenSourceId) {
+        throw new Error('normalisation failed for source A');
+      }
+    });
+    const persistIngestAlerts = vi.fn(async () => undefined);
+    const persistIngestRuns = vi.fn(async () => undefined);
+    const upsertExternalEvents = vi.fn(async () => ({ upserted_count: 1 }));
+    const { runSweepIntegration } = await loadApi();
+
+    await expect(
+      runSweepIntegration({
+        connectors: {
+          'broken-api': connector('broken-api', async () => ({
+            fetchedCount: 1,
+            parsedCount: 1,
+            items: [sourceAItem],
+            errors: [],
+          })),
+          'healthy-api': connector('healthy-api', async () => ({
+            fetchedCount: 1,
+            parsedCount: 1,
+            items: [sourceBItem],
+            errors: [],
+          })),
+        },
+        loadSources: async () => [
+          source({ id: brokenSourceId, slug: 'broken-api', enabled: true }),
+          source({ id: healthySourceId, slug: 'healthy-api', enabled: true }),
+        ],
+        loadPreviousRunsBySourceId: async () => ({}),
+        upsertExternalEvents,
+        persistIngestRuns,
+        persistIngestAlerts,
+        normaliseExternalEventsForSource,
+        clock: fixedClock([
+          '2026-06-08T10:00:00.000Z',
+          '2026-06-08T10:00:01.000Z',
+          '2026-06-08T10:00:02.000Z',
+          '2026-06-08T10:00:03.000Z',
+        ]),
+      }),
+    ).resolves.toBeDefined();
+
+    // Both sources were attempted for normalisation
+    expect(normaliseExternalEventsForSource).toHaveBeenCalledTimes(2);
+    expect(normaliseExternalEventsForSource).toHaveBeenCalledWith(brokenSourceId);
+    expect(normaliseExternalEventsForSource).toHaveBeenCalledWith(healthySourceId);
+
+    // Alert persistence ran after the normalisation loop despite the failure
+    expect(persistIngestAlerts).toHaveBeenCalledOnce();
+  });
 });
