@@ -66,6 +66,7 @@ interface ExternalEventRow extends Row {
   image_url_guess?: string | null;
   venue_name?: string | null;
   time_tba_guess?: boolean | null;
+  is_all_day_guess?: boolean | null;
   raw?: Row;
 }
 
@@ -102,6 +103,7 @@ export async function normaliseExternalEventsForSource(
     }
 
     const timeTba = externalEvent.time_tba_guess === true;
+    const isAllDay = externalEvent.is_all_day_guess === true;
 
     const confidence = calculateConfidence({
       sourceTier: source.tier,
@@ -126,6 +128,7 @@ export async function normaliseExternalEventsForSource(
       title,
       startAt,
       timeTba,
+      isAllDay,
       venue,
       mappedType,
       confidence,
@@ -210,6 +213,7 @@ async function getAllExternalEventsForSource(
     ticket_url_label_guess: nullableString(row['ticket_url_label_guess']),
     image_url_guess: nullableString(row['image_url_guess']),
     time_tba_guess: nullableBoolean(row['time_tba_guess']),
+    is_all_day_guess: nullableBoolean(row['is_all_day_guess']),
     raw: isRecord(row['raw']) ? row['raw'] : {},
   }));
 }
@@ -321,13 +325,14 @@ function buildEventRow(input: {
   title: string;
   startAt: string;
   timeTba: boolean;
+  isAllDay: boolean;
   venue: { id: string; needsReview: boolean };
   mappedType: { id: number; slug: string; typeSource: TypeSource; needsReview: boolean };
   confidence: ReturnType<typeof calculateConfidence>;
   needsReview: boolean;
   visibility: string;
 }): Row {
-  const { externalEvent, source, title, startAt, timeTba, venue, mappedType, confidence, needsReview, visibility } = input;
+  const { externalEvent, source, title, startAt, timeTba, isAllDay, venue, mappedType, confidence, needsReview, visibility } = input;
 
   const isFree = externalEvent.is_free_guess === true ? true : externalEvent.is_free_guess === false ? false : undefined;
   const pricesAllowed = isFree !== true;
@@ -346,6 +351,7 @@ function buildEventRow(input: {
     end_at: externalEvent.end_at ?? undefined,
     doors_at: externalEvent.doors_at ?? undefined,
     time_tba: timeTba,
+    is_all_day: isAllDay,
     is_free: isFree,
     price_min: pricesAllowed && externalEvent.price_min_guess != null ? externalEvent.price_min_guess : undefined,
     price_max: pricesAllowed && externalEvent.price_max_guess != null ? externalEvent.price_max_guess : undefined,

@@ -22,7 +22,7 @@ const TEST_API_KEY = 'test-api-key-12345';
 // Fixed "today" injected via startDate config so window dates are deterministic.
 const START_DATE = new Date('2026-07-01T00:00:00Z');
 
-// All 18 RawEvent keys — used to verify link-first compliance (no extra fields).
+// All 19 RawEvent keys — used to verify link-first compliance (no extra fields).
 const RAW_EVENT_KEYS: ReadonlyArray<keyof RawEvent> = [
   'externalId',
   'externalUrl',
@@ -41,6 +41,7 @@ const RAW_EVENT_KEYS: ReadonlyArray<keyof RawEvent> = [
   'imageUrlGuess',
   'availabilityGuess',
   'timeTba',
+  'isAllDay',
   'raw',
 ];
 

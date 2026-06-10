@@ -26,6 +26,8 @@ export interface RawEvent {
   availabilityGuess?: string;
   /** True when the source has a date but no reliable time (midnight placeholder in startAt). */
   timeTba?: boolean;
+  /** True when the source explicitly marks this event as all-day (no specific start/end time). */
+  isAllDay?: boolean;
   /** Full upstream payload, kept for debugging and re-parsing. */
   raw: unknown;
 }

@@ -459,6 +459,101 @@ function makeClient(input: {
   });
 }
 
+const ALL_DAY_START_AT = '2026-08-10T23:00:00.000Z';
+
+function makeAllDayClient(): FakeSupabaseClient {
+  return new FakeSupabaseClient({
+    sources: [
+      {
+        id: TICKETMASTER_SOURCE_ID,
+        slug: 'ticketmaster',
+        source_type: 'api',
+        tier: 1,
+        config: { auto_publish: true, timezone: 'Europe/London' },
+      },
+    ],
+    external_events: [
+      {
+        id: 'ext-allday',
+        source_id: TICKETMASTER_SOURCE_ID,
+        external_id: 'allday-event-001',
+        external_url: 'https://example.com/event/allday-event-001',
+        title: 'All Day Market at Barrowland',
+        start_at: ALL_DAY_START_AT,
+        is_all_day_guess: true,
+        venue_id_guess: VENUE_ID,
+        event_type_guess: TICKETMASTER_MUSIC_SEGMENT_ID,
+        raw: {},
+        event_id: null,
+      },
+    ],
+    event_types: [
+      { id: EVENT_TYPE_ID, slug: 'live_music' },
+      { id: 99, slug: 'other' },
+    ],
+    venues: [{ id: VENUE_ID, name: 'Barrowland Ballroom', slug: 'barrowland-ballroom' }],
+    source_type_category_map: [
+      {
+        source_id: TICKETMASTER_SOURCE_ID,
+        source_category: TICKETMASTER_MUSIC_SEGMENT_ID,
+        event_type_id: EVENT_TYPE_ID,
+        event_types: { id: EVENT_TYPE_ID, slug: 'live_music' },
+      },
+    ],
+    events: [],
+  });
+}
+
+function makeAllDayUpdateClient(): FakeSupabaseClient {
+  return new FakeSupabaseClient({
+    sources: [
+      {
+        id: TICKETMASTER_SOURCE_ID,
+        slug: 'ticketmaster',
+        source_type: 'api',
+        tier: 1,
+        config: { auto_publish: true, timezone: 'Europe/London' },
+      },
+    ],
+    external_events: [
+      {
+        id: 'ext-allday-linked',
+        source_id: TICKETMASTER_SOURCE_ID,
+        external_id: 'allday-linked-001',
+        external_url: 'https://example.com/event/allday-linked-001',
+        title: 'All Day Market Linked',
+        start_at: ALL_DAY_START_AT,
+        is_all_day_guess: true,
+        venue_id_guess: VENUE_ID,
+        event_type_guess: TICKETMASTER_MUSIC_SEGMENT_ID,
+        raw: {},
+        event_id: LINKED_CANONICAL_ID,
+      },
+    ],
+    event_types: [
+      { id: EVENT_TYPE_ID, slug: 'live_music' },
+      { id: 99, slug: 'other' },
+    ],
+    venues: [{ id: VENUE_ID, name: 'Barrowland Ballroom', slug: 'barrowland-ballroom' }],
+    source_type_category_map: [
+      {
+        source_id: TICKETMASTER_SOURCE_ID,
+        source_category: TICKETMASTER_MUSIC_SEGMENT_ID,
+        event_type_id: EVENT_TYPE_ID,
+        event_types: { id: EVENT_TYPE_ID, slug: 'live_music' },
+      },
+    ],
+    events: [
+      {
+        id: LINKED_CANONICAL_ID,
+        title: 'All Day Market Linked',
+        start_at: ALL_DAY_START_AT,
+        dedupe_key: deriveDedupeKey(VENUE_ID, ALL_DAY_START_AT, 'All Day Market Linked'),
+      },
+    ],
+  });
+}
+
 // TBA placeholder: Europe/London midnight for 2026-07-10 → 2026-07-09T23:00:00.000Z
 const TBA_PLACEHOLDER_START_AT = '2026-07-09T23:00:00.000Z';
 
@@ -949,6 +1044,42 @@ describe('normaliseExternalEventsForSource', () => {
     const event = eventRows(client)[0];
     expect(event?.['needs_review']).toBe(true);
     expect((event?.['confidence_inputs'] as Record<string, unknown>)?.['has_start_at']).toBe(false);
+  });
+
+  it('writes is_all_day true to canonical event when external event has is_all_day_guess = true (unlinked create path)', async () => {
+    const client = makeAllDayClient();
+    const { normaliseExternalEventsForSource } = await loadApi();
+
+    await normaliseExternalEventsForSource({ client, sourceId: TICKETMASTER_SOURCE_ID });
+
+    const event = eventRows(client)[0];
+    expect(event).toBeDefined();
+    expect(event?.['is_all_day']).toBe(true);
+    expect(event?.['start_at']).toBe(ALL_DAY_START_AT);
+  });
+
+  it('writes is_all_day true to canonical event when external event has is_all_day_guess = true (linked update path)', async () => {
+    const client = makeAllDayUpdateClient();
+    const { normaliseExternalEventsForSource } = await loadApi();
+
+    await normaliseExternalEventsForSource({ client, sourceId: TICKETMASTER_SOURCE_ID });
+
+    const event = eventRows(client)[0];
+    expect(event).toBeDefined();
+    expect(event?.['is_all_day']).toBe(true);
+  });
+
+  it('writes is_all_day false to canonical event when is_all_day_guess is absent (default)', async () => {
+    const client = makeClient({ autoPublish: true });
+    client.rows['external_events'] = (client.rows['external_events'] ?? []).filter(
+      (row) => row['id'] === 'external-1',
+    );
+    const { normaliseExternalEventsForSource } = await loadApi();
+
+    await normaliseExternalEventsForSource({ client, sourceId: TICKETMASTER_SOURCE_ID });
+
+    const event = eventRows(client)[0];
+    expect(event?.['is_all_day']).toBe(false);
   });
 
   it('unlinked external event still creates and links a canonical event after M-1 changes', async () => {

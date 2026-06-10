@@ -12,7 +12,7 @@ const fixture = JSON.parse(
   readFileSync(join(__dirname, 'fixtures/response.json'), 'utf-8')
 ) as { _embedded: { events: unknown[] } };
 
-// All 18 fields from the RawEvent interface — used to verify no extraneous keys
+// All 19 fields from the RawEvent interface — used to verify no extraneous keys
 const RAW_EVENT_KEYS: ReadonlyArray<keyof RawEvent> = [
   'externalId',
   'externalUrl',
@@ -31,6 +31,7 @@ const RAW_EVENT_KEYS: ReadonlyArray<keyof RawEvent> = [
   'imageUrlGuess',
   'availabilityGuess',
   'timeTba',
+  'isAllDay',
   'raw',
 ];
 

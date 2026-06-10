@@ -255,6 +255,26 @@ describe('upsertExternalEvents', () => {
     });
   });
 
+  describe('isAllDay — all-day flag', () => {
+    it('maps isAllDay: true to is_all_day_guess: true', async () => {
+      const { client, mockUpsert } = makeClient();
+      await upsertExternalEvents(client, SOURCE_ID, [{ ...MOGWAI, isAllDay: true }]);
+      expect(capturedRows(mockUpsert)[0]).toMatchObject({ is_all_day_guess: true });
+    });
+
+    it('maps isAllDay: false to is_all_day_guess: false', async () => {
+      const { client, mockUpsert } = makeClient();
+      await upsertExternalEvents(client, SOURCE_ID, [{ ...MOGWAI, isAllDay: false }]);
+      expect(capturedRows(mockUpsert)[0]).toMatchObject({ is_all_day_guess: false });
+    });
+
+    it('omits is_all_day_guess from the row when isAllDay is absent (DB default handles false)', async () => {
+      const { client, mockUpsert } = makeClient();
+      await upsertExternalEvents(client, SOURCE_ID, [MOGWAI]);
+      expect(capturedRows(mockUpsert)[0]).not.toHaveProperty('is_all_day_guess');
+    });
+  });
+
   describe('timeTba — TBA time flag', () => {
     it('maps timeTba: true to time_tba_guess: true', async () => {
       // timeTba mirrors RawEvent.timeTba from @clydeculture/connectors so direct pass-through works
