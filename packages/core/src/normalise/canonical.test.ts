@@ -293,4 +293,29 @@ describe('buildCanonicalEventDraft', () => {
     expect(Object.values(canonical)).not.toContain(externalEvent.descriptionGuess);
     expect(Object.values(canonical)).not.toContain(externalEvent.raw);
   });
+
+  it('derives the dedupe key from the stored canonical title', () => {
+    const rawTitle = 'A'.repeat(501);
+    const storedTitle = 'A'.repeat(500);
+    const externalEvent: ExternalEventDraft = {
+      sourceId,
+      sourceSlug: 'ticketmaster',
+      sourceTier: 1,
+      externalId: 'long-title-event',
+      externalUrl: 'https://www.ticketmaster.co.uk/event/long-title-event',
+      title: rawTitle,
+      startAt: '2026-07-15T20:45:00.000Z',
+      venueId,
+      eventTypeGuess: 'kzfzniwnsyzfz7v7nj',
+      raw: {},
+    };
+
+    const canonical = normaliseApi.buildCanonicalEventDraft({
+      externalEvent,
+      sourceCategoryMappings: ticketmasterMappings,
+    });
+
+    expect(canonical.title).toBe(storedTitle);
+    expect(canonical.dedupeKey).toBe(deriveDedupeKey(venueId, externalEvent.startAt, storedTitle));
+  });
 });

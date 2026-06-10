@@ -280,7 +280,7 @@ export function buildCanonicalEventDraft(input: {
     dedupeKey: deriveDedupeKey(
       input.externalEvent.venueId,
       input.externalEvent.startAt,
-      input.externalEvent.title,
+      title,
     ),
   };
 

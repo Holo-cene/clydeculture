@@ -364,7 +364,7 @@ function buildEventRow(input: {
     confidence_inputs: confidence.inputs,
     needs_review: needsReview,
     visibility,
-    dedupe_key: deriveDedupeKey(venue.id, startAt, externalEvent.title ?? title),
+    dedupe_key: deriveDedupeKey(venue.id, startAt, title),
   });
 }
 

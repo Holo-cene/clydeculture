@@ -1082,6 +1082,35 @@ describe('normaliseExternalEventsForSource', () => {
     expect(event?.['is_all_day']).toBe(false);
   });
 
+  it('derives dedupe key from stored canonical title, not raw title', async () => {
+    // Arrange: raw title is 501 chars; stored canonical title is trimmed to 500.
+    // Bug: current code passes externalEvent.title (raw) to deriveDedupeKey, so the
+    // hash input diverges from events.title when title.length > 500.
+    const longRawTitle = 'A'.repeat(501);
+    const storedTitle = 'A'.repeat(500);
+
+    const client = makeClient({ autoPublish: true });
+    const ext = (client.rows['external_events'] ?? []).find((r) => r['id'] === 'external-1');
+    if (!ext) throw new Error('Expected fixture external event');
+    ext['title'] = longRawTitle;
+    client.rows['external_events'] = (client.rows['external_events'] ?? []).filter(
+      (r) => r['id'] === 'external-1',
+    );
+
+    const { normaliseExternalEventsForSource } = await loadApi();
+    await normaliseExternalEventsForSource({ client, sourceId: TICKETMASTER_SOURCE_ID });
+
+    const event = eventRows(client)[0];
+    expect(event?.['title']).toBe(storedTitle);
+
+    const keyFromStoredTitle = deriveDedupeKey(VENUE_ID, EVENT_START_AT, storedTitle);
+    const keyFromRawTitle = deriveDedupeKey(VENUE_ID, EVENT_START_AT, longRawTitle);
+    // Sanity: the two keys must differ (otherwise this test proves nothing)
+    expect(keyFromStoredTitle).not.toBe(keyFromRawTitle);
+    // The stored dedupe key must match the stored canonical title, not the raw title
+    expect(event?.['dedupe_key']).toBe(keyFromStoredTitle);
+  });
+
   it('unlinked external event still creates and links a canonical event after M-1 changes', async () => {
     const client = makeClient({ autoPublish: true });
     // Use only the clearly-unlinked row for this test

@@ -1,7 +1,11 @@
 import { createHash } from 'node:crypto';
 import { normaliseTitle } from '../normalise/normalise.js';
 
+const OFFSET_QUALIFIED_DATETIME = /(?:Z|[+-]\d{2}:\d{2})$/;
+
 export function deriveDedupeKey(venueId: string | null, startAt: string, title: string): string {
+  assertOffsetQualifiedIsoDateTime(startAt);
+
   const venueComponent = venueId ?? 'no-venue';
 
   const date = new Date(startAt);
@@ -13,4 +17,10 @@ export function deriveDedupeKey(venueId: string | null, startAt: string, title: 
 
   const raw = `${venueComponent}|${hourBucket}|${normaliseTitle(title)}`;
   return createHash('sha256').update(raw).digest('hex');
+}
+
+function assertOffsetQualifiedIsoDateTime(startAt: string): void {
+  if (!OFFSET_QUALIFIED_DATETIME.test(startAt)) {
+    throw new Error('startAt must include a timezone offset for dedupe_key derivation');
+  }
 }
