@@ -1,9 +1,19 @@
 import type { RawEvent } from '../../connector.js';
 import { isValidHttpsUrl } from '../../validate.js';
+import { mapDataThistleTags, type DataThistleCategoryMapping } from './categories.js';
 
 type ParseResult = {
   items: RawEvent[];
   errors: string[];
+};
+
+type StagingSourcePolicy = {
+  sourceSlug: string;
+  allowStagingCollection: boolean;
+};
+
+type PolicyAwareParseResult<TSourcePolicy extends StagingSourcePolicy> = ParseResult & {
+  sourcePolicy: TSourcePolicy;
 };
 
 const SOURCE = 'datathistle';
@@ -64,26 +74,14 @@ function tagsFrom(...values: unknown[]): string[] {
   return [...tags];
 }
 
-function mapTagsToEventType(tags: string[]): string | undefined {
-  const tagSet = new Set(tags.map(tag => tag.toLowerCase()));
-  const has = (...candidates: string[]) => candidates.some(candidate => tagSet.has(candidate));
-
-  if (has('music', 'gigs', 'concerts', 'classical', 'jazz', 'folk')) return 'live_music';
-  if (has('club', 'clubs', 'clubbing', 'dj', 'dance music', 'nightlife')) return 'club_night';
-  if (has('comedy', 'stand-up', 'standup')) return 'comedy';
-  if (has('theatre', 'drama', 'musicals', 'performance')) return 'theatre';
-  if (has('art', 'visual art', 'exhibitions', 'galleries', 'museums')) return 'arts_exhibition';
-  if (has('workshop', 'workshops', 'classes', 'courses', 'learning')) return 'workshop';
-  if (has('talk', 'talks', 'lectures', 'books', 'literature', 'spoken word')) {
-    return 'talk_lecture';
-  }
-  if (has('film', 'cinema', 'screenings', 'event cinema')) return 'film';
-  if (has('family', 'children', 'kids')) return 'family';
-  if (has('sport', 'running', 'cycling')) return 'sport';
-  if (has('community', 'local groups', 'social events')) return 'community_meetup';
-  if (has('food', 'drink', 'markets', 'tasting', 'beer', 'wine')) return 'food_drink';
-
-  return undefined;
+/** Staging-friendly mapping evidence stored in raw — original tags stay in tagsGuess. */
+function categoryMappingEvidence(
+  mapping: DataThistleCategoryMapping
+): Record<string, unknown> {
+  const evidence: Record<string, unknown> = { mappingSource: mapping.mappingSource };
+  if (mapping.eventTypeSlug !== undefined) evidence['eventTypeSlug'] = mapping.eventTypeSlug;
+  if (mapping.matchedTag !== undefined) evidence['matchedTag'] = mapping.matchedTag;
+  return evidence;
 }
 
 function bookingUrlFrom(links: unknown): string | undefined {
@@ -255,7 +253,8 @@ export function parseDataThistleEvents(payload: unknown): ParseResult {
         const bookingUrl = bookingUrlFrom(performance['links']);
         const price = priceFrom(performance['tickets']);
         const tags = tagsFrom(eventTags, schedule['tags']);
-        const eventType = mapTagsToEventType(tags);
+        const categoryMapping = mapDataThistleTags(tags);
+        const eventType = categoryMapping.eventTypeSlug;
         const externalId = `${SOURCE}:${eventId}:${placeId}:${performanceTs}`;
 
         const item: RawEvent = {
@@ -264,7 +263,10 @@ export function parseDataThistleEvents(payload: unknown): ParseResult {
           title: name.slice(0, 500),
           startAt,
           availabilityGuess: status,
-          raw: rawContext(event, schedule, performance, placeId, placeName, performanceTs, price.currency),
+          raw: {
+            ...rawContext(event, schedule, performance, placeId, placeName, performanceTs, price.currency),
+            categoryMapping: categoryMappingEvidence(categoryMapping),
+          },
         };
 
         const endAt = endFromDuration(startAt, performance['duration']);
@@ -284,4 +286,22 @@ export function parseDataThistleEvents(payload: unknown): ParseResult {
   }
 
   return { items, errors };
+}
+
+export function parseDataThistleEventsForStaging<TSourcePolicy extends StagingSourcePolicy>(
+  payload: unknown,
+  sourcePolicy: TSourcePolicy
+): PolicyAwareParseResult<TSourcePolicy> {
+  if (sourcePolicy.allowStagingCollection !== true) {
+    return {
+      items: [],
+      errors: [`Data Thistle staging collection disabled by source policy ${sourcePolicy.sourceSlug}`],
+      sourcePolicy,
+    };
+  }
+
+  return {
+    ...parseDataThistleEvents(payload),
+    sourcePolicy,
+  };
 }

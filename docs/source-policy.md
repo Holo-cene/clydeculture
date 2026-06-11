@@ -96,6 +96,21 @@ See [ADR 0004](decisions/0004-ticketmaster-image-usage.md) for image handling.
 | Permitted data | Title, start time, venue name, external URL, ticket URL, price range — subject to confirmation in their API terms once approval is received. |
 | Prohibited | Do not enable, build, or test the Skiddle connector until written approval is in hand and reviewed. |
 
+#### Data Thistle
+
+**Status:** Staging-only — internal ingestion permitted; **public display licence-gated.**
+See `packages/connectors/src/api/datathistle/SPEC.md` and the policy module
+`packages/shared/src/sourcePolicy.ts` (`allowStagingCollection: true`,
+`productionEnabled: false`, `allowPublicDisplay: false`).
+
+| Item | Policy |
+|---|---|
+| Permitted data (staging) | `externalId` (composite `event_id` + `place_id` + performance timestamp), `externalUrl` (HTTPS website or typed booking link), `title`, `startAt`, `endAt` (structured duration only), `venueName`, event-attached `place_id` (venue matching only), `eventTypeGuess`/`tagsGuess` (source tag text preserved), `priceMinGuess`/`priceMaxGuess`/`isFreeGuess` (structured GBP only), `ticketUrlGuess`, `availabilityGuess`, minimal sync identifiers in `raw`. |
+| Prohibited | Descriptions and long copy. Images, image URLs, image metadata, hotlinking, caching, proxying. Rich place data and reusable venue enrichment. Ticket description text. **Any public display while `productionEnabled = false`.** |
+| Attribution required | Data Thistle attribution (logo + link + update-route links) is required by their API terms before any public display; exact wording/asset unresolved — one of the production blockers in SPEC.md §14.2. |
+| Auth | `Authorization: Bearer` JWT from `DATA_THISTLE_ACCESS_TOKEN`; optional refresh via `DATA_THISTLE_REFRESH_TOKEN`/`DATA_THISTLE_AUTH_BASE_URL`. Secrets in env/secret stores only. |
+| ToS reference | [api.datathistle.com/terms](https://api.datathistle.com/terms) and [datathistle.com/terms](https://www.datathistle.com/terms/) — cache/refresh limits, Place Data restrictions, and attribution requirements reviewed in SPEC.md §10–§11. |
+
 ---
 
 ### RSS and iCal Sources (Tier 2)
@@ -303,6 +318,7 @@ resolved.
 |---|---|---|---|---|---|---|
 | Ticketmaster | API | 1 | Title, times, venue, URL, price, availability, image CDN URL | Binary image caching, descriptions, display without attribution | Built; disabled pending live key | "Buy on Ticketmaster" label adjacent to listings and images |
 | Skiddle | API | 1 | TBD (pending approval) | All until written approval received | **Blocked: API-03** | TBD |
+| Data Thistle | API | 1 | Title, times, venue name, event-attached place id, URL, booking link, GBP price summary, tags/categories (staging only) | Descriptions, images/hotlinking, rich place data, ticket copy, **all public display** | **Staging-only: production licence-gated** (SPEC.md §14.2) | Logo + link + update routes required before display; wording TBD |
 | Eventbrite (Apify) | Apify | 2 | TBD (pending compliance review) | Full descriptions, binary images, unapproved fields | **Gated: COMPLIANCE.md required** | TBD |
 | DICE.fm | Apify | 2–3 | TBD (pending CC-NEW-2) | All until CC-NEW-2 complete | **Deferred: CC-NEW-2** | TBD |
 | SWG3 (HTML) | HTML | 3 | Title, times, URL, venue, price, image URL | Full descriptions, disallowed paths, Cloudflare bypass | Pre-flight required | None specified |

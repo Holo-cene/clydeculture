@@ -7,8 +7,8 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit",
-    "build": "tsc",
+    "typecheck": "tsc --noEmit --rootDir ..",
+    "build": "tsc --rootDir ..",
     "test": "vitest run",
     "lint": "eslint src",
     "format": "prettier --write src"

@@ -1,9 +1,14 @@
 import { task } from '@trigger.dev/sdk/v3';
 import { runSweepIntegration } from '@clydeculture/core';
 import { normaliseExternalEventsForSource } from '@clydeculture/ingestion';
-import { createTicketmasterConnector } from '@clydeculture/connectors';
+import {
+  createDataThistleConnector,
+  createTicketmasterConnector,
+  dataThistleConfigFromEnv,
+} from '@clydeculture/connectors';
 import { createClient, upsertExternalEvents } from '@clydeculture/shared';
 import type {
+  ConnectorLike,
   HistoricalIngestRun,
   IngestAlertDraft,
   IngestRunDraft,
@@ -17,12 +22,22 @@ export const sweepTask = task({
   run: async () => {
     const supabase = createClient(requiredEnv('SUPABASE_URL'), requiredEnv('SUPABASE_SERVICE_ROLE_KEY'));
 
+    const connectors: Record<string, ConnectorLike> = {
+      ticketmaster: createTicketmasterConnector({
+        apiKey: requiredEnv('TICKETMASTER_API_KEY'),
+      }),
+    };
+
+    // Staging-only source: runs only when credentials are configured AND the
+    // datathistle sources row is enabled. Public display stays gated by
+    // sourcePolicy.ts regardless (productionEnabled = false).
+    const dataThistleConfig = dataThistleConfigFromEnv(process.env);
+    if (dataThistleConfig) {
+      connectors['datathistle'] = createDataThistleConnector(dataThistleConfig);
+    }
+
     return runSweepIntegration({
-      connectors: {
-        ticketmaster: createTicketmasterConnector({
-          apiKey: requiredEnv('TICKETMASTER_API_KEY'),
-        }),
-      },
+      connectors,
       loadSources: async () => loadSources(supabase),
       loadPreviousRunsBySourceId: async (sourceIds) => loadPreviousRunsBySourceId(supabase, sourceIds),
       upsertExternalEvents: async (payload) => upsertExternalEventsForSweep(supabase, payload),

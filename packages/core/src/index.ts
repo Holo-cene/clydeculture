@@ -22,6 +22,7 @@ export {
 export { runSweepIntegration } from './ingest/sweep.js';
 export type { SweepIntegrationInput } from './ingest/sweep.js';
 export type {
+  ConnectorLike,
   HistoricalIngestRun,
   IngestAlertDraft,
   IngestRunDraft,

@@ -2,8 +2,16 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import {
+  DATA_THISTLE_SOURCE_POLICY,
+  canDisplaySourcePublicly,
+  canRetainRawPayload,
+  canUseSourceForStagingCollection,
+  type SourcePolicy,
+} from '@clydeculture/shared';
 import type { RawEvent } from '../../connector.js';
 import { validateIngestResult } from '../../validate.js';
+import * as dataThistleParser from './parse.js';
 import { parseDataThistleEvents } from './parse.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -30,6 +38,17 @@ const RAW_EVENT_KEYS: ReadonlyArray<keyof RawEvent> = [
   'isAllDay',
   'raw',
 ];
+
+type PolicyAwareParseResult = {
+  items: RawEvent[];
+  errors: string[];
+  sourcePolicy: SourcePolicy;
+};
+
+type PolicyAwareParser = (
+  payload: unknown,
+  sourcePolicy: SourcePolicy
+) => PolicyAwareParseResult;
 
 function readFixture(name: string): unknown[] {
   return JSON.parse(
@@ -395,6 +414,100 @@ describe('parseDataThistleEvents', () => {
     expect(JSON.stringify(raw)).not.toContain('images');
   });
 
+  it('exposes a policy-aware staging parser that keeps Data Thistle output compliant', () => {
+    expect(canUseSourceForStagingCollection(DATA_THISTLE_SOURCE_POLICY)).toBe(true);
+    expect(canDisplaySourcePublicly(DATA_THISTLE_SOURCE_POLICY)).toBe(false);
+    expect(canRetainRawPayload(DATA_THISTLE_SOURCE_POLICY)).toBe(false);
+
+    const policyAwareParser = (dataThistleParser as Record<string, unknown>)[
+      'parseDataThistleEventsForStaging'
+    ];
+
+    expect(policyAwareParser).toBeTypeOf('function');
+
+    const parser = policyAwareParser as PolicyAwareParser;
+    const payload = [
+      makeEvent({
+        description: [{ type: 'third-party', value: 'Do not retain this description' }],
+        descriptions: [{ type: 'third-party', value: 'Do not retain this description' }],
+        images: [{ url: 'https://example.test/images/not-for-storage.jpg', credit: 'Nope' }],
+        tags: ['Music'],
+        schedules: [
+          {
+            place_id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+            place: {
+              place_id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+              name: 'Example Inline Venue',
+              address: '1 Example Street',
+              postcode: 'G1 1AA',
+              latitude: 55.86,
+              longitude: -4.25,
+              images: [{ url: 'https://example.test/places/not-for-storage.jpg' }],
+            },
+            tags: ['fixture-only-tag'],
+            performances: [
+              {
+                ts: '2026-07-20T20:00:00+01:00',
+                links: [
+                  { type: 'booking', url: 'https://example.test/tickets/inline' },
+                ],
+                tickets: [
+                  {
+                    currency: 'GBP',
+                    min_price: 5,
+                    max_price: 7,
+                    description: 'Do not retain ticket description',
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    ];
+
+    const result = parser(payload, DATA_THISTLE_SOURCE_POLICY);
+
+    expect(result.sourcePolicy).toBe(DATA_THISTLE_SOURCE_POLICY);
+    expect(canUseSourceForStagingCollection(result.sourcePolicy)).toBe(true);
+    expect(canDisplaySourcePublicly(result.sourcePolicy)).toBe(false);
+    expect(canRetainRawPayload(result.sourcePolicy)).toBe(false);
+    expect(result.errors).toHaveLength(0);
+    expect(result.items).toHaveLength(1);
+
+    const [item] = result.items;
+    expect(item).toMatchObject({
+      externalId:
+        'datathistle:dddddddd-dddd-4ddd-8ddd-dddddddddddd:eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee:2026-07-20T20:00:00+01:00',
+      externalUrl: 'https://example.test/events/synthetic-inline-event',
+      title: 'Synthetic Inline Event',
+      startAt: '2026-07-20T19:00:00Z',
+      venueName: 'Example Inline Venue',
+      eventTypeGuess: 'live_music',
+      tagsGuess: ['Music', 'fixture-only-tag'],
+      priceMinGuess: 5,
+      priceMaxGuess: 7,
+      isFreeGuess: false,
+      ticketUrlGuess: 'https://example.test/tickets/inline',
+    });
+    expect(item).not.toHaveProperty('description');
+    expect(item).not.toHaveProperty('summary');
+    expect(item?.imageUrlGuess).toBeUndefined();
+    expect(JSON.stringify(item?.raw)).not.toMatch(
+      /description|descriptions|image|images|url|credit|address|postcode|latitude|longitude/i
+    );
+
+    const blockedPolicy: SourcePolicy = {
+      ...DATA_THISTLE_SOURCE_POLICY,
+      allowStagingCollection: false,
+    };
+    const blockedResult = parser(payload, blockedPolicy);
+
+    expect(blockedResult.sourcePolicy).toBe(blockedPolicy);
+    expect(blockedResult.items).toHaveLength(0);
+    expect(blockedResult.errors).toEqual([expect.stringMatching(/staging/i)]);
+  });
+
   it('emits only recognised RawEvent keys', () => {
     const result = parseDataThistleEvents(readFixture('single-performance'));
 
@@ -426,5 +539,36 @@ describe('parseDataThistleEvents', () => {
     expect(validated.errors).toHaveLength(0);
     expect(validated.items).toHaveLength(result.items.length);
     expect(validated.parsedCount).toBe(result.items.length);
+  });
+});
+
+describe('parseDataThistleEvents category mapping evidence', () => {
+  it('records tag-map evidence in raw when a tag maps to a taxonomy slug', () => {
+    const { items } = parseOne(makeEvent({ tags: ['Music', 'unmapped-tag'] }));
+
+    expect(items[0]?.eventTypeGuess).toBe('live_music');
+    const raw = items[0]?.raw as Record<string, unknown>;
+    expect(raw['categoryMapping']).toEqual({
+      eventTypeSlug: 'live_music',
+      matchedTag: 'Music',
+      mappingSource: 'datathistle-tag-map',
+    });
+  });
+
+  it('records fallback evidence and emits no eventTypeGuess for unknown tags', () => {
+    const { items } = parseOne(makeEvent({ tags: ['shopping', 'fairs'] }));
+
+    expect(items[0]?.eventTypeGuess).toBeUndefined();
+    expect(items[0]?.tagsGuess).toEqual(['shopping', 'fairs']);
+    const raw = items[0]?.raw as Record<string, unknown>;
+    expect(raw['categoryMapping']).toEqual({ mappingSource: 'fallback' });
+  });
+
+  it('resolves the opera ambiguity via the shared mapping module', () => {
+    const musicLed = parseOne(makeEvent({ tags: ['opera'] }));
+    expect(musicLed.items[0]?.eventTypeGuess).toBe('live_music');
+
+    const stageLed = parseOne(makeEvent({ tags: ['opera', 'musicals'] }));
+    expect(stageLed.items[0]?.eventTypeGuess).toBe('theatre');
   });
 });

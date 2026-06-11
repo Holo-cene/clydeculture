@@ -1,14 +1,47 @@
-# Data Thistle Connector Pre-flight Specification
+# Data Thistle Connector Specification
 
 ## 1. Purpose and Scope
 
-This is a discovery spike for Data Thistle as a potential structured source for
-Clyde Culture. It is not a production connector implementation.
+Data Thistle is a **staging/internal structured source** for Clyde Culture. The
+connector may fetch, parse, and stage minimal event metadata into Supabase
+(`external_events`) for internal development: normalisation, category mapping,
+deduplication, venue matching, and source-policy handling.
 
-This document records the public API shape, likely mapping strategy, licensing
-risks, and acceptance criteria for any future work. No production connector,
-parser, scheduled ingestion, Supabase write path, live API test, fixture payload,
-or taxonomy change is introduced by this spike.
+**Production public display remains licence-gated.** Data Thistle events must
+not appear on the public frontend until the licence questions in §10/§11 are
+resolved and `productionEnabled`/`allowPublicDisplay` are flipped in
+`packages/shared/src/sourcePolicy.ts`. The policy module is the single
+enforcement point; do not bypass it.
+
+This document records the public API shape, the staging field contract, the
+mapping strategy, licensing risks, and the criteria for production enablement.
+
+### 1.1 Staging scope — allowed now
+
+Minimal event metadata may be imported for staging/dev use:
+
+- Data Thistle `event_id`, schedule `place_id`, and performance timestamp
+  (composite external identity), plus performance-level identifiers if the API
+  exposes them.
+- Title.
+- Start/end date-time (end only from structured duration).
+- Venue name and event-attached place id (for venue matching only — no
+  reusable venue enrichment).
+- Broad category/subcategory/tag values, preserved as source text and mapped to
+  Clyde Culture taxonomy as a guess.
+- Structured GBP price/ticket summary (min/max/free).
+- Booking link and source/website URL.
+- Attribution fields where available (`attributionLabel` lives in source
+  policy; exact wording still to be confirmed with Data Thistle).
+- Event status (`live`/`deleted`) and sync timestamps in `raw`.
+
+### 1.2 Still disallowed unless source policy is explicitly enabled
+
+- Descriptions and long copy.
+- Images, image URLs, image metadata, hotlinking, caching, or proxying.
+- Rich venue/place descriptions and reusable place-data enrichment.
+- Ticket description text.
+- Public display of any Data Thistle-sourced record.
 
 ## 2. Repository/Source-Policy Context
 
@@ -27,8 +60,9 @@ Relevant local constraints:
   rich venue/place content must be excluded unless licence terms explicitly
   permit storage and display.
 - New source output constraints must be documented before enabling the source.
-- Data Thistle categories/tags may be mapped later, but this spike does not
-  change Clyde Culture taxonomy code.
+- Data Thistle categories/tags are mapped into Clyde Culture taxonomy as
+  connector-level guesses (`packages/connectors/src/api/datathistle/categories.ts`);
+  the canonical taxonomy enum itself is not changed by this source.
 
 ## 3. Relevant Data Thistle Documentation Reviewed
 
@@ -67,6 +101,44 @@ separate top-level public endpoints. I found no public top-level `/schedules`,
 `/performances`, `/categories`, or `/tags` endpoint in the OpenAPI spec. Tags are
 returned as arrays and can be used as filters on `/events`.
 
+## 4.1 Authentication and Environment Configuration
+
+The API requires `Authorization: Bearer <JWT>` on every request (401 when
+missing or invalid). Connector configuration is env-driven; no credentials are
+ever hardcoded or committed:
+
+- `DATA_THISTLE_ACCESS_TOKEN` — JWT access token (required to run the
+  connector).
+- `DATA_THISTLE_REFRESH_TOKEN` — refresh token (optional).
+- `DATA_THISTLE_API_BASE_URL` — defaults to `https://api.datathistle.com/v1`.
+- `DATA_THISTLE_AUTH_BASE_URL` — base URL for token refresh. Expected value:
+  `https://auth.datathistle.com/v1` (no default; refresh is disabled when
+  unset).
+
+Placeholders live in `.env.example`. Real values go in local `.env`, GitHub
+Actions secrets, Trigger.dev/Supabase secret stores — never in committed files
+or `sources.config`.
+
+**Refresh contract (per the Data Thistle Auth API docs — the public OpenAPI
+spec does not cover auth):**
+
+```text
+GET {DATA_THISTLE_AUTH_BASE_URL}/refresh
+Authorization: Bearer <refresh token>
+
+→ { "status": 200, "accessToken": "...", "refreshToken": "..." }
+```
+
+The client applies this at most once per request, on a 401. The response
+issues **both** new tokens, and refresh tokens remain valid for roughly a
+month, so token renewal is a recurring monthly operation. New tokens are held
+in memory only for the rest of the run; the client surfaces a non-fatal
+"refresh token rotated" note in `IngestResult.errors` (which lands in
+`ingest_runs`), and the operator must copy the new tokens into the secret
+store (local `.env`, GitHub Actions secret, or Trigger.dev/Supabase secret)
+manually. The connector never writes secrets to disk and never logs token
+values.
+
 ## 5. Glasgow Discovery Strategy
 
 Supported query strategies from the OpenAPI spec:
@@ -100,6 +172,17 @@ Recommended initial production query shape, once licensing is cleared:
 
 Follow `X-Next` or the standard `Link` header until exhausted. Do not use live
 calls in automated tests.
+
+**To verify in the first live smoke run** (documented in the OpenAPI spec but
+not yet observed against real responses):
+
+- The `X-Next` header's value format (relative path vs absolute URL). The
+  staging connector currently treats `X-Next` presence as "more pages exist"
+  and increments its own `page` counter instead of following the value.
+- That `town=Glasgow`, `status=live`, `min_date`/`max_date`, and `limit=20`
+  behave as documented when combined.
+- Whether `order=ts` and a `fields=` projection are worth adding (both appear
+  in the spec but are unused by the staging connector).
 
 Use `town=Glasgow` first because it is explicit and avoids radius bleed. A later
 manual comparison can check whether a Glasgow-centre radius search finds events
@@ -348,26 +431,36 @@ Future parser tests should specify:
 - Missing venue fields do not crash parsing.
 - Deleted/non-live status maps conservatively.
 
-## 14. Future Connector Acceptance Criteria
+## 14. Acceptance Criteria
 
-A future production connector may only be built if:
+### 14.1 Staging connector criteria (required for internal ingestion)
 
-- Licence questions are answered.
-- Attribution rules are documented.
-- Allowed fields are documented.
-- Fixture parser tests exist.
-- No tests use live API calls.
-- No copyrighted descriptions/images are stored without permission.
+- Allowed staging fields are documented (§1.1) and enforced by the parser.
+- Fixture parser tests exist and no tests use live API calls.
+- No descriptions, images, or rich place data are stored (§1.2).
 - Each performance maps to one `RawEvent`.
-- Category mapping is reviewed.
-- External identity is stable.
-- Rate/caching limits are respected.
-- Place Data restrictions are understood.
+- External identity is stable and composite (§8) for idempotent upserts.
+- Category mapping is deterministic, reviewed, and preserves source tag text as
+  mapping evidence.
+- Every emitted `RawEvent` has a valid HTTPS `externalUrl`.
+- Credentials come from env only; nothing secret is committed or logged.
+- Rate-limit headers are respected and pagination is bounded.
+- The `sources` row stays `enabled = false` until an operator enables staging
+  ingestion deliberately, and `productionEnabled` stays `false` in source
+  policy regardless.
+
+### 14.2 Production display blockers (must be resolved before public use)
+
+- Licence questions answered (descriptions, images, Place Data, caching).
+- Exact attribution wording, logo asset/placement, and link-back requirements
+  documented.
 - Data Thistle confirms whether non-profit/community use affects terms/pricing.
-- The future connector can provide a valid user-facing HTTPS `externalUrl` for
-  every emitted `RawEvent`.
-- Supabase raw retention and deletion handling are compatible with Data Thistle's
-  cache/refresh requirements.
+- The production-safe user-facing `externalUrl` rule is confirmed.
+- Supabase raw retention and deletion handling confirmed compatible with Data
+  Thistle's cache/refresh requirements.
+- `packages/shared/src/sourcePolicy.ts` flips `allowPublicDisplay` and
+  `productionEnabled` to `true` in a reviewed change citing the written
+  confirmation.
 
 ## 15. Parser Boundary Review
 
@@ -472,6 +565,14 @@ Remaining production blockers:
 
 ## 17. Verdict
 
-Parser feasibility is proven by synthetic fixture tests, but this is not a
-production connector. Production use is blocked until Data Thistle confirms
-description, image, place-data, attribution, caching, and pricing constraints.
+Data Thistle is approved as a **staging/internal structured source**: the
+connector may fetch, parse, and upsert minimal event metadata (§1.1) into
+`external_events` for internal normalisation, mapping, dedupe, and venue
+matching. Staging behaviour is gated by `allowStagingCollection` in
+`packages/shared/src/sourcePolicy.ts`.
+
+**Public display remains blocked** until Data Thistle confirms description,
+image, place-data, attribution, caching, and pricing constraints (§14.2).
+`productionEnabled = false` and `allowPublicDisplay = false` enforce this; the
+publishing layer must never surface Data Thistle events while those flags are
+false.
