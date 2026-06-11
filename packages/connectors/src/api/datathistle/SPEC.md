@@ -173,16 +173,34 @@ Recommended initial production query shape, once licensing is cleared:
 Follow `X-Next` or the standard `Link` header until exhausted. Do not use live
 calls in automated tests.
 
-**To verify in the first live smoke run** (documented in the OpenAPI spec but
-not yet observed against real responses):
+**Verified against the live API (manual smoke run, 2026-06-11):**
 
-- The `X-Next` header's value format (relative path vs absolute URL). The
-  staging connector currently treats `X-Next` presence as "more pages exist"
-  and increments its own `page` counter instead of following the value.
-- That `town=Glasgow`, `status=live`, `min_date`/`max_date`, and `limit=20`
-  behave as documented when combined.
-- Whether `order=ts` and a `fields=` projection are worth adding (both appear
-  in the spec but are unused by the staging connector).
+- Responses are a bare JSON array of event objects.
+- `X-Next` is an **absolute URL** for the next page (same params, `page+1`);
+  `X-Prev` and a standard `Link` header (`rel="next"/"prev"`) are also sent.
+  The staging connector's strategy — treat `X-Next` presence as "more pages
+  exist" and increment its own `page` counter — is therefore equivalent and
+  remains in place.
+- `town=Glasgow`, `status=live`, `min_date`/`max_date`, `page`, and `limit`
+  all behave as documented when combined; in the sampled window every returned
+  performance timestamp fell inside the requested `min_date`/`max_date` range.
+- `order=ts` and `fields=` projections are accepted (HTTP 200); both are
+  currently unused by the staging connector.
+- Performance timestamps are offset-qualified (`+00:00`), matching the
+  parser's requirement.
+- Rate limit observed: `X-RateLimit-Limit: 1000` per window.
+- Upstream events DO carry `descriptions` and `images` keys (and ticket
+  `description` strings); the parser emitted none of them — link-first
+  stripping confirmed against real data.
+- Most events have no HTTPS `website`, so `externalUrl` usually falls back to
+  the typed booking link (~98% of sampled occurrences). The production
+  user-facing-URL question in §14.2 stands.
+- Additional upstream fields not consumed by the parser: event `sort_name`,
+  `list_id`, `properties`; schedule `start_ts`, `end_ts`, `ticket_summary`,
+  `performance_space`; place `address`, `lat`/`lng`/`lon`, `postal_code`
+  (licence-sensitive — intentionally unused). Tag vocabulary includes values
+  outside the current mapping (e.g. "days out", "history", "tribute",
+  "conferences") which fall back safely to tag-only enrichment.
 
 Use `town=Glasgow` first because it is explicit and avoids radius bleed. A later
 manual comparison can check whether a Glasgow-centre radius search finds events
