@@ -115,8 +115,8 @@ verify against actual code and test files.
    Supabase, fetch, fs, or any network/disk dependency." Report any violations.
 
 4. **Check the seed source name.** Open `supabase/seed.sql` and confirm the value of the
-   source name inserted. If it is `Demo Eventbrite Feed`, record this and note that it is
-   not a Ticketmaster source.
+   source name inserted. The current expected label is `Clyde Culture Demo Data`.
+   Record the exact label and note that it is not a Ticketmaster source.
 
 5. **Check Trigger/sweep wiring.** Open `trigger/tasks/sweep.ts` and record which
    connectors are instantiated, what environment variables are required, and whether the
@@ -209,8 +209,7 @@ should reference a specific prompt file from `docs/prompts/` where one exists.
 
 - The status table is populated from file evidence, not from memory or README claims.
 - Architecture drift in `packages/core` is identified if present.
-- The seed source name (`Demo Eventbrite Feed`) is noted and the distinction from
-  Ticketmaster is explicit.
+- The seed source name is noted and the distinction from Ticketmaster is explicit.
 - Connector stubs are identified separately from implemented connectors.
 - Pre-existing test failures are reported honestly.
 - No production code is written.

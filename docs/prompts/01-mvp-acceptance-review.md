@@ -12,7 +12,8 @@ stakeholders, after a merge, or before starting new database or frontend work.
 
 The current MVP public proof uses seeded demo data, Supabase RLS, and the Astro app
 in `apps/web`. The seed creates 10 synthetic cultural events with the source name
-`Demo Eventbrite Feed` and source URLs pointing to `https://example.org/...`.
+`Clyde Culture Demo Data` and source URLs pointing to real public venue or event pages
+that are safe demo links, not live-ingested source records.
 
 **This seed data is not real ingestion.** It exists to prove the public display path.
 Do not treat a passing MVP acceptance review as evidence that Ticketmaster ingestion,
@@ -88,8 +89,9 @@ ORDER BY start_at;
 ```
 
 Expected: exactly 10 rows, all with `visibility = 'published'` and
-`confidence >= 60`. Confirm no row has a real Ticketmaster URL — all source URLs
-should be `https://example.org/...`.
+`confidence >= 60`. Confirm no row has a real Ticketmaster URL and no row uses
+`example.org`; source URLs should be public Glasgow venue or event pages chosen for
+demo routing.
 
 Also run:
 
@@ -124,7 +126,7 @@ Open the local URL and verify each of the following. Record pass or fail for eac
 | `/?q=film&type=film` | Returns the film demo event | |
 | Event card shows venue name | Venue visible on each card | |
 | Event card shows event type | Type label visible on each card | |
-| Event card shows source name | "Demo Eventbrite Feed" visible | |
+| Event card shows source name | "Clyde Culture Demo Data" visible | |
 | Event card shows "View original" link | Link present on each card | |
 | Event card ticketing/status | Displays ticket URL or free status | |
 | No service role key in page source | Check browser network tab | |
@@ -182,7 +184,7 @@ This is demo data, not live Ticketmaster ingestion."
 ## Acceptance Criteria
 
 - All six steps are completed and results reported.
-- Source provenance (`Demo Eventbrite Feed`) is explicitly confirmed in the output.
+- Source provenance is explicitly confirmed in the output.
 - No service role key appears in `apps/web`.
 - Any failures are listed with severity — the report does not hide failures.
 - The distinction between demo seed data and real ingestion is stated explicitly.

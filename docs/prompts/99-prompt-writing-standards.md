@@ -99,6 +99,23 @@ Prompts must not allow the agent to mark a task complete if:
 - Only the parser was tested, not the full E2E chain.
 - Type errors were suppressed with `// @ts-ignore`.
 
+### 10. Do not bake in derived values — force derivation from canonical sources
+
+A prompt may cite *where* a value lives, but must not hard-code the value itself as
+an assertion target. Confidence weights, tier base scores, enum/slug values, field
+paths, column names, and line numbers all drift; a prompt that pins them goes stale
+and can drive an agent to regress correct code to match a wrong test. (This happened:
+see `docs/LESSONS.md` — "Prescriptive prompts rot".)
+
+Instead:
+- Tell the agent to read the canonical source and extract the value there:
+  the live code, `supabase/migrations/*`, `docs/reference/SCHEMA_v5.sql`, or
+  `docs/NORMALISATION.md`.
+- For remediation/implementation prompts, gate the work on a prior audit prompt that
+  produces a file:line gap list — act only on confirmed gaps, and no-op otherwise.
+- Never copy a magic number or field path from an audit report into a prompt as a
+  fact. Audits are point-in-time; the code moves past them.
+
 ---
 
 ## Clyde Culture-specific concepts to use (not generic terms)
@@ -116,7 +133,7 @@ When writing prompts, use these specific terms:
 | `visibility = 'published'` | published, live, active |
 | `confidence >= 60` | confidence threshold, quality gate |
 | Ticketmaster connector | TM connector, API connector |
-| Demo Eventbrite Feed | demo source, test source (only use this exact label) |
+| Clyde Culture Demo Data | demo source, test source (only use this exact label) |
 | `packages/core` | core package, pure functions package |
 | `packages/shared` | shared package, DB helpers package |
 | `packages/connectors` | connectors package |
