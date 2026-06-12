@@ -4,6 +4,10 @@
 # Claude Code local settings (project-level — user-specific)
 .claude/settings.local.json
 
+# Agent skills installed via `npx skills add` (local, not shared)
+.agents/
+.claude/skills/
+
 # Environment secrets — never commit
 .env
 .env.local
