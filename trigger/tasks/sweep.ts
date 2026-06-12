@@ -1,5 +1,9 @@
-import { task } from '@trigger.dev/sdk/v3';
-import { runSweepIntegration } from '@clydeculture/core';
+import { schedules } from '@trigger.dev/sdk/v3';
+import {
+  runSweepIntegration,
+  SWEEP_DAILY_SCHEDULE,
+  SWEEP_TASK_ID,
+} from '@clydeculture/core';
 import { normaliseExternalEventsForSource } from '@clydeculture/ingestion';
 import {
   createDataThistleConnector,
@@ -17,8 +21,9 @@ import type {
 } from '@clydeculture/core';
 import type { NormaliseDbClient } from '@clydeculture/ingestion';
 
-export const sweepTask = task({
-  id: 'sweep',
+export const sweepTask = schedules.task({
+  id: SWEEP_TASK_ID,
+  cron: SWEEP_DAILY_SCHEDULE,
   run: async () => {
     const supabase = createClient(requiredEnv('SUPABASE_URL'), requiredEnv('SUPABASE_SERVICE_ROLE_KEY'));
 

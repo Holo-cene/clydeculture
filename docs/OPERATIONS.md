@@ -68,6 +68,15 @@ Cron schedules are configured in the task definition using Trigger.dev's built-i
 cron trigger syntax. No external cron infrastructure or Supabase Edge Function
 invocation is needed.
 
+**Sweep schedule (Thread #1 — Ticketmaster).** The parent `sweep` task is declared
+via `schedules.task()` and fires daily at **06:00 Europe/London** (`0 6 * * *`).
+The cron value lives in `packages/core/src/ingest/sweepSchedule.ts`
+(`SWEEP_DAILY_SCHEDULE`) so it is reviewable in one place and unit-tested. The
+trigger module (`trigger/tasks/sweep.ts`) imports it; do not redefine the cron
+elsewhere. Per-connector failures inside a scheduled run are still recorded in
+`ingest_runs` with `status = 'failed'`; an outer task failure (e.g. missing env
+var) is recorded as a failed run in the Trigger.dev dashboard.
+
 **Secrets.**
 
 Set `TRIGGER_SECRET_KEY` in the Trigger.dev project dashboard under

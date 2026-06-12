@@ -21,6 +21,8 @@ export {
 } from './normalise/normalise.js';
 export { runSweepIntegration } from './ingest/sweep.js';
 export type { SweepIntegrationInput } from './ingest/sweep.js';
+export { SWEEP_TASK_ID, SWEEP_DAILY_SCHEDULE } from './ingest/sweepSchedule.js';
+export type { SweepSchedule } from './ingest/sweepSchedule.js';
 export type {
   ConnectorLike,
   HistoricalIngestRun,
