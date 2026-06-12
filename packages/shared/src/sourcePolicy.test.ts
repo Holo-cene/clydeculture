@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DATA_THISTLE_SOURCE_POLICY,
+  TICKETMASTER_SOURCE_POLICY,
   canDisplaySourcePublicly,
   canRetainRawPayload,
   canUseSourceForStagingCollection,
@@ -58,5 +59,42 @@ describe('source policy contract', () => {
   it('looks up Data Thistle policy by source slug', () => {
     expect(getSourcePolicy('datathistle')).toBe(DATA_THISTLE_SOURCE_POLICY);
     expect(getSourcePolicy('unknown-source')).toBeUndefined();
+  });
+});
+
+describe('Ticketmaster source policy (ADR 0004)', () => {
+  it('is enabled for production and public display', () => {
+    expect(TICKETMASTER_SOURCE_POLICY).toMatchObject({
+      sourceSlug: 'ticketmaster',
+      productionEnabled: true,
+      allowPublicDisplay: true,
+      allowStagingCollection: true,
+    });
+
+    expect(canUseSourceForStagingCollection(TICKETMASTER_SOURCE_POLICY)).toBe(true);
+    expect(canDisplaySourcePublicly(TICKETMASTER_SOURCE_POLICY)).toBe(true);
+  });
+
+  it('permits image hot-linking from the Ticketmaster CDN but forbids binary caching', () => {
+    expect(TICKETMASTER_SOURCE_POLICY).toMatchObject({
+      allowImages: true,
+      allowRawPayloadRetention: true,
+    });
+    expect(canRetainRawPayload(TICKETMASTER_SOURCE_POLICY)).toBe(true);
+    expect(TICKETMASTER_SOURCE_POLICY.notes).toMatch(/hot-link/i);
+    expect(TICKETMASTER_SOURCE_POLICY.notes).toMatch(/no binary cach/i);
+  });
+
+  it('requires Ticketmaster attribution and a source link on every listing', () => {
+    expect(TICKETMASTER_SOURCE_POLICY).toMatchObject({
+      requiresAttribution: true,
+      requiresSourceLink: true,
+      attributionLabel: 'Buy on Ticketmaster',
+      sourceLinkMode: 'source_or_booking_url',
+    });
+  });
+
+  it('looks up Ticketmaster policy by source slug', () => {
+    expect(getSourcePolicy('ticketmaster')).toBe(TICKETMASTER_SOURCE_POLICY);
   });
 });

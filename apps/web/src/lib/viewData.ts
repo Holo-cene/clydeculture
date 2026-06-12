@@ -1,3 +1,10 @@
+export {
+  ticketmasterAttribution,
+  ticketmasterImageHotlink,
+  ticketmasterSourceLink,
+} from '@clydeculture/shared';
+export type { SourceAttribution } from '@clydeculture/shared';
+
 export interface EventView {
   title?: string;
   slug?: string;
