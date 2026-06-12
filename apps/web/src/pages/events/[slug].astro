@@ -1,5 +1,6 @@
 ---
 import { getEventBySlug } from '@clydeculture/shared';
+import EventImage from '../../components/EventImage.astro';
 import Layout from '../../components/Layout.astro';
 import { getPublicQueryClient } from '../../lib/supabase';
 import {
@@ -21,6 +22,7 @@ if (!event.title) {
 
 const tmAttribution = ticketmasterAttribution(event);
 const tmImage = ticketmasterImageHotlink(event);
+const href = sourceHref(event);
 ---
 
 <Layout title={event.title ?? 'Event not found'}>
@@ -33,21 +35,7 @@ const tmImage = ticketmasterImageHotlink(event);
             <p class="lede">{formatDateTime(event.start_at)}</p>
           </section>
           {tmImage && tmAttribution && (
-            <figure class="event-image">
-              <a href={tmAttribution.href} rel="noreferrer">
-                <img
-                  src={tmImage}
-                  alt={event.title}
-                  loading="lazy"
-                  referrerpolicy="no-referrer-when-downgrade"
-                />
-              </a>
-              <figcaption class="attribution">
-                <a href={tmAttribution.href} rel="noreferrer">
-                  {tmAttribution.label}
-                </a>
-              </figcaption>
-            </figure>
+            <EventImage src={tmImage} alt={event.title} attribution={tmAttribution} />
           )}
           {event.summary && <p>{event.summary}</p>}
           {tmAttribution ? (
@@ -57,10 +45,10 @@ const tmImage = ticketmasterImageHotlink(event);
               </a>
             </p>
           ) : (
-            sourceHref(event) && (
+            href && (
               <p>
                 Source: {sourceName(event)} ·{' '}
-                <a href={sourceHref(event)} rel="noreferrer">View original</a>
+                <a href={href} rel="noreferrer">View original</a>
               </p>
             )
           )}

@@ -1,0 +1,27 @@
+---
+import type { SourceAttribution } from '../lib/viewData';
+
+interface Props {
+  src: string;
+  alt: string;
+  attribution: SourceAttribution;
+}
+
+const { src, alt, attribution } = Astro.props;
+---
+
+<figure class="event-image">
+  <a href={attribution.href} rel="noreferrer">
+    <img
+      src={src}
+      alt={alt}
+      loading="lazy"
+      referrerpolicy="no-referrer-when-downgrade"
+    />
+  </a>
+  <figcaption class="attribution">
+    <a href={attribution.href} rel="noreferrer">
+      {attribution.label}
+    </a>
+  </figcaption>
+</figure>

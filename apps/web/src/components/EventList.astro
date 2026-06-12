@@ -8,6 +8,7 @@ import {
   ticketmasterImageHotlink,
   type EventView,
 } from '../lib/viewData';
+import EventImage from './EventImage.astro';
 
 interface Props {
   events: EventView[];
@@ -24,24 +25,12 @@ const { events } = Astro.props;
       {events.map((event) => {
         const tmAttribution = ticketmasterAttribution(event);
         const tmImage = ticketmasterImageHotlink(event);
+        const ticketing = formatTicketing(event);
+        const href = sourceHref(event);
         return (
           <article class="event-card">
             {tmImage && tmAttribution && (
-              <figure class="event-image">
-                <a href={tmAttribution.href} rel="noreferrer">
-                  <img
-                    src={tmImage}
-                    alt={event.title ?? ''}
-                    loading="lazy"
-                    referrerpolicy="no-referrer-when-downgrade"
-                  />
-                </a>
-                <figcaption class="attribution">
-                  <a href={tmAttribution.href} rel="noreferrer">
-                    {tmAttribution.label}
-                  </a>
-                </figcaption>
-              </figure>
+              <EventImage src={tmImage} alt={event.title ?? ''} attribution={tmAttribution} />
             )}
             <div>
               <h2>
@@ -60,9 +49,7 @@ const { events } = Astro.props;
                 )}
               </div>
             </div>
-            {formatTicketing(event) && (
-              <p class="ticketing">{formatTicketing(event)}</p>
-            )}
+            {ticketing && <p class="ticketing">{ticketing}</p>}
             {tmAttribution ? (
               <p class="source attribution">
                 <a href={tmAttribution.href} rel="noreferrer">
@@ -70,10 +57,10 @@ const { events } = Astro.props;
                 </a>
               </p>
             ) : (
-              sourceHref(event) && (
+              href && (
                 <p class="source">
                   Source: {sourceName(event)} ·{' '}
-                  <a href={sourceHref(event)} rel="noreferrer">
+                  <a href={href} rel="noreferrer">
                     View original
                   </a>
                 </p>

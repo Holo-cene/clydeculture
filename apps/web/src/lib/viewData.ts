@@ -1,3 +1,10 @@
+export {
+  ticketmasterAttribution,
+  ticketmasterImageHotlink,
+  ticketmasterSourceLink,
+} from '@clydeculture/shared';
+export type { SourceAttribution } from '@clydeculture/shared';
+
 export interface EventView {
   title?: string;
   slug?: string;
@@ -61,13 +68,6 @@ export function sourceHref(event: EventView): string | undefined {
 export function sourceName(event: EventView): string {
   return event.ticket_url_label || 'Original source';
 }
-
-export {
-  ticketmasterAttribution,
-  ticketmasterImageHotlink,
-  ticketmasterSourceLink,
-} from '@clydeculture/shared';
-export type { SourceAttribution } from '@clydeculture/shared';
 
 export function formatTicketing(event: EventView): string | null {
   const price =
