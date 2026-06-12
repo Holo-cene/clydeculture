@@ -34,6 +34,24 @@ change-controlled. BE-19 tracks the future work to externalise this into a
 `platform_config` table with per-source overrides via `sources.confidence_threshold`.
 No other record states (`draft`, `hidden`, `archived`) are visible through the anon key.
 
+### Planned change — trust × completeness gate (ADR 0006)
+
+> **Direction, not current state.** The single `confidence >= 60` gate above is the
+> live behaviour. [ADR 0006](decisions/0006-confidence-trust-and-completeness.md)
+> replaces it with **two signals**: **trust** ("is this event real?") and
+> **completeness** ("is it complete enough to display?"). The boundary becomes a
+> *trust bar* AND a *minimum-completeness bar*, so a real grassroots/community event is
+> **not** suppressed merely for lacking a ticket URL, an image, a known/resolved venue,
+> or commercial source richness. This protects hard rule #7.
+
+**Minimum viable public event.** The smallest set of fields needed to be useful and
+honest to a reader: a title, a start date/time (or an explicit date-only / TBA state),
+a link (`externalUrl`), and a location signal (a venue, a place, or an explicit
+"location TBA" / online). An event clearing the trust bar and the minimum viable
+threshold is eligible for display; where a real event is below the completeness bar,
+prefer a clear "details to be confirmed" treatment over hiding it. See
+`docs/NORMALISATION.md` Step 4.
+
 ---
 
 ## How an event reaches 'published'
@@ -131,6 +149,56 @@ on a schedule. Archived events are not returned by the public RLS policy.
 **Ghost duplicate prevention.** `visibility = 'hidden'` is for confirmed removals, cancellations, and duplicates. MUST NOT leave a published row at the old date after a reschedule — see `docs/DEDUPLICATION.md` — "Reschedule" and `docs/NORMALISATION.md` Step 8 for the reschedule path.
 
 ---
+
+## Public provenance and "all links" (planned — ADR 0005 A1)
+
+> **Direction, not current state.** Today the public event exposes a single `source_url`
+> / `ticket_url`. The cultural-graph model surfaces **every** way to reach an event.
+
+- **All links.** A curated `event_links` projection (or RLS-guarded view) exposes each
+  permitted source/ticket/booking/RSVP link for a *published* event, labelled by source
+  ("listed on Skiddle", "Buy on Ticketmaster", "Book at GFT"). Built from the per-source
+  `external_events` rows but exposing only permitted, published-parent links — internal
+  source columns stay service-role only. This is the truest expression of link-first:
+  *"here is the clean cultural index — choose where to read, book, RSVP, or support."*
+- **Provenance & freshness.** Show "listed on …" and, where useful, freshness ("last
+  checked …") drawn from `external_events.last_seen_at` — without exposing raw source
+  rows. See `docs/INGESTION.md`.
+- **Media.** Only media with display permission is rendered (`docs/MEDIA_POLICY.md`);
+  otherwise a placeholder. Never a non-permitted image.
+
+## Field-locked display (planned — ADR 0007)
+
+Editorially **locked** fields (`docs/decisions/0007-editorial-override-and-field-locking.md`)
+display the human-set value and are not overwritten by re-normalisation. The public
+surface shows the locked value; a "source diverged from a locked field" condition is a
+moderation signal, not a public change.
+
+## Status labels (user-facing)
+
+`visibility` controls whether an event shows; `availability` drives the badge:
+
+| availability | Label | Visible? |
+|---|---|---|
+| `cancelled` | "Cancelled" | Yes (users who booked must see it) |
+| `postponed` | "Postponed" (date may be TBA) | Yes |
+| `rescheduled` | "Rescheduled" (new date shown) | Yes |
+| `sold_out` | "Sold Out" | Yes |
+| `low_stock` | "Last Few Tickets" | Yes |
+| `not_on_sale` / null | (no badge) | Yes |
+
+`availability_note` overrides standard badge text where context is needed
+("Rescheduled to March 20"). Postponed/rescheduled with a retained old→new date history
+is a deferred enhancement (`docs/DATA_MODEL.md` Tranche C).
+
+## Canonical URL / slug stability
+
+The public URL of an event is its `slug` (`normalised-title-YYYY-MM-DD`). Slugs are
+**stable** once published — downstream links and shares depend on them. When duplicates
+merge, the surviving canonical event keeps its slug and the merged record should
+**redirect** to the survivor rather than 404 (this needs the survivor pointer noted in
+the data-model audit, A1-007; see `docs/DEDUPLICATION.md`). Avoid dead-end listings:
+an archived or merged event resolves to its successor or a graceful archived view.
 
 ## Tables removed (Webflow path, not used)
 

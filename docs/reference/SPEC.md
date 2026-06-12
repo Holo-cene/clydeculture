@@ -32,6 +32,15 @@ outbound links to original sources — ticket pages, venue websites, and so on �
 than republishing third-party content in full. The goal is to become the central
 discovery layer for Glasgow culture, combining automated ingestion with community input.
 
+> **Evolving data model.** To house *all* events well — from DIY gigs, community groups,
+> and markets to festivals, galleries, and cinema showings — Clyde Culture is evolving
+> from a single event/source/venue/category/ticket-link table toward a **cultural graph**
+> (events/occurrences, all source links, venues/places, organisers/collectives/artists,
+> types/tags, submissions, provenance/trust, media rights), and later Scotland-wide
+> coverage. This is phased (NOW / DESIGN-NOW BUILD-LATER / DEFER); details are in
+> [ADR 0005](../decisions/0005-event-data-model-for-all-event-coverage.md) and the
+> planned-expansion section of [DATA_MODEL.md](../DATA_MODEL.md).
+
 **Platform focus areas**
 
 - Underground arts and exhibitions

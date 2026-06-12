@@ -20,6 +20,92 @@ Community (Ph.2)   event_submissions, venue_claims, moderation_log
 
 ---
 
+## Planned expansion — the cultural graph (ADR 0005)
+
+The v5 model is shaped for ticketed, single-venue, single-category, API-sourced
+events. The target is a **cultural graph** that houses the full spectrum (DIY gigs,
+community events, markets, galleries, performances, festivals — later Scotland-wide).
+See [ADR 0005](decisions/0005-event-data-model-for-all-event-coverage.md),
+[ADR 0006](decisions/0006-confidence-trust-and-completeness.md),
+[ADR 0007](decisions/0007-editorial-override-and-field-locking.md). **Treat this whole
+section as direction, not current state** — every table/column below is *planned or
+proposed*, not implemented; the live schema is the sections that follow and the
+migrations. Verify before relying on anything here.
+
+### Read/source model vs canonical/public model
+
+Two layers must stay distinct:
+
+- **Read/source model** — per-source raw records (`external_events`), each with its own
+  links, fields, freshness, and trust. Multiple source rows can point at one canonical
+  event. Service-role only.
+- **Canonical/public model** — the deduped, normalised `events` (and the graph around
+  it: links, occurrences, entities, places) exposed via anon-key RLS. The public reads
+  the canonical model; provenance (which source said what) is surfaced deliberately, not
+  by exposing the raw source rows.
+
+The "all links" feature (A1) is exactly the bridge: a curated projection of the
+read-model links onto the canonical event, made publicly readable.
+
+### Scotland constraint
+
+Do **not** hard-code Glasgow in the schema except as seed/default data (e.g.
+`venues.city` default). The place model must be country-agnostic so the same schema
+extends to Scotland (and beyond) without migration pain.
+
+### Tranche A — NOW (foundational; before the connector build-out ramps)
+
+| Item | Planned change | Phase |
+|---|---|---|
+| A1 All links | `event_links` projection (or RLS-guarded view) over per-source `external_events` links, anon-readable for published events | NOW |
+| A2 Multi-category | `event_event_types` join; retain `primary_event_type_id` for the canonical badge/slug | NOW |
+| A3 Confidence split | Trust × completeness (ADR 0006), not a single 0–100 gate | NOW |
+| A5 Field-locking | `field_overrides` the normaliser/merge must respect (ADR 0007) | NOW |
+| A6 Submission model | submit event/venue/organiser, repeat helper, reconciliation, moderation, PII (`docs/SUBMISSIONS.md`) | NOW (backend) |
+| A7 Source classes + provenance | `source_type` → `api/feed/scrape/partner/community/editor`; per-field source provenance | NOW |
+| A4 Geography | nullable `neighbourhood` (+`area`/`region`) on `venues`; do not hard-code Glasgow | NOW |
+| Status lifecycle | survivor pointer on merged events (audit A1-007); reschedule old→new history (history deferred) | NOW (pointer) |
+
+### Tranche B — DESIGN-NOW, BUILD-LATER
+
+- **B1 Work ↔ occurrence (the showings model).** Separate the *work* (a film, play,
+  touring show, recurring night, exhibition) from the *occurrence* (a dated instance at
+  a venue with its own booking link). Generalise the venue-locked `event_series` into a
+  venue-agnostic grouping (a `works` table or extended `event_series`); each `events`
+  row becomes an occurrence linked to the work; the public listing **groups by work**.
+  Distinguish parent-child **programme** structure (festival → production → occurrence)
+  from simple recurrence (`docs/FESTIVALS.md`).
+  *Worked example — cinema:* Glasgow Film Theatre (direct) plus Cineworld / Vue / Odeon
+  (via Data Thistle) list one film shown many times per day across venues, each showing
+  with its own booking link. Flattened into `events`, "Dune" becomes hundreds of rows
+  that flood the listing. As work + occurrences it is one film work with many showings —
+  "Dune — showing at GFT, Cineworld today". Same shape serves theatre runs, exhibition
+  open-hours, cross-venue residencies.
+- **B2a Organisers / collectives / promoters** then **B2b artists / performers** —
+  `cultural_entities` + `entity_aliases` + `event_entities` (`docs/ENTITIES.md`).
+  Organisers before artists for DIY discovery. Link-first: name + canonical link.
+- **B3 `places` hierarchy** — country → region/council → city/town → neighbourhood →
+  venue; built when Scotland expansion is scheduled.
+- **B4 Media rights & `display_permitted`** — per-source media-rights model
+  (`docs/MEDIA_POLICY.md`, extends ADR 0004).
+
+### Planned tables/structures (proposed, not implemented)
+
+`event_links` · `event_event_types` (+ `primary_event_type_id`) · `cultural_entities` ·
+`entity_aliases` · `event_entities` · `field_overrides` (or `events.field_overrides`
+JSONB) · submission tables (extends `event_submissions`) · media/`display_permitted`
+fields · merged-event survivor pointer + reschedule history · `places` hierarchy ·
+`source_type` classes. Each tagged NOW / DESIGN-NOW BUILD-LATER / DEFER above.
+
+### Tranche C — DEFER (Phase 2+; enrichment, not structure)
+
+Structured filterable accessibility (venue + event level — design-now where cheap);
+entry-model field (free / ticketed / PWYC / donation / RSVP / members-only); unified
+faceted / entity-led / full-text search and discovery dimensions (`docs/SEARCH.md`);
+user-facing change history beyond the `availability` badge; saved searches / alerts.
+
+---
+
 ## Reference Tables
 
 ### event_types

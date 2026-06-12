@@ -211,6 +211,17 @@ A classification defaulting to `other` is flagged with `confidence_inputs.type_s
 
 ## Step 4 — Confidence scoring
 
+> **Planned change (ADR 0006) — direction, not current state.** The single 0–100 score
+> below is the live behaviour.
+> [ADR 0006](decisions/0006-confidence-trust-and-completeness.md) splits it into
+> **trust** ("is this event real?" — from source class/trust, corroboration, moderation)
+> and **completeness** ("ready to display?" — from displayable-field presence/quality).
+> Publishing then gates on a *trust bar* AND a *minimum-completeness bar* (the "minimum
+> viable public event" in `docs/PUBLISHING.md`). The normaliser must **not** suppress a
+> real event for lacking a ticket URL, image, or known venue. This supersedes the
+> single-score framing here and the grassroots-floor idea in ADR 0005 A3. Exact
+> trust/completeness weights are derived at implementation (prompt `20`), not fixed here.
+
 Confidence is a 0–100 integer assembled from discrete weighted inputs. It is stored
 in `events.confidence` and its breakdown stored in `events.confidence_inputs` (JSONB).
 
@@ -399,6 +410,55 @@ A reschedule occurs when an `external_events` row already has an `event_id` (pre
 4. Log the collision as a reschedule conflict.
 
 If `external_events.availability_guess` is `'rescheduled'` or `'postponed'`, set `availability` accordingly and set `needs_review = true` regardless of whether the dedupe_key changed.
+
+---
+
+## Planned: field-locks, source priority, multi-category, entities (ADR 0005/0007)
+
+> **Direction, not current state.** These extend Steps 4–8 as the cultural-graph model
+> (ADR 0005) lands. None are implemented yet — verify against `supabase/migrations/`.
+
+### Respect editorial field-locks (ADR 0007)
+
+Re-normalisation MUST NOT overwrite an editorially **locked** field. Before assigning
+any canonical field on the update/reschedule path, check `field_overrides`
+([ADR 0007](decisions/0007-editorial-override-and-field-locking.md)): if the field is
+locked, keep the human value and skip the assignment. If the incoming source value
+diverges from the locked value, surface a review signal (do **not** overwrite). This is
+the explicit guard on the identity-first update path — it must be in place before heavy
+re-normalisation, or human corrections are clobbered.
+
+### Field-level source priority and provenance (ADR 0005 A7)
+
+The tier comparison above is event-level. The target is **field-level** priority with
+recorded provenance — which source a field came from — so updates are principled, not
+noisy:
+
+| Field | Preferred source |
+|---|---|
+| title | official event/venue page |
+| date/time | venue or ticketing source |
+| price | ticketing source |
+| description/summary | official source (link-first limits still apply) |
+| image | only a source whose media is display-permitted (`docs/MEDIA_POLICY.md`) |
+| cancellation/availability | most-recently-verified authoritative source |
+| accessibility | venue or organiser |
+
+Field-locks always win over source priority.
+
+### Multi-category write (ADR 0005 A2)
+
+Write the resolved primary type to `primary_event_type_id` (for the badge/slug) **and**
+write all resolved categories to the `event_event_types` join. Single-category sources
+write exactly one (the primary). Existing single-type reads keep working via the
+retained primary.
+
+### Entity extraction (ADR 0005 B2 — link-first, provisional)
+
+Where a source exposes organiser/promoter/artist names, extract them as **provisional**
+links to `cultural_entities` via `entity_aliases` resolution (`docs/ENTITIES.md`) — a
+name + canonical link only, never biographies. Low-confidence entity links surface for
+review rather than publishing a wrong attribution.
 
 ---
 

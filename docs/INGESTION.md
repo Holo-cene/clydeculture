@@ -27,6 +27,60 @@ The expected maintenance load across tiers, from the platform specification:
 
 ---
 
+## Planned: source classes, trust, capability, freshness (ADR 0005/0006/0007)
+
+> **Direction, not current state.** Today `source_type` is `api/rss/ical/html/apify/
+> manual` and `tier` is 1–4 (verified in migrations). The cultural-graph model adds the
+> below; none is implemented yet.
+
+### Source-type classes and trust levels (ADR 0005 A7)
+
+Expand `source_type` into capability + trust **classes**:
+`api / feed / scrape / partner / community / editor`. Tier captures *quality/structure*;
+class captures *how data arrives and how much we trust it*. A `partner` (granted feed),
+`community` (submission), or `editor` (hand-entered) source can carry high **trust**
+(ADR 0006) without commercial field richness — feeding the trust signal directly.
+
+### Source capability matrix
+
+Record, per source, what it can supply — so normalisation/provenance and field-level
+source priority (`docs/NORMALISATION.md`) are principled:
+
+| Capability | Example column |
+|---|---|
+| Provides times / doors | `start_at`, `doors_at` |
+| Provides venue identity | `venueName` / place id |
+| Provides ticket/booking link | `ticketUrlGuess` |
+| Provides price | `priceMin/MaxGuess` |
+| Provides availability/cancellation | `availabilityGuess` |
+| Media display-permitted | `docs/MEDIA_POLICY.md` |
+| Provides organiser/artist | `docs/ENTITIES.md` |
+| Trust class | api/feed/scrape/partner/community/editor |
+
+### High-frequency re-ingest idempotency (ADR 0005 B1 — cinema)
+
+High-volume showings sources (cinema via Data Thistle: thousands of occurrences
+refreshed daily) require **stable occurrence identity** so a daily re-pull does not
+churn rows or false-trigger removal detection. Re-ingest must be idempotent: unchanged
+occurrences produce no-op upserts; only genuine changes update. This pairs with the
+work/occurrence model and the existing `(source_id, external_id)` uniqueness.
+
+### Freshness and removal surfacing
+
+`external_events.last_seen_at` / `is_deleted` already track freshness (see "Event
+removal detection" below and `docs/PUBLISHING.md`). The cultural-graph model **surfaces**
+this to readers ("listed on …", "last checked …") and ensures stale/ghost events are
+flagged or suppressed rather than shown as live — without exposing raw source rows.
+
+### Override interaction (ADR 0007)
+
+Re-ingestion and normalisation MUST respect editorial field-locks
+([ADR 0007](decisions/0007-editorial-override-and-field-locking.md)): a sweep updates
+unlocked fields and skips locked ones, surfacing "source diverged from a locked value"
+for review. This guard must exist before heavy re-normalisation runs at scale.
+
+---
+
 ## Connector interface
 
 Every connector is a TypeScript module that implements the `Connector` interface defined in `packages/connectors/src/connector.ts`:

@@ -49,7 +49,18 @@ HTTPS URL for a record, that record must be skipped. Push a descriptive error to
 
 | Field | Notes |
 |---|---|
-| `imageUrlGuess` | Image CDN URL. Store only if provider ToS permits hot-linking or image display. See ADR 0004 for Ticketmaster. Never download or proxy-cache image binaries. |
+| `imageUrlGuess` | Image CDN URL. Store only if provider ToS permits hot-linking or image display. See ADR 0004 for Ticketmaster and `docs/MEDIA_POLICY.md` for the general per-source media-rights matrix. Never download or proxy-cache image binaries. |
+
+**Display permissions generalise beyond images (planned — ADR 0005 B4).** Media,
+descriptions, links, and public display are all per-source rights questions, not just
+quality questions. [`docs/MEDIA_POLICY.md`](MEDIA_POLICY.md) extends ADR 0004 into a
+matrix covering Ticketmaster (constrained, with attribution), venue-partnership
+(permitted), user-submitted (permissioned), scraped/Instagram (risky — default no), and
+placeholder (safe), via a planned `display_permitted` signal that defaults to *not
+permitted* until reviewed. The trust-bearing source classes
+(`partner` / `community` / `editor`, see `docs/INGESTION.md`) carry their own display
+and trust posture. Record each source's media and display position here and in the
+connector header.
 
 There is no `description` or `summary` field in `RawEvent` by design. The normalisation
 pipeline may store a short summary (≤ 280 characters) in `events.summary` only where the
