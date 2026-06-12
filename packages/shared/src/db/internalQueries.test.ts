@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 // .limit() since the internal-queries helpers cap result sizes for the weekly
 // review surface.
 
-type FilterOp = 'eq' | 'gte' | 'lt' | 'in' | 'ilike';
+type FilterOp = 'eq';
 
 interface RecordedFilter {
   op: FilterOp;
