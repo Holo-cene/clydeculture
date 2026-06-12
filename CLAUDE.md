@@ -36,6 +36,11 @@ Never:
 
 ## Architecture (engine-first)
 
+> **Per [ADR 0008](docs/decisions/0008-tracer-bullet-delivery.md), "engine-first" is a
+> quality bar (Supabase is the source of truth and must be correct), not a sequencing
+> rule.** Delivery is tracer-bullet / vertical-slice — see the tracer-bullet PRD (GitHub
+> issues) and `CONTEXT.md`.
+
 The bulk of the work is a backend engine that does not care what the frontend is:
 
 - **Source of truth:** Supabase (Postgres). The frontend is a presentation layer only.
@@ -218,3 +223,17 @@ Do not make destructive live Supabase changes.
 - `docs/reference/SCHEMA_v5.sql` — the existing v5 schema (paste it in if missing).
 - `docs/TESTING.md` — package-specific test targets, example prompts, and test commands.
 - `docs/DEVELOPMENT_WORKFLOW.md` — the step-by-step implementation workflow.
+
+## Agent skills
+
+### Issue tracker
+
+GitHub issues in `Holo-cene/clydeculture` (via the `gh` CLI). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five-role vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` at root; ADRs in `docs/decisions/`. Work lives as GitHub issues, not in docs. See `docs/agents/domain.md`.

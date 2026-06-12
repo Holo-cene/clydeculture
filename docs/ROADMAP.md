@@ -1,5 +1,10 @@
 # Clyde Culture — Build Roadmap
 
+> **Superseded by [ADR 0008](decisions/0008-tracer-bullet-delivery.md).** Delivery is now
+> tracer-bullet / vertical-slice; "the engine ships before the frontend" no longer holds
+> ("engine-first" is a quality bar, not a sequencing rule). The live plan is the
+> tracer-bullet PRD (GitHub issues); this horizontal roadmap is retained as reference.
+
 The engine ships before the frontend. Stable, low-maintenance sources (Tier 1 APIs and
 managed Apify actors) land before the HTML scrapers that will require occasional upkeep.
 ADR 0001 (Astro frontend) and ADR 0002 (Trigger.dev runtime) are accepted; M6 is unblocked.
@@ -148,6 +153,35 @@ ADR 0001 is accepted (Astro + Supabase direct read). This milestone is now unblo
 
 ---
 
+## Milestone 6.5 — All-event data model foundations (ADR 0005, Tranche A)
+
+Land **before** the RSS/iCal/HTML connector build-out populates real data, so the
+single-source / single-venue / single-category / single-link assumptions are not baked
+in. Gated by the data-model expansion design & gap audit (prompt `17`). Greenfield +
+pre-launch = cheap now, expensive later. The target is a cultural graph, not an events
+table. See [ADR 0005](decisions/0005-event-data-model-for-all-event-coverage.md),
+[ADR 0006](decisions/0006-confidence-trust-and-completeness.md),
+[ADR 0007](decisions/0007-editorial-override-and-field-locking.md).
+
+**Revised priority order** (also in ADR 0005 and `docs/prompts/README.md`):
+
+1. [ ] **`event_links` + public RLS (A1):** projection (or RLS-guarded view) surfacing every source/ticket link for a canonical event, anon-readable for published events. Truest link-first. Prompts `18a`/`18b`.
+2. [ ] **Confidence trust × completeness split (A3 / ADR 0006):** gate on "is it real?" AND "is it complete enough?", so real sparse grassroots events are not suppressed. Prompt `20`.
+3. [ ] **Editorial override & field-locking (A5 / ADR 0007):** `field_overrides` the normaliser/merge must respect. **Land before heavy sweep/re-normalisation** or human fixes get clobbered. Prompts `22a`/`22b`.
+4. [ ] **Multi-type events + venue types (A2):** `event_event_types` join; retain `primary_event_type_id`. Prompts `19a`/`19b`.
+5. [ ] **Community submission + moderation model (A6):** submit event/venue/organiser, repeat helper, submission↔ingestion reconciliation, moderation, PII/GDPR. `docs/SUBMISSIONS.md`; design prompt `23` (refs F1/F2/F3).
+6. [ ] **Organisers / collectives entities (B2a):** `cultural_entities` + `entity_aliases` + `event_entities`. `docs/ENTITIES.md`; design prompt `24`.
+7. [ ] **Work/occurrence + parent-child grouping (B1) — design only:** accept the showings shape before cinema/theatre connectors. Prompt `21`. Build deferred (M7.5).
+8. [ ] **Geography: neighbourhood now, `places` graph designed (A4 / B3):** nullable `neighbourhood`/`area`/`region` on `venues`; do not hard-code Glasgow.
+9. [ ] **Per-source media/rights policy (B4):** `docs/MEDIA_POLICY.md`; `display_permitted` field later.
+10. [ ] **Source-type classes + field-level provenance (A7):** `api/feed/scrape/partner/community/editor`; survivor pointer on merged events (A1-007).
+11. [ ] Structured entry-model + accessibility/age — design-now, build-later.
+12. [ ] Shed Webflow denormalisation last (see Milestone 6 schema migration).
+
+**Definition of done:** an event surfaces all its source/ticket links and belongs to more than one category via the public anon-key read; the confidence split + grassroots protection are documented and tested; field-locking is in place before heavy re-normalisation; the submission model, entities, and work/occurrence shapes are accepted in their docs/ADRs.
+
+---
+
 ## Phase 2 — Extended coverage and community tools
 
 Phase 2 begins after the public site is live and the Phase 1 connectors are running
@@ -158,6 +192,20 @@ stably. The order within Phase 2 is loose; items can be parallelised.
 - [ ] Glasgow Art Map RSS connector (Substack endpoint) — arts editorial coverage
 - [ ] Bandsintown API connector — evaluate for artist-tracking features; defer if artist-page feature is not yet scoped
 - [ ] StubHub Apify connector — ticketing coverage for larger events not on Ticketmaster
+
+**M7.5 — Work/occurrence model build + cinema (ADR 0005, Tranche B1 build)**
+
+Triggered by the first high-volume showings source. Build the work/occurrence
+structure designed in Milestone 6.5 (prompt `21`), then the cinema connectors that
+need it. One film shows many times across many venues, each showing with its own
+booking link — without this, cinema floods the flat listing.
+- [ ] Build the work ↔ occurrence structure (generalise `event_series`, or a `works` table) per the accepted ADR 0005 design; listing groups by work, not by showing
+- [ ] Glasgow Film Theatre connector (direct) — GFT showings as occurrences of film works
+- [ ] Cineworld / Vue / Odeon coverage via the Data Thistle connector — cinema showings mapped to the same film works (cross-venue, cross-source de-dup of the same film)
+- [ ] Theatre runs and exhibition open-hours reuse the same work/occurrence shape
+
+**M7.6 — People layer (ADR 0005, Tranche B2)**
+- [ ] Artists / performers and organisers / promoters entities + event relationships ("every gig featuring X", "everything this promoter is doing"); link-first — name + canonical link, not biographies
 
 **M8 — Extended venue scrapers**
 - [ ] The Pipe Factory connector — identify whether a Google Calendar iCal feed is accessible before building an HTML scraper; prefer the feed if available
@@ -180,7 +228,8 @@ long-term direction and will be planned when Phase 2 is stable.
 - Public API: read-only Supabase-backed API endpoint for other Glasgow platforms to consume event data
 - Open-source connector library: documented contribution path so community members can build and maintain connectors for venues they know
 - Venue self-management tools: richer admin interface for claimed venues beyond Supabase Studio
-- Expansion to Edinburgh: the connector and schema architecture is city-agnostic; a `city` field on `venues` and a location filter on ingestion is the main addition
+- **Expansion to Scotland (then Edinburgh, etc.):** the connector and schema architecture is place-agnostic. The geography columns added in Milestone 6.5 (A4 — `area` / `region` on `venues`) are the foundation; expansion then needs area/region-aware ingestion filters and area browse. Glasgow is built first, then the same model extends to Scotland as a whole (ADR 0005)
+- **Enrichment (ADR 0005, Tranche C):** structured filterable accessibility (venue + event level); an entry-model field (free / ticketed / PWYC / donation / RSVP / members-only) for community events; unified faceted / full-text search across title + venue + artist + organiser + tag; user-facing change history beyond the `availability` badge
 - Sponsorship and affiliate integration: cultural organisation sponsorship; optional ticket affiliate revenue where terms permit
 - Ents24 and Songkick: both require commercial agreements; evaluate only after Tier 1 coverage proves insufficient
 
