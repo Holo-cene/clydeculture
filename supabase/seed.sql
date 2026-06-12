@@ -3,6 +3,13 @@
 -- This seed is intentionally demo-safe: source URLs point to real public venue pages
 -- for demo credibility, but events are synthetic demo data — not live-ingested.
 -- Payloads are synthetic, descriptions are short discovery summaries. Idempotent.
+--
+-- Tracer Bullet (Thread #1 / issue #3) retired this seed as the source of truth
+-- for the public site: events are seeded at visibility='archived' so a fresh
+-- local `supabase db reset` matches production behaviour — the demo rows stay
+-- available for internal lookups but the anon-key boundary
+-- (visibility='published' AND confidence>=60) excludes them. Real events on
+-- the deployed site come from the live Ticketmaster sweep.
 
 insert into public.sources (
   id,
@@ -290,7 +297,7 @@ select
   e.venue_id::uuid,
   e.availability,
   '00000000-0600-4000-8000-000000000001'::uuid,
-  'published',
+  'archived',
   90,
   '{"demo_seed": true, "link_first": true}'::jsonb,
   false,
