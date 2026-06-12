@@ -18,3 +18,12 @@ export type {
   PublicEventFilters,
   PublicQueryClient,
 } from './db/publicQueries.js';
+export {
+  ticketmasterAttribution,
+  ticketmasterImageHotlink,
+  ticketmasterSourceLink,
+} from './presentation/sourceAttribution.js';
+export type {
+  PublicEventForAttribution,
+  SourceAttribution,
+} from './presentation/sourceAttribution.js';

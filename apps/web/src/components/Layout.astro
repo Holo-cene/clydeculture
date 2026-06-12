@@ -182,13 +182,38 @@ const { title } = Astro.props;
 
       .event-card {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-columns: auto minmax(0, 1fr) auto;
         gap: 18px;
         padding: 18px;
         border: 1px solid var(--line);
         border-left: 5px solid var(--amber);
         border-radius: 8px;
         background: #ffffff;
+      }
+
+      .event-image {
+        margin: 0;
+        display: grid;
+        gap: 6px;
+        max-width: 220px;
+      }
+
+      .event-image img {
+        display: block;
+        width: 100%;
+        height: auto;
+        border-radius: 6px;
+      }
+
+      .attribution {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.86rem;
+        font-weight: 650;
+      }
+
+      .attribution a {
+        color: var(--muted);
       }
 
       .event-card h2,
@@ -246,6 +271,10 @@ const { title } = Astro.props;
         .event-card,
         .detail-grid {
           grid-template-columns: 1fr;
+        }
+
+        .event-image {
+          max-width: 100%;
         }
 
         .site-header__inner {

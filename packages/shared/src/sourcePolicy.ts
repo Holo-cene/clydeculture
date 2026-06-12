@@ -1,4 +1,4 @@
-export type SourceSlug = 'datathistle';
+export type SourceSlug = 'datathistle' | 'ticketmaster';
 
 export type SourceLinkMode = 'source_or_booking_url';
 
@@ -55,8 +55,35 @@ export const DATA_THISTLE_SOURCE_POLICY: SourcePolicy = {
     'Descriptions, images, rich place data, logo placement, attribution wording, and production terms remain to be confirmed.',
 };
 
+export const TICKETMASTER_SOURCE_POLICY: SourcePolicy = {
+  sourceSlug: 'ticketmaster',
+  allowDescriptions: false,
+  allowImages: true,
+  allowVenueEnrichment: true,
+  allowRawPayloadRetention: true,
+  rawPayloadTtlHours: 720,
+  cacheTtlHours: 24,
+  requiresAttribution: true,
+  requiresLogo: false,
+  requiresSourceLink: true,
+  requiresDataThistleUpdateLink: false,
+  allowPublicDisplay: true,
+  allowStagingCollection: true,
+  allowDerivedCategoryMapping: true,
+  allowTicketLinks: true,
+  allowPriceDisplay: true,
+  allowVenueNameDisplay: true,
+  allowPlaceIdStorage: false,
+  productionEnabled: true,
+  attributionLabel: 'Buy on Ticketmaster',
+  sourceLinkMode: 'source_or_booking_url',
+  notes:
+    'Ticketmaster Discovery API: hot-link images from the Ticketmaster CDN at render time; no binary caching. Every listing must show "Buy on Ticketmaster" attribution adjacent to the title and image, linking back to the Ticketmaster event page (ADR 0004).',
+};
+
 export const SOURCE_POLICIES: SourcePolicyMap = {
   datathistle: DATA_THISTLE_SOURCE_POLICY,
+  ticketmaster: TICKETMASTER_SOURCE_POLICY,
 };
 
 export function getSourcePolicy(sourceSlug: string): SourcePolicy | undefined {

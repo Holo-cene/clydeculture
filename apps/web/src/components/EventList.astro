@@ -1,5 +1,13 @@
 ---
-import { formatDateTime, formatTicketing, sourceHref, sourceName, type EventView } from '../lib/viewData';
+import {
+  formatDateTime,
+  formatTicketing,
+  sourceHref,
+  sourceName,
+  ticketmasterAttribution,
+  ticketmasterImageHotlink,
+  type EventView,
+} from '../lib/viewData';
 
 interface Props {
   events: EventView[];
@@ -13,38 +21,67 @@ const { events } = Astro.props;
     <p class="notice">No published events match these filters yet.</p>
   ) : (
     <div class="event-list">
-      {events.map((event) => (
-        <article class="event-card">
-          <div>
-            <h2>
-              <a href={`/events/${event.slug}`}>{event.title}</a>
-            </h2>
-            <div class="meta">
-              <span>{formatDateTime(event.start_at)}</span>
-              {event.venues?.slug ? (
-                <a href={`/venues/${event.venues.slug}`}>{event.venues.name}</a>
-              ) : (
-                event.venues?.name && <span>{event.venues.name}</span>
-              )}
-              {event.event_types?.label && <span>{event.event_types.label}</span>}
-              {event.festivals?.slug && (
-                <a href={`/?festival=${event.festivals.slug}`}>{event.festivals.name}</a>
-              )}
+      {events.map((event) => {
+        const tmAttribution = ticketmasterAttribution(event);
+        const tmImage = ticketmasterImageHotlink(event);
+        return (
+          <article class="event-card">
+            {tmImage && tmAttribution && (
+              <figure class="event-image">
+                <a href={tmAttribution.href} rel="noreferrer">
+                  <img
+                    src={tmImage}
+                    alt={event.title ?? ''}
+                    loading="lazy"
+                    referrerpolicy="no-referrer-when-downgrade"
+                  />
+                </a>
+                <figcaption class="attribution">
+                  <a href={tmAttribution.href} rel="noreferrer">
+                    {tmAttribution.label}
+                  </a>
+                </figcaption>
+              </figure>
+            )}
+            <div>
+              <h2>
+                <a href={`/events/${event.slug}`}>{event.title}</a>
+              </h2>
+              <div class="meta">
+                <span>{formatDateTime(event.start_at)}</span>
+                {event.venues?.slug ? (
+                  <a href={`/venues/${event.venues.slug}`}>{event.venues.name}</a>
+                ) : (
+                  event.venues?.name && <span>{event.venues.name}</span>
+                )}
+                {event.event_types?.label && <span>{event.event_types.label}</span>}
+                {event.festivals?.slug && (
+                  <a href={`/?festival=${event.festivals.slug}`}>{event.festivals.name}</a>
+                )}
+              </div>
             </div>
-          </div>
-          {formatTicketing(event) && (
-            <p class="ticketing">{formatTicketing(event)}</p>
-          )}
-          {sourceHref(event) && (
-            <p class="source">
-              Source: {sourceName(event)} ·{' '}
-              <a href={sourceHref(event)} rel="noreferrer">
-                View original
-              </a>
-            </p>
-          )}
-        </article>
-      ))}
+            {formatTicketing(event) && (
+              <p class="ticketing">{formatTicketing(event)}</p>
+            )}
+            {tmAttribution ? (
+              <p class="source attribution">
+                <a href={tmAttribution.href} rel="noreferrer">
+                  {tmAttribution.label}
+                </a>
+              </p>
+            ) : (
+              sourceHref(event) && (
+                <p class="source">
+                  Source: {sourceName(event)} ·{' '}
+                  <a href={sourceHref(event)} rel="noreferrer">
+                    View original
+                  </a>
+                </p>
+              )
+            )}
+          </article>
+        );
+      })}
     </div>
   )
 }
