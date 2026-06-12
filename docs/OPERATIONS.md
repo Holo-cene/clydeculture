@@ -138,24 +138,24 @@ successful or not — writes one row with `source_id`, timing, counts
 `updated_events_count`, `errors_count`), and an `error_message` if applicable.
 Status is one of `running`, `success`, `partial`, or `failed`.
 
-To check system health at a glance:
+For the weekly review, two internal views give a no-SQL surface in Supabase
+Studio (or via service-role callers):
 
 ```sql
--- Last run per source, ordered by recency
-select s.name, r.status, r.started_at, r.parsed_count, r.errors_count, r.error_message
-from ingest_runs r
-join sources s on s.id = r.source_id
-where r.id in (
-  select distinct on (source_id) id
-  from ingest_runs
-  order by source_id, started_at desc
-)
-order by r.started_at desc;
+-- Recent runs across all sources (counts + status + timestamps + source label)
+select * from v_recent_ingest_runs order by started_at desc limit 50;
+
+-- Open (unresolved) alerts only
+select * from v_open_ingest_alerts;
 ```
 
-Open (unresolved) alerts are visible in `ingest_alerts` filtered by
-`resolved = false`. The Supabase dashboard Table Editor works fine for this; no
-additional observability tooling is needed at Phase 1 scale.
+Both views are defined with `security_invoker = on` and inherit the underlying
+tables' default-deny RLS, so anon sees zero rows — they are internal-only by
+construction (see `supabase/tests/ingestion_health_views_test.sql`). The
+programmatic equivalents are `getRecentIngestRuns()` / `getOpenIngestAlerts()`
+in `packages/shared/src/db/internalQueries.ts` — these are not exported from
+the public `@clydeculture/shared` index because they require a service-role
+client. No additional observability tooling is needed at Phase 1 scale.
 
 ---
 
