@@ -36,7 +36,7 @@ taxonomy enum. An unclamped LLM response of "Alternative / Electronic" is not a 
 You are building Clyde Culture. Read `docs/DATA_MODEL.md` (sources table — tier column
 description and "Tier 4 — LLM-extracted RSS" note; the `needs_review` field description),
 `docs/INGESTION.md` (Tier 4 section), `docs/reference/SCHEMA_v5.sql` (event_types seed
-data and events.event_type_id), and `docs/tasks/BE-03.md` before proceeding.
+data and events.event_type_id), and `docs/tasks/archive/completed/top-level/BE-03.md` before proceeding.
 
 **Your task** is to define safe LLM usage patterns for Tier 4 extraction: input
 isolation, output validation, and documentation. No LLM integration code exists yet —

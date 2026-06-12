@@ -32,7 +32,7 @@ the CONNECTOR_GUIDE.md checklist with mandatory ToS review.
 
 You are building Clyde Culture. Read `docs/CONNECTOR_GUIDE.md` (§8 pre-flight checks
 and the PR checklist), `docs/reference/SPEC.md` (§6 Tier 3 and Tier 4 sources and
-"Sources to avoid"), and `docs/tasks/API-06.md` before proceeding.
+"Sources to avoid"), and `docs/tasks/archive/completed/top-level/API-06.md` before proceeding.
 
 **Your task** is to:
 1. Add a standard compliance record format for HTML connectors.

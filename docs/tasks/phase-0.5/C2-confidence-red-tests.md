@@ -4,7 +4,7 @@
 Open
 
 ## Purpose
-There is no automated test for the confidence scoring formula. `docs/tasks/BE-03.md` and `docs/tasks/BE-13.md` both describe confidence calculations but may contradict `docs/NORMALISATION.md` (the canonical source). Without a pinned test, any implementation could use the wrong formula or threshold. This task writes `calculateConfidence.test.ts` using only `docs/NORMALISATION.md` Step 4 as the specification.
+There is no automated test for the full confidence scoring formula. `docs/tasks/archive/completed/top-level/BE-03.md` and `docs/tasks/archive/completed/top-level/BE-13.md` both describe earlier confidence calculations but may contradict `docs/NORMALISATION.md` (the canonical source). Without a pinned test, any implementation could use the wrong formula or threshold. This task writes `calculateConfidence.test.ts` using only `docs/NORMALISATION.md` Step 4 as the specification.
 
 **TDD step 1 only** — write the red test file, stop.
 
@@ -17,8 +17,8 @@ There is no automated test for the confidence scoring formula. `docs/tasks/BE-03
 
 ## Files to inspect first
 - `docs/NORMALISATION.md` — Step 4 is the canonical confidence specification; use it exclusively
-- `docs/tasks/BE-03.md` — check for contradictions with NORMALISATION.md (note them, do not resolve)
-- `docs/tasks/BE-13.md` — check for contradictions with NORMALISATION.md (note them, do not resolve)
+- `docs/tasks/archive/completed/top-level/BE-03.md` — check for contradictions with NORMALISATION.md (note them, do not resolve)
+- `docs/tasks/archive/completed/top-level/BE-13.md` — check for contradictions with NORMALISATION.md (note them, do not resolve)
 - `packages/core/src/normalise/` — check what already exists
 - `packages/shared/src/types/` — check if `ConfidenceInputs` type exists
 
@@ -29,8 +29,8 @@ There is no automated test for the confidence scoring formula. `docs/tasks/BE-03
 ## Files not allowed to edit
 - Any production source files under `packages/core/src/normalise/`
 - `docs/NORMALISATION.md` — read only
-- `docs/tasks/BE-03.md` — read only (contradictions are flagged in report, not resolved here)
-- `docs/tasks/BE-13.md` — read only
+- `docs/tasks/archive/completed/top-level/BE-03.md` — read only (contradictions are flagged in report, not resolved here)
+- `docs/tasks/archive/completed/top-level/BE-13.md` — read only
 
 ## Non-goals
 - Do not implement `calculateConfidence()`.
@@ -42,7 +42,7 @@ There is no automated test for the confidence scoring formula. `docs/tasks/BE-03
    - Base score by tier (Tier 1, Tier 2, Tier 3)
    - Additive inputs: `+10 has_start_at`, `+10 venue_resolved`, `+10 type_classified`, `+5 title_quality`, `+5 has_url`, `+10 corroborated`
    - Auto-publish threshold (≥ 60)
-2. Read `docs/tasks/BE-03.md` and `docs/tasks/BE-13.md`. Note any values that contradict NORMALISATION.md.
+2. Read `docs/tasks/archive/completed/top-level/BE-03.md` and `docs/tasks/archive/completed/top-level/BE-13.md`. Note any values that contradict NORMALISATION.md.
 3. Create `packages/shared/src/types/confidence.ts` with a stub `ConfidenceInputs` interface (keys only, no logic):
    ```ts
    export interface ConfidenceInputs {

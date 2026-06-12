@@ -17,7 +17,7 @@ There is no field-level merge priority table in `docs/NORMALISATION.md`, and the
 
 ## Files to inspect first
 - `docs/NORMALISATION.md` — Step 8 (current merge behaviour, if any)
-- `docs/tasks/BE-13.md` — check for any merge field priority notes
+- `docs/tasks/archive/completed/top-level/BE-13.md` — check for any merge field priority notes
 - `packages/core/src/normalise/` — check if `mergeExternalEventIntoCanonicalEvent` already exists
 - `docs/reference/SCHEMA_v5.sql` — `events` table column list (every column needs a merge decision)
 
@@ -28,7 +28,7 @@ There is no field-level merge priority table in `docs/NORMALISATION.md`, and the
 ## Files not allowed to edit
 - Production source files under `packages/core/src/normalise/`
 - Any migration files
-- `docs/tasks/BE-13.md` — read only
+- `docs/tasks/archive/completed/top-level/BE-13.md` — read only
 
 ## Non-goals
 - Do not implement `mergeExternalEventIntoCanonicalEvent()`.

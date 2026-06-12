@@ -14,14 +14,14 @@ Eventbrite's ToS §5 prohibits scraping ("you agree not to scrape, crawl, or spi
 - Must run before: any Eventbrite connector implementation
 
 ## Files to inspect first
-- `docs/tasks/API-01.md` — existing Eventbrite task file (check Option C: org-scoped API polling)
+- `docs/tasks/archive/completed/top-level/API-01.md` — archived Eventbrite task file (check Option C: org-scoped API polling)
 - `packages/connectors/src/apify/eventbrite/` or `packages/connectors/src/api/eventbrite/` — check existing state
 - `docs/CONNECTOR_GUIDE.md` — ToS compliance requirements
 
 ## Files allowed to edit
 - `docs/tasks/EVENTBRITE-PREFLIGHT.md` (new — create in `docs/tasks/`, not in `phase-0.5/`)
 - `docs/connectors/eventbrite/COMPLIANCE.md` (new — create path if needed)
-- `docs/tasks/API-01.md` — update with outcome
+- `docs/tasks/phase-0.5/E4-eventbrite-preflight.md` — update this task's status notes if findings make the task obsolete or blocked
 
 ## Files not allowed to edit
 - `packages/connectors/src/apify/eventbrite/` TypeScript source files
@@ -33,7 +33,7 @@ Eventbrite's ToS §5 prohibits scraping ("you agree not to scrape, crawl, or spi
 - Do not assume the Apify approach is permitted without confirming it.
 
 ## Required steps
-1. Read `docs/tasks/API-01.md` in full, especially Option C (org-scoped API polling).
+1. Read `docs/tasks/archive/completed/top-level/API-01.md` in full, especially Option C (org-scoped API polling).
 2. Check `packages/connectors/src/apify/eventbrite/` for any existing files.
 3. Assess Eventbrite ToS §5 ("no scraping"): does this prohibition extend to:
    a. Third-party Apify actors that scrape the public site?
@@ -47,14 +47,14 @@ Eventbrite's ToS §5 prohibits scraping ("you agree not to scrape, crawl, or spi
      - If ToS permits AND a viable API path exists: proceed to connector build.
      - If ToS blocks scraping AND no API path: defer Eventbrite to Phase 2, document the decision.
 6. If the decision is "no Phase 1": create `docs/connectors/eventbrite/COMPLIANCE.md` documenting why and what the Phase 2 reassessment condition would be.
-7. Update `docs/tasks/API-01.md` with the outcome.
+7. Update this task file with the outcome, or archive it if Eventbrite is rejected for Phase 1.
 
 ## Test command / verification
 No automated test — verify by git diff and checklist.
 
 ```bash
 ls docs/tasks/EVENTBRITE-PREFLIGHT.md
-git diff docs/tasks/API-01.md
+git diff docs/tasks/phase-0.5/E4-eventbrite-preflight.md
 ```
 
 ## Acceptance criteria
@@ -63,7 +63,7 @@ git diff docs/tasks/API-01.md
 - [ ] API access current status is confirmed.
 - [ ] Option C (org-scoped) is assessed.
 - [ ] If deferred: `docs/connectors/eventbrite/COMPLIANCE.md` documents the decision.
-- [ ] `docs/tasks/API-01.md` is updated.
+- [ ] This task is updated or archived with the Eventbrite outcome.
 
 ## Stop condition
 Stop when the pre-flight document is complete and a go/no-go decision is documented. Report:

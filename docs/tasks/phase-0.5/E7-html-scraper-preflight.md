@@ -14,11 +14,11 @@ Phase 1 HTML sources (SWG3, St Luke's, Mono, The Flying Duck) each need a ToS/ro
 - Must run before: SWG3, St Luke's, Mono, Flying Duck connector implementations
 
 ## Files to inspect first
-- `docs/tasks/API-06.md` — existing HTML scraping task file
+- `docs/tasks/archive/completed/top-level/API-06.md` — archived HTML scraping task file
 - `docs/CONNECTOR_GUIDE.md` — HTML connector approach
 
 ## Files allowed to edit
-- `docs/tasks/API-06.md` — update with findings
+- `docs/tasks/phase-0.5/E7-html-scraper-preflight.md` — update this task's status notes if findings make the task obsolete or blocked
 - `docs/connectors/html-preflight.md` (new — create in `docs/connectors/`, make the directory if needed)
 
 ## Files not allowed to edit
@@ -32,7 +32,7 @@ Phase 1 HTML sources (SWG3, St Luke's, Mono, The Flying Duck) each need a ToS/ro
 - Do not make schema changes.
 
 ## Required steps
-1. Read `docs/tasks/API-06.md` in full.
+1. Read `docs/tasks/archive/completed/top-level/API-06.md` in full.
 2. For each Phase 1 HTML source, research and document in `docs/connectors/html-preflight.md`:
 
    **Per-source checklist** (SWG3, St Luke's, Mono, The Flying Duck):
@@ -48,16 +48,16 @@ Phase 1 HTML sources (SWG3, St Luke's, Mono, The Flying Duck) each need a ToS/ro
    - If not: note that Apify actors are the alternative for JS-heavy sources.
 
 4. **Field-completeness alerting proposal:**
-   - Document in `docs/tasks/API-06.md`: flag runs where > 30% of records have null `title` or `start_at`. Log as `count_drop` alert type.
+   - Document in `docs/connectors/html-preflight.md`: flag runs where > 30% of records have null `title` or `start_at`. Log as `count_drop` alert type.
 
-5. Update `docs/tasks/API-06.md` with a summary of per-source findings.
+5. Update this task file with a summary of per-source findings, or archive it if HTML scraping is rejected for Phase 1.
 
 ## Test command / verification
 No automated test — verify by git diff and checklist.
 
 ```bash
 ls docs/connectors/
-git diff docs/tasks/API-06.md
+git diff docs/tasks/phase-0.5/E7-html-scraper-preflight.md
 ```
 
 ## Acceptance criteria
@@ -65,11 +65,11 @@ git diff docs/tasks/API-06.md
 - [ ] Each source's robots.txt and ToS status is documented.
 - [ ] JavaScript rendering requirement is confirmed for each source.
 - [ ] Trigger.dev + Playwright compatibility is addressed.
-- [ ] Field-completeness alerting proposal is in `docs/tasks/API-06.md`.
+- [ ] Field-completeness alerting proposal is in `docs/connectors/html-preflight.md`.
 - [ ] Any source where ToS prohibits scraping is clearly marked as blocked.
 
 ## Stop condition
-Stop when `docs/connectors/html-preflight.md` and the updated `docs/tasks/API-06.md` are complete. Report:
+Stop when `docs/connectors/html-preflight.md` and this task status are complete. Report:
 - per-source ToS/robots.txt status
 - which sources require Playwright
 - Trigger.dev + Playwright compatibility finding

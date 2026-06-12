@@ -19,7 +19,7 @@ There are no automated tests for `mapSourceCategoryToEventType()`. Without tests
 - `packages/core/src/normalise/` — check if `mapSourceCategoryToEventType` already exists
 - `docs/NORMALISATION.md` — check if category mapping is specified
 - `packages/shared/src/enums/taxonomy.ts` — confirm correct slug values after B1
-- `docs/tasks/BE-03.md` — Ticketmaster classification IDs that should map to specific slugs
+- `docs/tasks/archive/completed/top-level/BE-03.md` — Ticketmaster classification IDs that should map to specific slugs
 
 ## Files allowed to edit
 - `packages/core/src/normalise/mapSourceCategoryToEventType.test.ts` (new)
@@ -36,7 +36,7 @@ There are no automated tests for `mapSourceCategoryToEventType()`. Without tests
 
 ## Required steps
 1. Read `packages/core/src/normalise/` directory to check if `mapSourceCategoryToEventType.ts` exists.
-2. Read `docs/tasks/BE-03.md` for documented Ticketmaster classification IDs.
+2. Read `docs/tasks/archive/completed/top-level/BE-03.md` for documented Ticketmaster classification IDs.
 3. Confirm correct slug values from `packages/shared/src/enums/taxonomy.ts` (post-B1).
 4. Create `packages/core/src/normalise/mapSourceCategoryToEventType.test.ts` with tests covering:
    - Direct lookup from `source_type_category_map` for a known Ticketmaster classification ID → returns the correct SQL slug (e.g. `'live_music'`)
