@@ -63,7 +63,10 @@ Rules:
 | `deriveDedupeKey()` | `src/dedupe/dedupe.ts` | Must match SQL `compute_dedupe_key()` |
 | `mergeExternalEventIntoCanonicalEvent()` | `src/dedupe/dedupe.ts` | API wins over scrape |
 | `mapSourceCategoryToEventType()` | `src/normalise/normalise.ts` | Governs taxonomy |
-| `calculateConfidence()` | `src/normalise/normalise.ts` | Gates frontend visibility |
+| `calculateConfidence()` | `src/normalise/normalise.ts` | Legacy single-score gate (RLS still uses this) |
+| `calculateTrust()` | `src/normalise/normalise.ts` | ADR 0006 trust signal — "is this event real?" |
+| `calculateCompleteness()` | `src/normalise/normalise.ts` | ADR 0006 completeness signal — Minimum Viable Public Event |
+| `isEligibleForPublic()` | `src/normalise/normalise.ts` | ADR 0006 split gate (`trust >= T && completeness >= C`) |
 | `detectFestival()` | `src/festivals/festivals.ts` | Affects grouping and display |
 
 ## Tests
@@ -74,6 +77,7 @@ Framework: **Vitest v2**. Run with `pnpm --filter @clydeculture/core test`.
 |---|---|
 | `src/dedupe/dedupe.test.ts` | `deriveDedupeKey`, `mergeExternalEventIntoCanonicalEvent` |
 | `src/normalise/normalise.test.ts` | `normaliseTitle`, `normaliseVenueName` |
+| `src/normalise/trustCompleteness.test.ts` | `calculateTrust`, `calculateCompleteness`, `isEligibleForPublic` (ADR 0006) |
 | `src/festivals/festivals.test.ts` | `detectFestival` |
 
 Before implementing any function in this package, write the test first per the

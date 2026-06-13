@@ -34,23 +34,36 @@ change-controlled. BE-19 tracks the future work to externalise this into a
 `platform_config` table with per-source overrides via `sources.confidence_threshold`.
 No other record states (`draft`, `hidden`, `archived`) are visible through the anon key.
 
-### Planned change — trust × completeness gate (ADR 0006)
+### Trust × completeness gate (ADR 0006)
 
-> **Direction, not current state.** The single `confidence >= 60` gate above is the
-> live behaviour. [ADR 0006](decisions/0006-confidence-trust-and-completeness.md)
-> replaces it with **two signals**: **trust** ("is this event real?") and
-> **completeness** ("is it complete enough to display?"). The boundary becomes a
-> *trust bar* AND a *minimum-completeness bar*, so a real grassroots/community event is
-> **not** suppressed merely for lacking a ticket URL, an image, a known/resolved venue,
-> or commercial source richness. This protects hard rule #7.
+> **Engine implemented; RLS migration pending.** The split-signal scoring lives in
+> `packages/core` as `calculateTrust()`, `calculateCompleteness()`, and
+> `isEligibleForPublic()` ([ADR 0006](decisions/0006-confidence-trust-and-completeness.md)).
+> The publishing-boundary RLS policy still uses the single `confidence >= 60` literal
+> above — switching it requires a coordinated migration that backfills `trust` and
+> `completeness` columns on `events` and updates the existing policies in lockstep.
+> Until that migration lands, the engine writes both the legacy `confidence` score and
+> the new signals so callers can be wired through incrementally.
+
+The split gate replaces the single threshold with **two signals**:
+
+- **Trust** — "is this event real?" Driven by source tier and cross-source
+  corroboration. Default bar `T = 40` (Tier 1–3 pass on tier alone; Tier 4 must be
+  corroborated).
+- **Completeness** — "is it complete enough to display?" Driven by the Minimum Viable
+  Public Event fields below. Default bar `C = 100` (all four MVP fields required).
+
+Public eligibility: `trust >= T AND completeness >= C`. A real grassroots/community
+event is **not** suppressed merely for lacking a ticket URL, an image, a known/resolved
+venue, or commercial source richness. This protects hard rule #7.
 
 **Minimum viable public event.** The smallest set of fields needed to be useful and
-honest to a reader: a title, a start date/time (or an explicit date-only / TBA state),
-a link (`externalUrl`), and a location signal (a venue, a place, or an explicit
-"location TBA" / online). An event clearing the trust bar and the minimum viable
-threshold is eligible for display; where a real event is below the completeness bar,
-prefer a clear "details to be confirmed" treatment over hiding it. See
-`docs/NORMALISATION.md` Step 4.
+honest to a reader: a title (≥3 chars), a start date/time (or an explicit `time_tba`
+state), a link (`source_url`), and a location signal (a resolved or auto-created
+venue, `is_online = true`, or an explicit "location TBA"). An event clearing the trust
+bar and the minimum-viable bar is eligible for display; where a real event is below the
+completeness bar, prefer a clear "details to be confirmed" treatment over hiding it.
+See `docs/NORMALISATION.md` Step 4.
 
 ---
 

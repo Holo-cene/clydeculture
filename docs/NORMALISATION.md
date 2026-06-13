@@ -211,16 +211,22 @@ A classification defaulting to `other` is flagged with `confidence_inputs.type_s
 
 ## Step 4 — Confidence scoring
 
-> **Planned change (ADR 0006) — direction, not current state.** The single 0–100 score
-> below is the live behaviour.
-> [ADR 0006](decisions/0006-confidence-trust-and-completeness.md) splits it into
-> **trust** ("is this event real?" — from source class/trust, corroboration, moderation)
-> and **completeness** ("ready to display?" — from displayable-field presence/quality).
-> Publishing then gates on a *trust bar* AND a *minimum-completeness bar* (the "minimum
-> viable public event" in `docs/PUBLISHING.md`). The normaliser must **not** suppress a
-> real event for lacking a ticket URL, image, or known venue. This supersedes the
-> single-score framing here and the grassroots-floor idea in ADR 0005 A3. Exact
-> trust/completeness weights are derived at implementation (prompt `20`), not fixed here.
+> **ADR 0006 split implemented in the engine; RLS migration pending.** The single
+> 0–100 score below remains the live publishing gate (RLS `confidence >= 60`). The
+> split-signal scoring lives in `packages/core` as `calculateTrust()`,
+> `calculateCompleteness()`, and `isEligibleForPublic()` — see
+> [ADR 0006](decisions/0006-confidence-trust-and-completeness.md). Until the RLS
+> migration lands, both scores are computed; the legacy `confidence` is what gates
+> visibility.
+>
+> **Trust** is driven by source tier and corroboration; default bar `T = 40` (Tier 1–3
+> pass on tier alone; Tier 4 needs corroboration). **Completeness** is driven by the
+> Minimum Viable Public Event fields — title (≥3 chars), start signal (or `time_tba`),
+> link, and a location signal (resolved/auto-created venue, online, or explicit
+> "location TBA"); default bar `C = 100` (all four required). Lacking a ticket URL,
+> image, classified type, or *resolved* venue MUST NOT suppress publication
+> (hard rule #7). This supersedes the single-score framing below and the
+> grassroots-floor idea in ADR 0005 A3.
 
 Confidence is a 0–100 integer assembled from discrete weighted inputs. It is stored
 in `events.confidence` and its breakdown stored in `events.confidence_inputs` (JSONB).
