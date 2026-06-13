@@ -27,3 +27,13 @@ export type {
   PublicEventForAttribution,
   SourceAttribution,
 } from './presentation/sourceAttribution.js';
+export {
+  UnsafeFetchUrlError,
+  assertSafeFetchUrl,
+  nodeDnsResolver,
+} from './security/index.js';
+export type {
+  AddressResolver,
+  AssertSafeFetchUrlOptions,
+  UnsafeReason,
+} from './security/index.js';
