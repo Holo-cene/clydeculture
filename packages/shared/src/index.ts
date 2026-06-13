@@ -8,6 +8,7 @@ export { upsertExternalEvents } from './db/upsertExternalEvents.js';
 export type { ExternalEventInput } from './db/upsertExternalEvents.js';
 export {
   getEventBySlug,
+  getEventLinks,
   getPublishedEvents,
   getThisWeekendDateRange,
   getTonightDateRange,
@@ -15,6 +16,8 @@ export {
 } from './db/publicQueries.js';
 export type {
   DateRange,
+  EventLink,
+  EventLinkKind,
   PublicEventFilters,
   PublicQueryClient,
 } from './db/publicQueries.js';

@@ -22,6 +22,14 @@ interface DateRange {
   endAt: string;
 }
 
+interface EventLink {
+  url: string;
+  label: string;
+  kind: 'source' | 'ticket';
+  sourceName: string;
+  sourceSlug: string;
+}
+
 interface PublicQueriesApi {
   getPublishedEvents(
     client: FakeSupabaseClient,
@@ -35,6 +43,7 @@ interface PublicQueriesApi {
   ): Promise<unknown[]>;
   getEventBySlug(client: FakeSupabaseClient, slug: string): Promise<unknown | null>;
   getVenueBySlug(client: FakeSupabaseClient, slug: string): Promise<unknown | null>;
+  getEventLinks(client: FakeSupabaseClient, eventId: string): Promise<EventLink[]>;
   getTonightDateRange(now: Date): DateRange;
   getThisWeekendDateRange(now: Date): DateRange;
 }
@@ -105,10 +114,7 @@ class FakeQueryBuilder implements PromiseLike<{ data: unknown[]; error: null }> 
   }
 
   order(column: string, options?: Record<string, unknown>): this {
-    this.query.order =
-      options === undefined
-        ? { column }
-        : { column, options };
+    this.query.order = options === undefined ? { column } : { column, options };
     return this;
   }
 
@@ -125,7 +131,9 @@ class FakeQueryBuilder implements PromiseLike<{ data: unknown[]; error: null }> 
   }
 
   then<TResult1 = { data: unknown[]; error: null }, TResult2 = never>(
-    onfulfilled?: ((value: { data: unknown[]; error: null }) => TResult1 | PromiseLike<TResult1>) | null,
+    onfulfilled?:
+      | ((value: { data: unknown[]; error: null }) => TResult1 | PromiseLike<TResult1>)
+      | null,
     onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
   ): Promise<TResult1 | TResult2> {
     this.client.queries.push(this.query);
@@ -145,7 +153,9 @@ class FakeQueryBuilder implements PromiseLike<{ data: unknown[]; error: null }> 
         }
         if (filter.op === 'ilike' && typeof filter.value === 'string') {
           const needle = filter.value.replaceAll('%', '').toLowerCase();
-          return String(row[filter.column] ?? '').toLowerCase().includes(needle);
+          return String(row[filter.column] ?? '')
+            .toLowerCase()
+            .includes(needle);
         }
         return true;
       }),
@@ -222,11 +232,9 @@ describe('public Supabase query helpers', () => {
       query,
       'or',
       'or',
-      [
-        'title.ilike.%jazz%',
-        'normalised_title.ilike.%jazz%',
-        'ticket_url_label.ilike.%jazz%',
-      ].join(','),
+      ['title.ilike.%jazz%', 'normalised_title.ilike.%jazz%', 'ticket_url_label.ilike.%jazz%'].join(
+        ',',
+      ),
     );
   });
 
@@ -336,6 +344,108 @@ describe('public Supabase query helpers', () => {
     expectFilter(query, 'eq', 'slug', 'barrowland-ballroom');
     expectFilter(query, 'in', 'status', ['active', 'temporary']);
     expect(query.maybeSingle || query.single).toBe(true);
+  });
+
+  it('getEventLinks reads the event_links view filtered by event_id and ordered', async () => {
+    const { getEventLinks } = await loadApi();
+    const eventId = '11111111-1111-1111-1111-111111111111';
+    const client = new FakeSupabaseClient({
+      event_links: [
+        {
+          event_id: eventId,
+          url: 'https://ticketmaster.example/events/abc-source',
+          label: 'Listed on Ticketmaster',
+          kind: 'source',
+          source_id: 'source-tm',
+          source_name: 'Ticketmaster',
+          source_slug: 'ticketmaster',
+          sort_order: 1,
+        },
+        {
+          event_id: eventId,
+          url: 'https://ticketmaster.example/events/abc',
+          label: 'Buy on Ticketmaster',
+          kind: 'ticket',
+          source_id: 'source-tm',
+          source_name: 'Ticketmaster',
+          source_slug: 'ticketmaster',
+          sort_order: 2,
+        },
+      ],
+    });
+
+    const links = await getEventLinks(client, eventId);
+
+    const query = lastQuery(client);
+    expect(query.table).toBe('event_links');
+    expectFilter(query, 'eq', 'event_id', eventId);
+    expect(query.order).toMatchObject({ column: 'sort_order' });
+    expect(query.select).toEqual(expect.stringContaining('url'));
+    expect(query.select).toEqual(expect.stringContaining('source_name'));
+
+    expect(links).toEqual([
+      expect.objectContaining({
+        url: 'https://ticketmaster.example/events/abc-source',
+        kind: 'source',
+        sourceName: 'Ticketmaster',
+        sourceSlug: 'ticketmaster',
+        label: 'Listed on Ticketmaster',
+      }),
+      expect.objectContaining({
+        url: 'https://ticketmaster.example/events/abc',
+        kind: 'ticket',
+        sourceName: 'Ticketmaster',
+        sourceSlug: 'ticketmaster',
+        label: 'Buy on Ticketmaster',
+      }),
+    ]);
+  });
+
+  it('getEventLinks deduplicates identical url + kind combinations', async () => {
+    const { getEventLinks } = await loadApi();
+    const eventId = '22222222-2222-2222-2222-222222222222';
+    const client = new FakeSupabaseClient({
+      event_links: [
+        {
+          event_id: eventId,
+          url: 'https://gft.example/dune',
+          label: 'Book at GFT',
+          kind: 'ticket',
+          source_id: 'gft',
+          source_name: 'Glasgow Film Theatre',
+          source_slug: 'gft',
+          sort_order: 2,
+        },
+        {
+          event_id: eventId,
+          url: 'https://gft.example/dune',
+          label: 'Book at GFT',
+          kind: 'ticket',
+          source_id: 'gft',
+          source_name: 'Glasgow Film Theatre',
+          source_slug: 'gft',
+          sort_order: 2,
+        },
+      ],
+    });
+
+    const links = await getEventLinks(client, eventId);
+
+    expect(links).toHaveLength(1);
+    expect(links[0]).toMatchObject({
+      url: 'https://gft.example/dune',
+      kind: 'ticket',
+      sourceSlug: 'gft',
+    });
+  });
+
+  it('getEventLinks returns an empty array when the view has no rows for the event', async () => {
+    const { getEventLinks } = await loadApi();
+    const client = new FakeSupabaseClient({ event_links: [] });
+
+    const links = await getEventLinks(client, '33333333-3333-3333-3333-333333333333');
+
+    expect(links).toEqual([]);
   });
 
   it('query helpers take an anon-style client and never mention a service role key', async () => {

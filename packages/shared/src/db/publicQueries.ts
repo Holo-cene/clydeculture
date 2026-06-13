@@ -36,16 +36,9 @@ export interface PublicQueryClient {
   from(table: string): SelectBuilder;
 }
 
-const PUBLIC_EVENT_SELECT = [
-  '*',
-  'event_types(*)',
-  'venues(*)',
-  'festivals(*)',
-].join(',');
+const PUBLIC_EVENT_SELECT = ['*', 'event_types(*)', 'venues(*)', 'festivals(*)'].join(',');
 
-function applyPublicEventBoundary(
-  client: PublicQueryClient,
-): QueryBuilder {
+function applyPublicEventBoundary(client: PublicQueryClient): QueryBuilder {
   return client
     .from('events')
     .select(PUBLIC_EVENT_SELECT)
@@ -147,7 +140,10 @@ async function getVenueIdBySlug(client: PublicQueryClient, slug: string): Promis
   return isRecord(data) && typeof data['id'] === 'string' ? data['id'] : null;
 }
 
-async function getFestivalIdBySlug(client: PublicQueryClient, slug: string): Promise<string | null> {
+async function getFestivalIdBySlug(
+  client: PublicQueryClient,
+  slug: string,
+): Promise<string | null> {
   const { data, error } = await client
     .from('festivals')
     .select('id')
@@ -159,10 +155,7 @@ async function getFestivalIdBySlug(client: PublicQueryClient, slug: string): Pro
 }
 
 async function getSearchVenueIds(client: PublicQueryClient, searchTerm: string): Promise<string[]> {
-  const { data, error } = await client
-    .from('venues')
-    .select('id')
-    .ilike('name', `%${searchTerm}%`);
+  const { data, error } = await client.from('venues').select('id').ilike('name', `%${searchTerm}%`);
 
   throwIfQueryError(error);
 
@@ -175,7 +168,10 @@ function publicSearchTerm(value: string | undefined): string | null {
   const trimmed = value?.trim();
   if (!trimmed) return null;
 
-  return trimmed.replace(/[%_,()]/g, ' ').replace(/\s+/g, ' ').trim();
+  return trimmed
+    .replace(/[%_,()]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -186,9 +182,7 @@ export async function getEventBySlug(
   client: PublicQueryClient,
   slug: string,
 ): Promise<unknown | null> {
-  const { data, error } = await applyPublicEventBoundary(client)
-    .eq('slug', slug)
-    .maybeSingle();
+  const { data, error } = await applyPublicEventBoundary(client).eq('slug', slug).maybeSingle();
 
   throwIfQueryError(error);
   return data;
@@ -207,6 +201,60 @@ export async function getVenueBySlug(
 
   throwIfQueryError(error);
   return data;
+}
+
+export type EventLinkKind = 'source' | 'ticket';
+
+export interface EventLink {
+  url: string;
+  label: string;
+  kind: EventLinkKind;
+  sourceName: string;
+  sourceSlug: string;
+}
+
+const EVENT_LINK_SELECT = [
+  'event_id',
+  'url',
+  'label',
+  'kind',
+  'source_id',
+  'source_name',
+  'source_slug',
+  'sort_order',
+].join(',');
+
+export async function getEventLinks(
+  client: PublicQueryClient,
+  eventId: string,
+): Promise<EventLink[]> {
+  const { data, error } = await client
+    .from('event_links')
+    .select(EVENT_LINK_SELECT)
+    .eq('event_id', eventId)
+    .order('sort_order', { ascending: true });
+
+  throwIfQueryError(error);
+
+  const result: EventLink[] = [];
+  const seen = new Set<string>();
+  for (const row of data ?? []) {
+    if (!isRecord(row)) continue;
+    const url = typeof row['url'] === 'string' ? row['url'] : null;
+    if (!url) continue;
+    const kind: EventLinkKind = row['kind'] === 'ticket' ? 'ticket' : 'source';
+    const dedupeKey = `${kind}|${url}`;
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+    result.push({
+      url,
+      label: typeof row['label'] === 'string' ? row['label'] : '',
+      kind,
+      sourceName: typeof row['source_name'] === 'string' ? row['source_name'] : '',
+      sourceSlug: typeof row['source_slug'] === 'string' ? row['source_slug'] : '',
+    });
+  }
+  return result;
 }
 
 export function getTonightDateRange(now: Date): DateRange {
