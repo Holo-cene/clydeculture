@@ -307,11 +307,12 @@ longer than necessary for the documented purpose.
 ### Retention automation (build deferred to form launch)
 
 When the public submission form ships, a daily Trigger.dev task — running after
-the ingestion sweep — calls three SQL functions:
+the ingestion sweep — calls four SQL functions:
 
 - `delete_rejected_submissions()` — `delete from event_submissions where status = 'rejected' and reviewed_at < now() - interval '30 days'`.
 - `delete_rejected_venue_claims()` — equivalent on `venue_claims`.
 - `anonymise_approved_submission_emails()` — `update event_submissions set submitter_email = null where status = 'approved' and submitter_email is not null and ...` per the table above.
+- `anonymise_approved_venue_claim_emails()` — `update venue_claims set claimant_email = null where status = 'approved' and claimant_email is not null and reviewed_at < now() - interval '1 year'`. Revisit the 1-year window when the venue write-access model lands; the claim email is the verification key for that access.
 
 These functions and the Trigger.dev task do **not** exist yet; they ship with
 the public form, not before. The functions live in `supabase/migrations/`
@@ -352,8 +353,9 @@ documented now so it is ready when the form goes live.
 - [ ] Privacy notice published on the public site and linked from every form.
 - [ ] Form copy names the lawful basis, the retention schedule, and the DSAR
       contact in plain language.
-- [ ] `delete_rejected_submissions()`, `delete_rejected_venue_claims()`, and
-      `anonymise_approved_submission_emails()` migrations applied.
+- [ ] `delete_rejected_submissions()`, `delete_rejected_venue_claims()`,
+      `anonymise_approved_submission_emails()`, and
+      `anonymise_approved_venue_claim_emails()` migrations applied.
 - [ ] Trigger.dev retention task scheduled and observed running on staging.
 - [ ] pgTAP + unit tests cover the retention functions and the task.
 - [ ] This section reviewed by someone with UK data-protection expertise.
