@@ -11,7 +11,7 @@
     "lint": "eslint src --ext .ts --no-error-on-unmatched-pattern"
   },
   "dependencies": {
-    "@astrojs/node": "^9.0.0",
+    "@astrojs/cloudflare": "^12.6.13",
     "@clydeculture/shared": "workspace:*",
     "astro": "^5.0.0"
   },
