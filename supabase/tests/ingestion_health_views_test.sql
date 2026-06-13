@@ -100,28 +100,24 @@ SELECT columns_are(
 
 
 -- =============================================================================
--- SECTION 2: Internal-only — anon must see zero rows from either view
+-- SECTION 2: Internal-only — anon is denied SELECT on both views
 --
--- The views are defined with security_invoker=on so anon's RLS context applies
--- to ingest_runs / ingest_alerts / sources — all three are default-deny for
--- anon, so the views must return nothing.
+-- The views revoke SELECT from anon entirely (the migration does this and
+-- asserts it at migration time). anon therefore cannot read them at all — a
+-- stronger guarantee than "security_invoker returns zero rows". Assert the
+-- actual contract directly; running as the test role (no SET ROLE) avoids any
+-- dependency on anon being able to execute pgTAP helper functions.
 -- =============================================================================
 
-SET ROLE anon;
-
-SELECT is(
-  (SELECT count(*)::int FROM public.v_recent_ingest_runs),
-  0,
-  'anon: v_recent_ingest_runs is empty (security_invoker honours RLS)'
+SELECT ok(
+  NOT has_table_privilege('anon', 'public.v_recent_ingest_runs', 'SELECT'),
+  'anon has no SELECT privilege on v_recent_ingest_runs (internal-only view)'
 );
 
-SELECT is(
-  (SELECT count(*)::int FROM public.v_open_ingest_alerts),
-  0,
-  'anon: v_open_ingest_alerts is empty (security_invoker honours RLS)'
+SELECT ok(
+  NOT has_table_privilege('anon', 'public.v_open_ingest_alerts', 'SELECT'),
+  'anon has no SELECT privilege on v_open_ingest_alerts (internal-only view)'
 );
-
-RESET ROLE;
 
 
 -- =============================================================================

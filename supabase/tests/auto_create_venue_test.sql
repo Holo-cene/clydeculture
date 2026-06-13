@@ -44,9 +44,13 @@ SELECT has_function(
 -- ---------------------------------------------------------------------------
 -- 1. First call writes the plain base slug (no suffix).
 -- ---------------------------------------------------------------------------
+-- NB: auto_create_venue is VOLATILE and INSERTs. Calling it inside
+-- `WHERE id = auto_create_venue(...)` re-evaluates it once per scanned row
+-- (multiple inserts, no match). Capture the returned id once with \gset, then
+-- read the slug back in a separate statement so the insert is visible.
+SELECT auto_create_venue('Issue Seventeen Venue A') AS va_first \gset
 SELECT is(
-  (SELECT slug FROM public.venues
-   WHERE id = auto_create_venue('Issue Seventeen Venue A')),
+  (SELECT slug FROM public.venues WHERE id = :'va_first'),
   'issue-seventeen-venue-a',
   'first auto_create_venue call writes the plain base slug'
 );
@@ -56,9 +60,9 @@ SELECT is(
 -- 2. Second call with the same name produces a deterministic -2 suffix —
 --    NOT a random 0-999 suffix.
 -- ---------------------------------------------------------------------------
+SELECT auto_create_venue('Issue Seventeen Venue A') AS va_second \gset
 SELECT is(
-  (SELECT slug FROM public.venues
-   WHERE id = auto_create_venue('Issue Seventeen Venue A')),
+  (SELECT slug FROM public.venues WHERE id = :'va_second'),
   'issue-seventeen-venue-a-2',
   'second collision yields -2 (deterministic counter, not random)'
 );
@@ -67,9 +71,9 @@ SELECT is(
 -- ---------------------------------------------------------------------------
 -- 3. Third call yields -3 (counter increments by 1, no compounding).
 -- ---------------------------------------------------------------------------
+SELECT auto_create_venue('Issue Seventeen Venue A') AS va_third \gset
 SELECT is(
-  (SELECT slug FROM public.venues
-   WHERE id = auto_create_venue('Issue Seventeen Venue A')),
+  (SELECT slug FROM public.venues WHERE id = :'va_third'),
   'issue-seventeen-venue-a-3',
   'third collision yields -3 (sequential counter, no compounding suffixes)'
 );
@@ -104,9 +108,9 @@ SELECT
   true
 FROM generate_series(1, 9) AS i;
 
+SELECT auto_create_venue('Issue Seventeen Venue B') AS vb_contention \gset
 SELECT is(
-  (SELECT slug FROM public.venues
-   WHERE id = auto_create_venue('Issue Seventeen Venue B')),
+  (SELECT slug FROM public.venues WHERE id = :'vb_contention'),
   'issue-seventeen-venue-b-10',
   'dense contention block resolves to the next sequential counter (-10)'
 );

@@ -49,13 +49,11 @@ SELECT plan(7);
 -- slugs are arbitrary but unique within the test set.
 -- ---------------------------------------------------------------------------
 
+-- Case 1 (apostrophe) deliberately resolves against the SEEDED venue
+-- "The Old Hairdressers" (slug the-old-hairdressers) rather than a fixture, so
+-- we don't insert a second venue that normalises to the same canonical form.
 INSERT INTO public.venues (id, name, slug, status, city)
 VALUES
-  ('00000000-0010-0000-0000-000000000001'::uuid,
-   'the old hairdressers',
-   'issue-10-old-hairdressers',
-   'active',
-   'Glasgow'),
   ('00000000-0010-0000-0000-000000000002'::uuid,
    'swg3 glasgow',
    'issue-10-swg3-glasgow',
@@ -88,8 +86,8 @@ VALUES
 -- ---------------------------------------------------------------------------
 SELECT is(
   resolve_venue(E'The Old Hairdresser\'s'),
-  '00000000-0010-0000-0000-000000000001'::uuid,
-  'resolve_venue strips apostrophe: "The Old Hairdresser''s" → "the old hairdressers"'
+  (SELECT id FROM public.venues WHERE slug = 'the-old-hairdressers'),
+  'resolve_venue strips apostrophe and matches the seeded "The Old Hairdressers"'
 );
 
 -- ---------------------------------------------------------------------------

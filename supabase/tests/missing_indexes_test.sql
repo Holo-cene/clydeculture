@@ -97,21 +97,20 @@ SELECT is(
 -- (e.g. quoting, alias prefixing) but still pin the semantic intent.
 -- =============================================================================
 
-SELECT like(
-  pg_temp.index_predicate('idx_events_venue_date'),
-  '%visibility%published%',
+-- pgTAP has no 3-arg `like()` matcher (LIKE is a SQL keyword); use the SQL LIKE
+-- operator inside ok() so this is unambiguous across pgTAP versions.
+SELECT ok(
+  pg_temp.index_predicate('idx_events_venue_date') LIKE '%visibility%published%',
   'idx_events_venue_date is partial on visibility = ''published'''
 );
 
-SELECT like(
-  pg_temp.index_predicate('idx_events_festival_date'),
-  '%visibility%published%festival_id IS NOT NULL%',
+SELECT ok(
+  pg_temp.index_predicate('idx_events_festival_date') LIKE '%visibility%published%festival_id IS NOT NULL%',
   'idx_events_festival_date predicate includes both visibility = ''published'' and festival_id IS NOT NULL'
 );
 
-SELECT like(
-  pg_temp.index_predicate('idx_events_ready_to_publish'),
-  '%visibility%draft%needs_review%',
+SELECT ok(
+  pg_temp.index_predicate('idx_events_ready_to_publish') LIKE '%visibility%draft%needs_review%',
   'idx_events_ready_to_publish predicate filters visibility = ''draft'' AND needs_review = false'
 );
 
