@@ -169,7 +169,7 @@ table. See [ADR 0005](decisions/0005-event-data-model-for-all-event-coverage.md)
 2. [ ] **Confidence trust × completeness split (A3 / ADR 0006):** gate on "is it real?" AND "is it complete enough?", so real sparse grassroots events are not suppressed. Prompt `20`.
 3. [ ] **Editorial override & field-locking (A5 / ADR 0007):** `field_overrides` the normaliser/merge must respect. **Land before heavy sweep/re-normalisation** or human fixes get clobbered. Prompts `22a`/`22b`.
 4. [ ] **Multi-type events + venue types (A2):** `event_event_types` join; retain `primary_event_type_id`. Prompts `19a`/`19b`.
-5. [ ] **Community submission + moderation model (A6):** submit event/venue/organiser, repeat helper, submission↔ingestion reconciliation, moderation, PII/GDPR. `docs/SUBMISSIONS.md`; design prompt `23` (refs F1/F2/F3).
+5. [ ] **Community submission + moderation model (A6):** submit event/venue/organiser, repeat helper, submission↔ingestion reconciliation, moderation, PII/UK GDPR. `docs/SUBMISSIONS.md`; UK GDPR policy in `docs/OPERATIONS.md`; design prompt `23`.
 6. [ ] **Organisers / collectives entities (B2a):** `cultural_entities` + `entity_aliases` + `event_entities`. `docs/ENTITIES.md`; design prompt `24`.
 7. [ ] **Work/occurrence + parent-child grouping (B1) — design only:** accept the showings shape before cinema/theatre connectors. Prompt `21`. Build deferred (M7.5).
 8. [ ] **Geography: neighbourhood now, `places` graph designed (A4 / B3):** nullable `neighbourhood`/`area`/`region` on `venues`; do not hard-code Glasgow.

@@ -123,7 +123,8 @@ These shape how every connector writes data, so they precede RSS/iCal/HTML/cinem
 - **A6 — Community submission model (promoted).** Submission is a **core source**, not a
   Phase-2 luxury: submit event/venue/organiser, repeat-event helper, submission-time
   dedup & reconciliation, moderation, claim/edit, submitter PII/GDPR. Designed now;
-  see `docs/SUBMISSIONS.md`, prompt `23` (references tasks F1/F2/F3).
+  see `docs/SUBMISSIONS.md`, prompt `23`; UK GDPR policy in `docs/OPERATIONS.md`
+  ("Data Protection (UK GDPR)").
 - **A7 — Source-type classes + field-level provenance.** Expand source classification to
   `api / feed / scrape / partner / community / editor` (capability + trust), and record
   **which source a field came from** so source priority (title from official page, price

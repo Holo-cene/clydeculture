@@ -7,10 +7,11 @@ submission and moderation model. The current implementation is partial — an
 `supabase/migrations/`, `docs/PUBLISHING.md`); the broader model below is **not** built.
 Verify current state against the migrations before treating anything here as fact.
 
-This consolidates and references existing task briefs rather than duplicating them:
-`docs/tasks/phase-0.5/F1-public-submission-gate.md`,
-`docs/tasks/phase-0.5/F2-link-only-enforcement.md`,
-`docs/tasks/phase-0.5/F3-gdpr-retention.md`.
+Live work is tracked in the GitHub issue tracker rather than duplicated here. The
+public-insert gate and link-first enforcement are tracked in their respective
+issues; PII / UK GDPR policy (lawful basis, retention schedule, DSAR process) is
+documented in `docs/OPERATIONS.md` under "Data Protection (UK GDPR)" — that
+section is the launch blocker for any public submission or claim form.
 
 ---
 
@@ -106,7 +107,7 @@ person's **home address** (a gig in a flat). This is a compliance requirement th
 shapes the schema **now**, not in Phase 2:
 
 - store the minimum submitter PII needed for clarification/trust;
-- define retention and deletion/anonymisation (task F3);
+- define retention and deletion/anonymisation (see `docs/OPERATIONS.md` — "Data Protection (UK GDPR)");
 - never expose submitter contact details publicly via RLS;
 - treat home-address venues with care (display policy + takedown route).
 
@@ -128,7 +129,7 @@ Studio), scaling with volume. Do not design moderation that requires daily atten
 | Public submission gate + link-first insert (F1/F2) | Tranche A (backend) |
 | Repeat-event helper, submit venue/organiser, reconciliation | DESIGN-NOW (prompt `23`), build with A6 |
 | Claim/edit listing, trusted submitters | follows; venue claims already Phase 2 (ROADMAP M9) |
-| PII/GDPR retention (F3) | design now, build with submission |
+| PII/UK GDPR (lawful basis, retention, DSAR) | policy documented in `docs/OPERATIONS.md`; automation builds with submission |
 | Public submission form in `apps/web` | after the backend model |
 
 Design preflight: `docs/prompts/23`. Umbrella decision:
