@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** HUMAN-REVIEW. Per-source fixture convention partially landed in `packages/core` tests; the convention decision is left for the maintainer. See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # DOC-01: Create per-source fixture files
 
 **Priority:** P2  

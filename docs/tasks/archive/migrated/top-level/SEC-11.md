@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Retained as DESIGN-DOC — Venue claim OTP depends on Phase 2 auth model. See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # SEC-11: Venue claim proof — replace text assertion with email OTP verification (Phase 2)
 
 **Priority:** P3 (Phase 2)

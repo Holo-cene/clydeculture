@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** SUPERSEDED. Tier 4 LLM extraction is not in scope; no sandboxing work without that decision. See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # SEC-08: LLM prompt injection — input sandboxing and output validation for Tier 4 extraction
 
 **Priority:** P2

@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Migrated — COVERED-BY archived E7 design-doc (HTML scraper preflight). See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # SEC-07: HTML scraper legality — ToS review requirement and per-connector compliance log
 
 **Priority:** P2

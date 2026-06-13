@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Retained as DESIGN-DOC — Public-submission rate limit / CAPTCHA depends on submission form (Phase 2). See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # SEC-04: Submission flood — rate limiting and CAPTCHA for public event submissions
 
 **Priority:** P2

@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Migrated to issue #22 (SSRF validation on source_url). See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # SEC-03: SSRF — validate source_url before any server-side fetch
 
 **Priority:** P2

@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Migrated — COVERED-BY issue #9 (DICE.fm Apify preflight). See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # CC-NEW-2: DICE.fm Apify connector pre-flight
 
 **Priority:** P1  

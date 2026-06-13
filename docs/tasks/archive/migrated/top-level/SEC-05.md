@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Migrated — COVERED-BY issue #13 (Link-only enforcement). See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # SEC-05: Link-only source enforcement — add schema flag and normalisation guard
 
 **Priority:** P1 (Blocker)

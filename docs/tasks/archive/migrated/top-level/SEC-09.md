@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Retained as DESIGN-DOC — Admin MFA depends on Phase 2 auth model (archived DB-12). See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # SEC-09: Admin MFA and operator onboarding — extend DB-12 auth ADR requirements
 
 **Priority:** P2

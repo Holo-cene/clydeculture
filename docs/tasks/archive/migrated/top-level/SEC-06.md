@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Migrated — COVERED-BY issue #14 (GDPR retention). See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # SEC-06: UK GDPR — submission PII retention policy and lawful basis documentation
 
 **Priority:** P2

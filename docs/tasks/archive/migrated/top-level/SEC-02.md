@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Migrated to issue #21 (Stored-XSS sanitisation contract). See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # SEC-02: Stored XSS — define and enforce sanitisation point for user-submitted text
 
 **Priority:** P2
