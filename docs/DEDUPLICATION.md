@@ -225,8 +225,9 @@ Occurrence dedup (the `(venue, hour, title)` key) is distinct from **work-level
 identity** — "is this the same *film*/production across GFT and Cineworld?". Matching a
 showing to a film work (e.g. normalised film title + year) or a performance to a
 production (title + company) is a separate, harder reconciliation that must avoid false
-merges (two different works sharing a title). Cinema is the stress case. See
-`docs/prompts/21` and ADR 0005 B1.
+merges (two different works sharing a title). Cinema is the stress case. Accepted
+design: [`docs/WORKS.md`](WORKS.md) (ADR 0005 B1, issue
+[#27](https://github.com/Holo-cene/clydeculture/issues/27)).
 
 ---
 

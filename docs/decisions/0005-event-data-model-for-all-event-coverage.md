@@ -150,7 +150,16 @@ triggering connector is scheduled)
   parent-child **programme** structure (festival → production → occurrence) from simple
   recurrence (see `docs/FESTIVALS.md`). **Build deferred** until a high-volume showings
   source (cinema via Data Thistle, or theatre) is ingested — but the shape is designed
-  now (prompt `21`).
+  now (issue [#27](https://github.com/Holo-cene/clydeculture/issues/27)). **Accepted
+  design: [`docs/WORKS.md`](../WORKS.md)** — new `works` + `work_aliases` tables (kept
+  distinct from `event_series`, which keeps its current "recurring programme at one
+  venue" meaning); `events.work_id` nullable; two-pass identity (occurrence dedup
+  unchanged, work resolution added as a new normaliser step) with `match_key` over
+  `(work_type, normalised_title, release_year_or_run)` and an ambiguity guard that
+  routes contested matches to `work_merge_candidates` rather than auto-merging
+  (avoiding *Dune* 1984 vs *Dune* 2021 false-merge); public listing groups by
+  `work_id` where set, ungrouped events keep one-card-per-event; work-level page
+  composes with the A1 `event_links` projection.
 - **B2a — Organisers / promoters / collectives (sooner).** Entities + event
   relationships for "everything this promoter/collective is doing" — more important than
   artists for Glasgow DIY discovery. Lightweight and high-value; design now, build before

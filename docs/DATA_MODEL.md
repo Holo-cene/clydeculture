@@ -70,11 +70,14 @@ extends to Scotland (and beyond) without migration pain.
 
 - **B1 Work ↔ occurrence (the showings model).** Separate the *work* (a film, play,
   touring show, recurring night, exhibition) from the *occurrence* (a dated instance at
-  a venue with its own booking link). Generalise the venue-locked `event_series` into a
-  venue-agnostic grouping (a `works` table or extended `event_series`); each `events`
-  row becomes an occurrence linked to the work; the public listing **groups by work**.
-  Distinguish parent-child **programme** structure (festival → production → occurrence)
-  from simple recurrence (`docs/FESTIVALS.md`).
+  a venue with its own booking link). Each `events` row becomes an occurrence linked to
+  a `works` row; the public listing **groups by work**. Distinguish parent-child
+  **programme** structure (festival → production → occurrence) from simple recurrence
+  (`docs/FESTIVALS.md`). Accepted design: [`docs/WORKS.md`](WORKS.md) — new `works` +
+  `work_aliases` tables (kept distinct from `event_series`); `events.work_id` nullable;
+  two-pass identity (occurrence dedup unchanged, new work resolution); listing groups
+  by `work_id` where set, ungrouped events keep one-card-per-event; composes with the
+  A1 `event_links` projection.
   *Worked example — cinema:* Glasgow Film Theatre (direct) plus Cineworld / Vue / Odeon
   (via Data Thistle) list one film shown many times per day across venues, each showing
   with its own booking link. Flattened into `events`, "Dune" becomes hundreds of rows
@@ -91,11 +94,13 @@ extends to Scotland (and beyond) without migration pain.
 
 ### Planned tables/structures (proposed, not implemented)
 
-`event_links` · `event_event_types` (+ `primary_event_type_id`) · `cultural_entities` ·
-`entity_aliases` · `event_entities` · `field_overrides` (or `events.field_overrides`
-JSONB) · submission tables (extends `event_submissions`) · media/`display_permitted`
-fields · merged-event survivor pointer + reschedule history · `places` hierarchy ·
-`source_type` classes. Each tagged NOW / DESIGN-NOW BUILD-LATER / DEFER above.
+`event_links` · `event_event_types` (+ `primary_event_type_id`) · `works` +
+`work_aliases` (+ optional `work_merge_candidates`) and `events.work_id` (see
+`docs/WORKS.md`) · `cultural_entities` · `entity_aliases` · `event_entities` ·
+`field_overrides` (or `events.field_overrides` JSONB) · submission tables (extends
+`event_submissions`) · media/`display_permitted` fields · merged-event survivor pointer
++ reschedule history · `places` hierarchy · `source_type` classes. Each tagged NOW /
+DESIGN-NOW BUILD-LATER / DEFER above.
 
 ### Tranche C — DEFER (Phase 2+; enrichment, not structure)
 

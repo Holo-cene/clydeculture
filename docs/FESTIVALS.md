@@ -104,11 +104,13 @@ Festival / Programme           (Glasgow International, Celtic Connections)
 
 This is **different from recurrence**: a monthly market is one work with recurring
 occurrences; a festival is a programme containing many distinct works, each with its own
-occurrences. The work/occurrence layer (ADR 0005 B1, `docs/prompts/21`) sits between the
-festival and the occurrence so that, e.g., a Glasgow Film Festival screening is *an
-occurrence of a film work, within the festival programme* — not a flat festival-tagged
-row. `festival_id` continues to group; the work layer adds the missing middle. Build is
-deferred until the work/occurrence model lands (see `docs/DATA_MODEL.md`).
+occurrences. The work/occurrence layer (ADR 0005 B1; accepted design in
+[`docs/WORKS.md`](WORKS.md)) sits between the festival and the occurrence so that,
+e.g., a Glasgow Film Festival screening is *an occurrence of a film work, within the
+festival programme* — not a flat festival-tagged row. `events.festival_id` continues to
+tag occurrences; `works.festival_id` mirrors at the work level so the festival page
+lists distinct works, not flat occurrences. Build is deferred until the work/occurrence
+model lands (see `docs/WORKS.md` and `docs/DATA_MODEL.md`).
 
 ## Festival Pages
 
