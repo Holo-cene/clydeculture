@@ -1,6 +1,8 @@
 import {
   deriveDedupeKey,
   calculateConfidence,
+  calculateTrust,
+  calculateCompleteness,
   normaliseImageUrl,
   normaliseTitle,
   mapAvailabilityGuessToCanonical,
@@ -116,6 +118,23 @@ export async function normaliseExternalEventsForSource(
       eventTypeSlug: mappedType.slug,
       typeSource: mappedType.typeSource,
     });
+    // ADR 0006: also compute trust × completeness signals. The legacy `confidence`
+    // gate above remains the publishing boundary until the RLS swap migration
+    // lands; until then both sets of inputs are written to every canonical row.
+    const trust = calculateTrust({
+      sourceTier: source.tier,
+      title,
+    });
+    const completeness = calculateCompleteness({
+      title,
+      startAt,
+      timeTba,
+      sourceUrl: externalEvent.external_url ?? null,
+      ticketUrl: externalEvent.ticket_url_guess ?? null,
+      venue: { id: venue.id, autoCreated: venue.autoCreated },
+      hasImage: Boolean(normaliseImageUrl(externalEvent.image_url_guess)),
+      typeClassified: mappedType.slug !== 'other',
+    });
     const needsReview = mappedType.needsReview || confidence.needsReview || venue.needsReview;
     const visibility =
       confidence.score >= 60 && !needsReview && source.config?.auto_publish === true
@@ -132,6 +151,8 @@ export async function normaliseExternalEventsForSource(
       venue,
       mappedType,
       confidence,
+      trust,
+      completeness,
       needsReview,
       visibility,
     });
@@ -221,9 +242,9 @@ async function getAllExternalEventsForSource(
 async function resolveVenue(
   client: NormaliseDbClient,
   externalEvent: ExternalEventRow,
-): Promise<{ id: string; needsReview: boolean } | null> {
+): Promise<{ id: string; needsReview: boolean; autoCreated: boolean } | null> {
   if (externalEvent.venue_id_guess) {
-    return { id: externalEvent.venue_id_guess, needsReview: false };
+    return { id: externalEvent.venue_id_guess, needsReview: false, autoCreated: false };
   }
 
   const venueName = externalEvent.venue_name?.trim();
@@ -235,7 +256,7 @@ async function resolveVenue(
     p_venue_name: venueName,
   });
   if (resolvedVenueId) {
-    return { id: resolvedVenueId, needsReview: false };
+    return { id: resolvedVenueId, needsReview: false, autoCreated: false };
   }
 
   const createdVenueId = await rpcString(client, 'auto_create_venue', {
@@ -243,7 +264,7 @@ async function resolveVenue(
     p_source_url: externalEvent.external_url ?? null,
   });
   if (createdVenueId) {
-    return { id: createdVenueId, needsReview: true };
+    return { id: createdVenueId, needsReview: true, autoCreated: true };
   }
 
   return null;
@@ -326,13 +347,29 @@ function buildEventRow(input: {
   startAt: string;
   timeTba: boolean;
   isAllDay: boolean;
-  venue: { id: string; needsReview: boolean };
+  venue: { id: string; needsReview: boolean; autoCreated: boolean };
   mappedType: { id: number; slug: string; typeSource: TypeSource; needsReview: boolean };
   confidence: ReturnType<typeof calculateConfidence>;
+  trust: ReturnType<typeof calculateTrust>;
+  completeness: ReturnType<typeof calculateCompleteness>;
   needsReview: boolean;
   visibility: string;
 }): Row {
-  const { externalEvent, source, title, startAt, timeTba, isAllDay, venue, mappedType, confidence, needsReview, visibility } = input;
+  const {
+    externalEvent,
+    source,
+    title,
+    startAt,
+    timeTba,
+    isAllDay,
+    venue,
+    mappedType,
+    confidence,
+    trust,
+    completeness,
+    needsReview,
+    visibility,
+  } = input;
 
   const isFree = externalEvent.is_free_guess === true ? true : externalEvent.is_free_guess === false ? false : undefined;
   const pricesAllowed = isFree !== true;
@@ -362,6 +399,10 @@ function buildEventRow(input: {
     primary_source_id: source.id,
     confidence: confidence.score,
     confidence_inputs: confidence.inputs,
+    trust: trust.score,
+    trust_inputs: trust.inputs,
+    completeness: completeness.score,
+    completeness_inputs: completeness.inputs,
     needs_review: needsReview,
     visibility,
     dedupe_key: deriveDedupeKey(venue.id, startAt, title),

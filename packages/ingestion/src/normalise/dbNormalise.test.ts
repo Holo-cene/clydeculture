@@ -801,6 +801,91 @@ describe('normaliseExternalEventsForSource', () => {
     expect(JSON.stringify(event)).not.toContain(FULL_UPSTREAM_DESCRIPTION);
   });
 
+  it('writes ADR 0006 trust/completeness signals alongside the legacy confidence score', async () => {
+    // ADR 0006: the normalisation pipeline must populate the split signals on every
+    // canonical event row so the RLS gate can be swapped atomically in a follow-on
+    // migration. Until then both `confidence` (legacy) and trust/completeness are
+    // written; the legacy gate stays in force.
+    const client = makeClient({ autoPublish: true });
+    const { normaliseExternalEventsForSource } = await loadApi();
+
+    await normaliseExternalEventsForSource({ client, sourceId: TICKETMASTER_SOURCE_ID });
+
+    const event = eventRows(client)[0];
+    expect(event).toMatchObject({
+      // Tier 1 (base 70) + no corroboration = 70
+      trust: 70,
+      // Title + start + link + location all present = 100
+      completeness: 100,
+      trust_inputs: {
+        tier: 1,
+        tier_base: 70,
+        corroborated: false,
+        title_too_short: false,
+        total: 70,
+      },
+      completeness_inputs: {
+        has_title: true,
+        has_start_signal: true,
+        has_link: true,
+        has_location_signal: true,
+        has_ticket_url: true,
+        has_image: true,
+        type_classified: true,
+        venue_resolved: true,
+        total: 100,
+      },
+    });
+  });
+
+  it('writes lower trust + still-MVP completeness for a Tier 3 grassroots scrape at an auto-created venue (hard rule #7 regression)', async () => {
+    // The ADR 0006 worked example: a Tier-3 DIY gig with a known time, a URL, and
+    // an auto-created venue stub. Legacy single-score gate hid it at 50; the split
+    // signals must show high completeness (MVP fields all present) and trust at the
+    // Tier-3 base (40), proving the engine is wired through correctly even when the
+    // RLS swap is still pending.
+    const client = makeClient({
+      autoPublish: false,
+      sourceTier: 3,
+      eventTypeGuess: 'unknown-grassroots-category',
+    });
+    const external = externalRows(client).find((row) => row['id'] === 'external-1');
+    if (!external) throw new Error('Expected fixture external event');
+    delete external['venue_id_guess'];
+    external['venue_name'] = 'New DIY Space';
+    // Strip presentation fields that the engine MUST NOT need for publication.
+    delete external['ticket_url_guess'];
+    delete external['ticket_url_label_guess'];
+    delete external['image_url_guess'];
+
+    const { normaliseExternalEventsForSource } = await loadApi();
+
+    await normaliseExternalEventsForSource({ client, sourceId: TICKETMASTER_SOURCE_ID });
+
+    const event = eventRows(client)[0];
+    expect(event).toBeDefined();
+    expect(event?.['trust']).toBe(40);
+    expect(event?.['completeness']).toBe(100);
+    expect(event?.['trust_inputs']).toMatchObject({
+      tier: 3,
+      tier_base: 40,
+      corroborated: false,
+      total: 40,
+    });
+    expect(event?.['completeness_inputs']).toMatchObject({
+      has_title: true,
+      has_start_signal: true,
+      has_link: true,
+      has_location_signal: true,
+      // Bonus richness inputs all false — but the MVP gate is still met.
+      has_ticket_url: false,
+      has_image: false,
+      type_classified: false,
+      venue_resolved: false,
+      total: 100,
+    });
+  });
+
   it.each([
     ['source auto_publish is false', makeClient({ autoPublish: false }), 'draft'],
     [

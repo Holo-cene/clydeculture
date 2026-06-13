@@ -36,14 +36,16 @@ No other record states (`draft`, `hidden`, `archived`) are visible through the a
 
 ### Trust × completeness gate (ADR 0006)
 
-> **Engine implemented; RLS migration pending.** The split-signal scoring lives in
-> `packages/core` as `calculateTrust()`, `calculateCompleteness()`, and
+> **Engine + columns implemented; RLS swap pending.** The split-signal scoring lives
+> in `packages/core` as `calculateTrust()`, `calculateCompleteness()`, and
 > `isEligibleForPublic()` ([ADR 0006](decisions/0006-confidence-trust-and-completeness.md)).
-> The publishing-boundary RLS policy still uses the single `confidence >= 60` literal
-> above — switching it requires a coordinated migration that backfills `trust` and
-> `completeness` columns on `events` and updates the existing policies in lockstep.
-> Until that migration lands, the engine writes both the legacy `confidence` score and
-> the new signals so callers can be wired through incrementally.
+> `events` now carries `trust`, `trust_inputs`, `completeness`, and
+> `completeness_inputs` columns (migration `20260613000000_adr_0006_trust_completeness_columns`,
+> existing rows backfilled), and `dbNormalise.ts` writes both signals on every
+> normalised event. The publishing-boundary RLS policy still uses the single
+> `confidence >= 60` literal above — the swap to `trust >= 40 AND completeness >= 100`
+> is a follow-on so the policy changes for `events` and `event_tags` can land
+> atomically.
 
 The split gate replaces the single threshold with **two signals**:
 

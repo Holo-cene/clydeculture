@@ -211,13 +211,17 @@ A classification defaulting to `other` is flagged with `confidence_inputs.type_s
 
 ## Step 4 — Confidence scoring
 
-> **ADR 0006 split implemented in the engine; RLS migration pending.** The single
-> 0–100 score below remains the live publishing gate (RLS `confidence >= 60`). The
-> split-signal scoring lives in `packages/core` as `calculateTrust()`,
-> `calculateCompleteness()`, and `isEligibleForPublic()` — see
-> [ADR 0006](decisions/0006-confidence-trust-and-completeness.md). Until the RLS
-> migration lands, both scores are computed; the legacy `confidence` is what gates
-> visibility.
+> **ADR 0006 split implemented; RLS swap pending.** The single 0–100 score below
+> remains the live publishing gate (RLS `confidence >= 60`). The split-signal scoring
+> lives in `packages/core` as `calculateTrust()`, `calculateCompleteness()`, and
+> `isEligibleForPublic()` — see
+> [ADR 0006](decisions/0006-confidence-trust-and-completeness.md). The
+> normalisation pipeline (`packages/ingestion/src/normalise/dbNormalise.ts`) now
+> writes `trust`, `trust_inputs`, `completeness`, and `completeness_inputs` to every
+> canonical event row (migration `20260613000000_adr_0006_trust_completeness_columns`,
+> existing rows backfilled). The legacy `confidence` is still what gates
+> visibility until the RLS policies on `events` and `event_tags` are swapped to
+> `trust >= 40 AND completeness >= 100`.
 >
 > **Trust** is driven by source tier and corroboration; default bar `T = 40` (Tier 1–3
 > pass on tier alone; Tier 4 needs corroboration). **Completeness** is driven by the
