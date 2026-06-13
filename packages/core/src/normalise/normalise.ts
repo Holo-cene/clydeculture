@@ -63,6 +63,13 @@ export interface ExternalEventDraft {
   imageUrlGuess?: string;
   summaryGuess?: string;
   descriptionGuess?: string;
+  /**
+   * Hydrated from `sources.is_link_only` by the orchestrator. When true the
+   * normaliser refuses to copy `descriptionGuess`/`summaryGuess`/`imageUrlGuess`
+   * onto the canonical event and throws if a connector emits any of them —
+   * CLAUDE.md hard rule #1 (link-first) enforced at parse time.
+   */
+  isLinkOnly?: boolean;
   raw: unknown;
 }
 
@@ -236,6 +243,21 @@ export function buildCanonicalEventDraft(input: {
   timezone?: string;
   corroborated?: boolean;
 }): CanonicalEventDraft {
+  if (input.externalEvent.isLinkOnly === true) {
+    const offending: string[] = [];
+    if (input.externalEvent.descriptionGuess?.trim()) offending.push('descriptionGuess');
+    if (input.externalEvent.summaryGuess?.trim()) offending.push('summaryGuess');
+    if (input.externalEvent.imageUrlGuess?.trim()) offending.push('imageUrlGuess');
+    if (offending.length > 0) {
+      throw new Error(
+        `link-only source "${input.externalEvent.sourceSlug}" emitted forbidden field(s) ` +
+          `[${offending.join(', ')}] for externalId ${input.externalEvent.externalId}. ` +
+          `Connectors for link-only sources must not return description, summary, or image content ` +
+          `(CLAUDE.md hard rule #1; sources.is_link_only = true).`,
+      );
+    }
+  }
+
   const title = input.externalEvent.title.trim().slice(0, 500);
   const eventTypeResolution = mapSourceCategoryToEventType({
     sourceSlug: input.externalEvent.sourceSlug,
@@ -266,7 +288,9 @@ export function buildCanonicalEventDraft(input: {
     summary: null,
     description: null,
     sourceUrl: input.externalEvent.externalUrl,
-    imageUrl: normaliseImageUrl(input.externalEvent.imageUrlGuess),
+    imageUrl: input.externalEvent.isLinkOnly === true
+      ? null
+      : normaliseImageUrl(input.externalEvent.imageUrlGuess),
     startAt: input.externalEvent.startAt,
     timezone: input.timezone ?? 'Europe/London',
     timeTba: false,

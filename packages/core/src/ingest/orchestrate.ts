@@ -12,6 +12,12 @@ export interface Source {
   config: Record<string, unknown>;
   status: SourceStatus;
   enabled: boolean;
+  /**
+   * Mirrors `sources.is_link_only` (migration 20260613000000). When true the
+   * normaliser refuses to copy `descriptionGuess`/`summaryGuess`/`imageUrlGuess`
+   * onto the canonical event — CLAUDE.md hard rule #1 enforcement.
+   */
+  is_link_only?: boolean;
   last_run_at: string | null;
   last_success_at: string | null;
   last_error_at: string | null;
