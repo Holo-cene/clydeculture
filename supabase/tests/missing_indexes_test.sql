@@ -27,24 +27,42 @@ BEGIN;
 SELECT plan(9);
 
 
+-- Helpers: read an index's column list and partial-predicate expression by
+-- name. Defined in pg_temp so they don't leak past the session; rolled back
+-- with the test transaction anyway.
+
+CREATE OR REPLACE FUNCTION pg_temp.index_columns(idx_name text)
+RETURNS text[] LANGUAGE sql STABLE AS $$
+  SELECT array_agg(a.attname::text ORDER BY k.ord)
+    FROM pg_class c
+    JOIN pg_index ix    ON ix.indexrelid = c.oid
+    JOIN pg_class t     ON t.oid = ix.indrelid
+    CROSS JOIN LATERAL unnest(ix.indkey) WITH ORDINALITY k(attnum, ord)
+    JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = k.attnum
+   WHERE c.relname = idx_name;
+$$;
+
+CREATE OR REPLACE FUNCTION pg_temp.index_predicate(idx_name text)
+RETURNS text LANGUAGE sql STABLE AS $$
+  SELECT pg_get_expr(ix.indpred, ix.indrelid)
+    FROM pg_class c
+    JOIN pg_index ix ON ix.indexrelid = c.oid
+   WHERE c.relname = idx_name;
+$$;
+
+
 -- =============================================================================
 -- SECTION 1: Indexes exist (by name)
 -- =============================================================================
 
-SELECT has_index(
-  'public', 'events', 'idx_events_venue_date',
-  'idx_events_venue_date exists on events'
-);
+SELECT has_index('public', 'events', 'idx_events_venue_date',
+  'idx_events_venue_date exists on events');
 
-SELECT has_index(
-  'public', 'events', 'idx_events_festival_date',
-  'idx_events_festival_date exists on events'
-);
+SELECT has_index('public', 'events', 'idx_events_festival_date',
+  'idx_events_festival_date exists on events');
 
-SELECT has_index(
-  'public', 'events', 'idx_events_ready_to_publish',
-  'idx_events_ready_to_publish exists on events'
-);
+SELECT has_index('public', 'events', 'idx_events_ready_to_publish',
+  'idx_events_ready_to_publish exists on events');
 
 
 -- =============================================================================
@@ -52,37 +70,19 @@ SELECT has_index(
 -- =============================================================================
 
 SELECT is(
-  (SELECT array_agg(a.attname::text ORDER BY k.ord)
-     FROM pg_class c
-     JOIN pg_index ix          ON ix.indexrelid = c.oid
-     JOIN pg_class t           ON t.oid = ix.indrelid
-     CROSS JOIN LATERAL unnest(ix.indkey) WITH ORDINALITY k(attnum, ord)
-     JOIN pg_attribute a       ON a.attrelid = t.oid AND a.attnum = k.attnum
-    WHERE c.relname = 'idx_events_venue_date'),
+  pg_temp.index_columns('idx_events_venue_date'),
   ARRAY['venue_id','start_at']::text[],
   'idx_events_venue_date is on (venue_id, start_at) in that order'
 );
 
 SELECT is(
-  (SELECT array_agg(a.attname::text ORDER BY k.ord)
-     FROM pg_class c
-     JOIN pg_index ix          ON ix.indexrelid = c.oid
-     JOIN pg_class t           ON t.oid = ix.indrelid
-     CROSS JOIN LATERAL unnest(ix.indkey) WITH ORDINALITY k(attnum, ord)
-     JOIN pg_attribute a       ON a.attrelid = t.oid AND a.attnum = k.attnum
-    WHERE c.relname = 'idx_events_festival_date'),
+  pg_temp.index_columns('idx_events_festival_date'),
   ARRAY['festival_id','start_at']::text[],
   'idx_events_festival_date is on (festival_id, start_at) in that order'
 );
 
 SELECT is(
-  (SELECT array_agg(a.attname::text ORDER BY k.ord)
-     FROM pg_class c
-     JOIN pg_index ix          ON ix.indexrelid = c.oid
-     JOIN pg_class t           ON t.oid = ix.indrelid
-     CROSS JOIN LATERAL unnest(ix.indkey) WITH ORDINALITY k(attnum, ord)
-     JOIN pg_attribute a       ON a.attrelid = t.oid AND a.attnum = k.attnum
-    WHERE c.relname = 'idx_events_ready_to_publish'),
+  pg_temp.index_columns('idx_events_ready_to_publish'),
   ARRAY['confidence']::text[],
   'idx_events_ready_to_publish is on (confidence)'
 );
@@ -98,28 +98,19 @@ SELECT is(
 -- =============================================================================
 
 SELECT like(
-  (SELECT pg_get_expr(ix.indpred, ix.indrelid)
-     FROM pg_class c
-     JOIN pg_index ix ON ix.indexrelid = c.oid
-    WHERE c.relname = 'idx_events_venue_date'),
+  pg_temp.index_predicate('idx_events_venue_date'),
   '%visibility%published%',
   'idx_events_venue_date is partial on visibility = ''published'''
 );
 
 SELECT like(
-  (SELECT pg_get_expr(ix.indpred, ix.indrelid)
-     FROM pg_class c
-     JOIN pg_index ix ON ix.indexrelid = c.oid
-    WHERE c.relname = 'idx_events_festival_date'),
+  pg_temp.index_predicate('idx_events_festival_date'),
   '%visibility%published%festival_id IS NOT NULL%',
   'idx_events_festival_date predicate includes both visibility = ''published'' and festival_id IS NOT NULL'
 );
 
 SELECT like(
-  (SELECT pg_get_expr(ix.indpred, ix.indrelid)
-     FROM pg_class c
-     JOIN pg_index ix ON ix.indexrelid = c.oid
-    WHERE c.relname = 'idx_events_ready_to_publish'),
+  pg_temp.index_predicate('idx_events_ready_to_publish'),
   '%visibility%draft%needs_review%',
   'idx_events_ready_to_publish predicate filters visibility = ''draft'' AND needs_review = false'
 );
