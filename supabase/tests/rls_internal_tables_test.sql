@@ -136,74 +136,71 @@ $$;
 
 
 -- =============================================================================
--- SECTION 1: Internal tables — default deny (tests 1–8)
+-- SECTION 1: Internal tables — public roles hold no grant (tests 1–8)
 --
 -- Tables: sources, external_events, ingest_runs, ingest_alerts,
 --         event_merge_candidates, moderation_log, venue_claims,
 --         source_type_category_map.
 --
--- Each table has RLS enabled but no SELECT policy defined.
--- PostgreSQL default-deny: if no policy matches a row, it is invisible.
--- One fixture row was inserted above (or seed data already exists) to prove
--- the deny is from RLS, not simply an empty table.
+-- Least privilege: anon and authenticated have NO privilege on these internal
+-- operational/config tables (20260613000003_explicit_role_grants revokes all);
+-- ingestion runs as service_role, which bypasses RLS. RLS is also enabled with
+-- no SELECT policy as a backstop.
 --
--- Note: source_type_category_map relies on the 5 rows committed by the B5
--- seed migration (20260606000000_source_category_map_seed.sql) rather than a
--- dedicated fixture insert, since it requires source_id and event_type_id FKs
--- that resolve via the seed data.
+-- We assert the absence of any SELECT grant via the catalog (as the test
+-- postgres role) rather than `SET ROLE anon; SELECT count(*)`. The grant model
+-- is the deterministic, image-independent contract: on Supabase images that do
+-- not grant anon by default, a `SET ROLE anon; SELECT` raises "permission
+-- denied" rather than returning 0, so a count-based check is not portable.
 -- =============================================================================
 
-SET ROLE anon;
-
-SELECT is(
-  (SELECT count(*)::int FROM public.sources),
-  0,
-  'anon: sources is default-deny (0 rows despite 1 fixture row)'
+SELECT ok(
+  NOT has_table_privilege('anon', 'public.sources', 'SELECT')
+    AND NOT has_table_privilege('authenticated', 'public.sources', 'SELECT'),
+  'anon/authenticated: no SELECT grant on sources (internal)'
 );
 
-SELECT is(
-  (SELECT count(*)::int FROM public.external_events),
-  0,
-  'anon: external_events is default-deny (0 rows despite 1 fixture row)'
+SELECT ok(
+  NOT has_table_privilege('anon', 'public.external_events', 'SELECT')
+    AND NOT has_table_privilege('authenticated', 'public.external_events', 'SELECT'),
+  'anon/authenticated: no SELECT grant on external_events (internal)'
 );
 
-SELECT is(
-  (SELECT count(*)::int FROM public.ingest_runs),
-  0,
-  'anon: ingest_runs is default-deny (0 rows despite 1 fixture row)'
+SELECT ok(
+  NOT has_table_privilege('anon', 'public.ingest_runs', 'SELECT')
+    AND NOT has_table_privilege('authenticated', 'public.ingest_runs', 'SELECT'),
+  'anon/authenticated: no SELECT grant on ingest_runs (internal)'
 );
 
-SELECT is(
-  (SELECT count(*)::int FROM public.ingest_alerts),
-  0,
-  'anon: ingest_alerts is default-deny (0 rows despite 1 fixture row)'
+SELECT ok(
+  NOT has_table_privilege('anon', 'public.ingest_alerts', 'SELECT')
+    AND NOT has_table_privilege('authenticated', 'public.ingest_alerts', 'SELECT'),
+  'anon/authenticated: no SELECT grant on ingest_alerts (internal)'
 );
 
-SELECT is(
-  (SELECT count(*)::int FROM public.event_merge_candidates),
-  0,
-  'anon: event_merge_candidates is default-deny (0 rows despite 1 fixture row)'
+SELECT ok(
+  NOT has_table_privilege('anon', 'public.event_merge_candidates', 'SELECT')
+    AND NOT has_table_privilege('authenticated', 'public.event_merge_candidates', 'SELECT'),
+  'anon/authenticated: no SELECT grant on event_merge_candidates (internal)'
 );
 
-SELECT is(
-  (SELECT count(*)::int FROM public.moderation_log),
-  0,
-  'anon: moderation_log is default-deny (0 rows despite 1 fixture row)'
+SELECT ok(
+  NOT has_table_privilege('anon', 'public.moderation_log', 'SELECT')
+    AND NOT has_table_privilege('authenticated', 'public.moderation_log', 'SELECT'),
+  'anon/authenticated: no SELECT grant on moderation_log (internal)'
 );
 
-SELECT is(
-  (SELECT count(*)::int FROM public.venue_claims),
-  0,
-  'anon: venue_claims is default-deny (0 rows despite 1 fixture row)'
+SELECT ok(
+  NOT has_table_privilege('anon', 'public.venue_claims', 'SELECT')
+    AND NOT has_table_privilege('authenticated', 'public.venue_claims', 'SELECT'),
+  'anon/authenticated: no SELECT grant on venue_claims (internal)'
 );
 
-SELECT is(
-  (SELECT count(*)::int FROM public.source_type_category_map),
-  0,
-  'anon: source_type_category_map is default-deny (0 rows despite 5 B5 seed rows)'
+SELECT ok(
+  NOT has_table_privilege('anon', 'public.source_type_category_map', 'SELECT')
+    AND NOT has_table_privilege('authenticated', 'public.source_type_category_map', 'SELECT'),
+  'anon/authenticated: no SELECT grant on source_type_category_map (internal)'
 );
-
-RESET ROLE;
 
 
 -- =============================================================================
@@ -397,13 +394,13 @@ SELECT is(
   'anon: minimal valid event_submissions insert succeeds and remains pending'
 );
 
-SET ROLE anon;
-
-SELECT is(
-  (SELECT count(*)::int FROM public.event_submissions),
-  0,
-  'anon: event_submissions is SELECT-deny (no SELECT policy exists)'
+SELECT ok(
+  NOT has_table_privilege('anon', 'public.event_submissions', 'SELECT')
+    AND NOT has_table_privilege('authenticated', 'public.event_submissions', 'SELECT'),
+  'anon/authenticated: event_submissions is SELECT-deny (no SELECT grant)'
 );
+
+SET ROLE anon;
 
 SELECT ok(
   pg_temp.a2_rejects_insert($sql$
