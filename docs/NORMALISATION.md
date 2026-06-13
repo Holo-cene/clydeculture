@@ -205,7 +205,7 @@ Options A and B are not mutually exclusive. Option A is the safer long-term choi
 
 **This task documents the contract only.** Implementing Option A requires a separate migration task. Do not implement the advisory lock here.
 
-**Follow-on task (Phase 1.5):** Replace the `random()` slug suffix in `auto_create_venue()` with a deterministic sequential counter (`-2`, `-3`, etc.) matching the `events` slug convention. This makes venue stubs reproducible and eliminates non-deterministic slug churn.
+**Done (issue #17):** The `random()` slug suffix in `auto_create_venue()` was replaced with a deterministic sequential counter (`-2`, `-3`, ...) matching the `events` slug convention. The collision loop is now bounded at 99 attempts and raises an explicit exception on overflow. See migration `supabase/migrations/20260613000000_harden_auto_create_venue_slug_loop.sql` and the pgTAP suite at `supabase/tests/auto_create_venue_test.sql`.
 
 ---
 
