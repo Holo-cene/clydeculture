@@ -10,8 +10,8 @@ Schema v5. 20 tables, 7 helper functions, 2 Postgres extensions (`pgcrypto`, `pg
 Reference          event_types, tags
 Connector registry sources, source_type_category_map
 Venues             venues, venue_aliases
-Events             festivals, event_series, events, event_tags,
-                   external_events
+Events             festivals, festival_event_overrides, event_series, events,
+                   event_tags, external_events
 Ingestion          ingest_runs, ingest_alerts
 Deduplication      event_merge_candidates
 Publishing         publish_mappings, publish_jobs, publish_job_items  ← RETIRED (ADR 0001, CC-NEW-1)
@@ -206,6 +206,12 @@ Festival entities that events are attributed to. Enables festival-page views and
 `start_date` and `end_date` are nullable: a festival can be created for title-matching purposes before dates are confirmed. The date-window matching logic only applies when both are set.
 
 `match_domains`, `match_title_terms`, and `match_url_slugs` are text arrays used by normalisation to detect festival membership from incoming event data.
+
+### festival_event_overrides
+
+Operator-curated manual mapping table referenced by `docs/FESTIVALS.md` Rule 4. Each row pins a specific `(source_id, external_id)` ingest record to a `festival_id`, bypassing both the automated detection rules and the date-window check. Use this for events that are part of a festival programme but carry no festival signal in title, URL, or source domain — Ticketmaster listings being the canonical example.
+
+`(source_id, external_id)` is unique. RLS is enabled with no public policy: the table is operator-only via the service role.
 
 ---
 
@@ -435,6 +441,8 @@ Break detection compares `parsed_count` against the 14-day median for the source
 ### ingest_alerts
 
 One row per open incident. Partial index on `resolved = false` keeps the active-alert query fast.
+
+`alert_type` is a CHECK-constrained enum: `count_drop` (parsed count fell >70% below the 14-day median), `parse_failure`, `timeout`, `manual`, `cold_start_zero` (first observed run produced zero events), and `festival_window_mismatch` (an event matched a festival's domain/title/URL signals but its `start_at` fell outside the festival's `[start_date, end_date]` window — see `docs/FESTIVALS.md`).
 
 ---
 

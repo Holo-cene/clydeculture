@@ -19,6 +19,15 @@ export {
   type ExternalEventDraft,
   type CanonicalEventDraft,
 } from './normalise/normalise.js';
+export { detectFestival } from './festivals/festivals.js';
+export type {
+  DetectFestivalInput,
+  DetectFestivalResult,
+  FestivalEventOverride,
+  FestivalMatchRule,
+  FestivalRecord,
+  FestivalWindowMismatch,
+} from './festivals/festivals.js';
 export { runSweepIntegration } from './ingest/sweep.js';
 export type { SweepIntegrationInput } from './ingest/sweep.js';
 export { SWEEP_TASK_ID, SWEEP_DAILY_SCHEDULE } from './ingest/sweepSchedule.js';

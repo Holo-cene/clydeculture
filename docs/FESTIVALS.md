@@ -47,14 +47,32 @@ to reduce missed matches.
 `/tectonics/`). This catches events scraped from a venue's own site when the venue is
 hosting a specific programme for the festival.
 
-**4. Manual mapping table.** A curated table links specific `(source_id, external_id)`
-pairs to a `festival_id`. This handles edge cases: events where the title is ambiguous,
-events that originate from a general-purpose API like Ticketmaster but are genuinely part
-of a festival programme, or corrections applied after the automated rules misfire.
+**4. Manual override table.** The `festival_event_overrides` table links specific
+`(source_id, external_id)` pairs to a `festival_id`. This handles edge cases where
+automated rules are insufficient: ambiguous titles, events that originate from a
+general-purpose API like Ticketmaster but are genuinely part of a festival programme,
+or corrections applied after the automated rules misfire. To add an override, insert
+a row:
 
-The rules are evaluated in priority order. Domain match is applied first; if it fires,
-the other rules are skipped. Manual mappings are applied last and override any automated
-result.
+```sql
+insert into festival_event_overrides (source_id, external_id, festival_id, note, created_by)
+values (
+  (select id from sources where slug = 'ticketmaster'),
+  '12345678',
+  (select id from festivals where slug = 'celtic-connections-2027'),
+  'Part of CC programme; no festival signal in title',
+  'jamie'
+);
+```
+
+Manual overrides are applied first and bypass both the automated rules and the
+date-window check below: the operator who created the row takes responsibility for
+correctness. An override can attach a `festival_id` to an event no automated rule
+would tag, or correct an event that an automated rule mis-tagged (by assigning a
+different `festival_id`).
+
+The remaining (automated) rules are evaluated in priority order. Domain match is
+applied first; if it fires, the other rules are skipped.
 
 ## Date-Window Validation
 
@@ -75,8 +93,18 @@ can occur if a connector is not disabled promptly — events ingested outside th
 are held without a `festival_id` and flagged for review rather than tagged automatically.
 
 Events that fail the window check are not discarded. They are stored as ordinary events,
-with `festival_id` null and `is_festival_event` false. An alert is logged so the
-condition can be investigated manually.
+with `festival_id` null and `is_festival_event` false. An `ingest_alerts` row is written
+with `alert_type = 'festival_window_mismatch'` carrying the originating `source_id`, a
+null `run_id` (window checks are not tied to a single ingest run), and a `message` of
+the form:
+
+```
+Festival match 'celtic-connections-2027' for event <source_id>/<external_id> failed window check:
+  event 2026-10-15 outside 2026-01-14–2026-02-04
+```
+
+The alert is resolved by either adding the event to `festival_event_overrides` (if the
+event genuinely belongs to the festival) or confirming it is correctly untagged.
 
 ## Attaching `festival_id` and Setting `is_festival_event`
 
