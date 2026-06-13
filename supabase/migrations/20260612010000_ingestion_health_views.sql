@@ -97,7 +97,14 @@ declare
   v_alerts_invoker boolean;
 begin
   -- Assert: both views exist and were created with security_invoker = on.
-  select coalesce(reloptions::text like '%security_invoker=true%', false)
+  -- PostgreSQL normalises the boolean reloption spelling by version: PG15 stores
+  -- `security_invoker=on`, some builds store `=true`. Accept either so this
+  -- assertion does not falsely fail a clean `supabase db reset`.
+  select coalesce(
+           reloptions::text like '%security_invoker=on%'
+             or reloptions::text like '%security_invoker=true%',
+           false
+         )
     into v_recent_invoker
   from pg_class
   where relkind = 'v'
@@ -109,7 +116,14 @@ begin
       'ingestion health view assertion failed: v_recent_ingest_runs must be created WITH (security_invoker = on)';
   end if;
 
-  select coalesce(reloptions::text like '%security_invoker=true%', false)
+  -- PostgreSQL normalises the boolean reloption spelling by version: PG15 stores
+  -- `security_invoker=on`, some builds store `=true`. Accept either so this
+  -- assertion does not falsely fail a clean `supabase db reset`.
+  select coalesce(
+           reloptions::text like '%security_invoker=on%'
+             or reloptions::text like '%security_invoker=true%',
+           false
+         )
     into v_alerts_invoker
   from pg_class
   where relkind = 'v'
