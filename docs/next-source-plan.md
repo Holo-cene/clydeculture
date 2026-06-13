@@ -4,9 +4,9 @@
 > and the GitHub issue tracker.** The active source-priority ordering and per-source
 > preflights are now tracked as issues (RSS preflight + connector: #29; DICE.fm Apify
 > preflight: #9; iCal: archived as DESIGN-DOC at
-> [`archive/migrated/phase-0.5/E5-ical-parser-preflight.md`](tasks/archive/migrated/phase-0.5/E5-ical-parser-preflight.md);
+> [`E5-ical-parser-preflight.md`](tasks/archive/migrated/phase-0.5/E5-ical-parser-preflight.md);
 > HTML: archived as DESIGN-DOC at
-> [`archive/migrated/phase-0.5/E7-html-scraper-preflight.md`](tasks/archive/migrated/phase-0.5/E7-html-scraper-preflight.md)).
+> [`E7-html-scraper-preflight.md`](tasks/archive/migrated/phase-0.5/E7-html-scraper-preflight.md)).
 > This document is retained as reference for the source-comparison analysis it carries.
 >
 > Planning document only. No connector code, tests, fixtures, database rows, or live
