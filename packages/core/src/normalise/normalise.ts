@@ -318,28 +318,7 @@ export interface MergeableCanonicalEvent {
   needsReview: boolean;
 }
 
-export interface MergeResult {
-  title: string;
-  normalisedTitle: string;
-  summary: string | null;
-  description: string | null;
-  sourceUrl: string;
-  ticketUrl: string | null;
-  ticketUrlLabel: string | null;
-  imageUrl: string | null;
-  startAt: string;
-  endAt: string | null;
-  doorsAt: string | null;
-  timezone: string;
-  timeTba: boolean;
-  availability: CanonicalAvailability | null;
-  availabilityNote: string | null;
-  eventTypeSlug: string;
-  venueId: string | null;
-  primarySourceId: string;
-  sourceTier: SourceTier;
-  fetchedAt: string;
-  needsReview: boolean;
+export interface MergeResult extends MergeableCanonicalEvent {
   reviewReasons: string[];
   dedupeKey: string;
 }

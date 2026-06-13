@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { deriveDedupeKey } from '../dedupe/dedupe.js';
-import * as normaliseModule from './normalise.js';
-import type {
-  CanonicalAvailability,
-  SourceTier,
+import {
+  mergeExternalEventIntoCanonicalEvent,
+  type MergeableCanonicalEvent,
 } from './normalise.js';
 
 // mergeExternalEventIntoCanonicalEvent is the pure field-by-field merge function
@@ -17,65 +16,6 @@ import type {
 //   - Same tier: latest `fetchedAt` wins per field.
 //   - Worse tier: only availability / availability_note / updated_at may refresh.
 //   - `availability = 'rescheduled'` (or a start_at change) forces `needs_review = true`.
-
-interface MergeableCanonicalEvent {
-  title: string;
-  normalisedTitle: string;
-  summary: string | null;
-  description: string | null;
-  sourceUrl: string;
-  ticketUrl: string | null;
-  ticketUrlLabel: string | null;
-  imageUrl: string | null;
-  startAt: string;
-  endAt: string | null;
-  doorsAt: string | null;
-  timezone: string;
-  timeTba: boolean;
-  availability: CanonicalAvailability | null;
-  availabilityNote: string | null;
-  eventTypeSlug: string;
-  venueId: string | null;
-  primarySourceId: string;
-  sourceTier: SourceTier;
-  fetchedAt: string;
-  needsReview: boolean;
-}
-
-interface MergeResult {
-  title: string;
-  normalisedTitle: string;
-  summary: string | null;
-  description: string | null;
-  sourceUrl: string;
-  ticketUrl: string | null;
-  ticketUrlLabel: string | null;
-  imageUrl: string | null;
-  startAt: string;
-  endAt: string | null;
-  doorsAt: string | null;
-  timezone: string;
-  timeTba: boolean;
-  availability: CanonicalAvailability | null;
-  availabilityNote: string | null;
-  eventTypeSlug: string;
-  venueId: string | null;
-  primarySourceId: string;
-  sourceTier: SourceTier;
-  fetchedAt: string;
-  needsReview: boolean;
-  reviewReasons: string[];
-  dedupeKey: string;
-}
-
-interface MergeApi {
-  mergeExternalEventIntoCanonicalEvent(input: {
-    canonical: MergeableCanonicalEvent;
-    incoming: MergeableCanonicalEvent;
-  }): MergeResult;
-}
-
-const mergeApi = normaliseModule as unknown as MergeApi;
 
 const venueId = '11111111-1111-4111-8111-111111111111';
 const tier1SourceId = '22222222-2222-4222-8222-222222222221';
@@ -124,7 +64,7 @@ describe('mergeExternalEventIntoCanonicalEvent', () => {
         fetchedAt: '2026-06-02T10:00:00.000Z',
       };
 
-      const merged = mergeApi.mergeExternalEventIntoCanonicalEvent({
+      const merged = mergeExternalEventIntoCanonicalEvent({
         canonical,
         incoming,
       });
@@ -148,7 +88,7 @@ describe('mergeExternalEventIntoCanonicalEvent', () => {
         fetchedAt: '2026-06-05T10:00:00.000Z',
       };
 
-      const merged = mergeApi.mergeExternalEventIntoCanonicalEvent({
+      const merged = mergeExternalEventIntoCanonicalEvent({
         canonical,
         incoming,
       });
@@ -173,7 +113,7 @@ describe('mergeExternalEventIntoCanonicalEvent', () => {
         fetchedAt: '2026-06-02T10:00:00.000Z',
       };
 
-      const merged = mergeApi.mergeExternalEventIntoCanonicalEvent({
+      const merged = mergeExternalEventIntoCanonicalEvent({
         canonical,
         incoming,
       });
@@ -196,7 +136,7 @@ describe('mergeExternalEventIntoCanonicalEvent', () => {
         fetchedAt: '2026-06-10T10:00:00.000Z',
       };
 
-      const merged = mergeApi.mergeExternalEventIntoCanonicalEvent({
+      const merged = mergeExternalEventIntoCanonicalEvent({
         canonical,
         incoming,
       });
@@ -218,7 +158,7 @@ describe('mergeExternalEventIntoCanonicalEvent', () => {
         fetchedAt: '2026-06-10T10:00:00.000Z',
       };
 
-      const merged = mergeApi.mergeExternalEventIntoCanonicalEvent({
+      const merged = mergeExternalEventIntoCanonicalEvent({
         canonical,
         incoming,
       });
@@ -244,7 +184,7 @@ describe('mergeExternalEventIntoCanonicalEvent', () => {
         fetchedAt: '2026-06-05T10:00:00.000Z',
       };
 
-      const merged = mergeApi.mergeExternalEventIntoCanonicalEvent({
+      const merged = mergeExternalEventIntoCanonicalEvent({
         canonical,
         incoming,
       });
@@ -266,7 +206,7 @@ describe('mergeExternalEventIntoCanonicalEvent', () => {
         fetchedAt: '2026-05-15T10:00:00.000Z',
       };
 
-      const merged = mergeApi.mergeExternalEventIntoCanonicalEvent({
+      const merged = mergeExternalEventIntoCanonicalEvent({
         canonical,
         incoming,
       });
@@ -290,7 +230,7 @@ describe('mergeExternalEventIntoCanonicalEvent', () => {
         fetchedAt: '2026-06-10T10:00:00.000Z',
       };
 
-      const merged = mergeApi.mergeExternalEventIntoCanonicalEvent({
+      const merged = mergeExternalEventIntoCanonicalEvent({
         canonical,
         incoming,
       });
@@ -323,7 +263,7 @@ describe('mergeExternalEventIntoCanonicalEvent', () => {
         fetchedAt: '2026-06-10T10:00:00.000Z',
       };
 
-      const merged = mergeApi.mergeExternalEventIntoCanonicalEvent({
+      const merged = mergeExternalEventIntoCanonicalEvent({
         canonical,
         incoming,
       });
@@ -348,7 +288,7 @@ describe('mergeExternalEventIntoCanonicalEvent', () => {
         needsReview: false,
       };
 
-      const merged = mergeApi.mergeExternalEventIntoCanonicalEvent({
+      const merged = mergeExternalEventIntoCanonicalEvent({
         canonical,
         incoming,
       });
