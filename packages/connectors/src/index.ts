@@ -5,3 +5,5 @@ export * from './api/datathistle/index.js';
 export * from './api/datathistle/client.js';
 export * from './api/datathistle/categories.js';
 export * from './api/datathistle/parse.js';
+export * from './rss/glad-cafe/index.js';
+export * from './rss/glad-cafe/parse.js';

@@ -213,10 +213,66 @@ proxy-cache image binaries from any source.
 
 ---
 
-## 6. Worked example: RSS connector
+## 6. RSS connectors
+
+### 6.1 Source classification — Type A vs Type B
+
+Before writing an RSS connector, classify the feed. The two shapes are handled
+differently and confusing them silently puts events on the wrong day or
+manufactures low-quality drafts from editorial posts.
+
+| Class | Shape | `sources.config.rssType` | Confidence cap | First Phase 1 example |
+|-------|-------|--------------------------|----------------|------------------------|
+| **Type A — Structured event feed** | Each `<item>` is a single event. Title is the event name. `<pubDate>` (or `dc:date`) is the event start. `<link>` points to the event page. | `'event_feed'` (default if absent) | none — standard pipeline confidence applies | The Glad Cafe |
+| **Type B — Editorial / newsletter** | Each `<item>` is a blog post or newsletter issue. Title is the article headline. `<pubDate>` is the **publication** date of the post, NOT the date of any event the post describes. Multiple events may be mentioned in one item, or none. | `'newsletter'` | ≤ 30 for every item derived from this feed | Glasgow Art Map Substack |
+
+**Default when `rssType` is absent in `sources.config`:** `'event_feed'`. Type A is
+the safer assumption — Type B sources must be opted into explicitly so the
+confidence cap is applied.
+
+### 6.2 The `pubDate` ≠ event-date rule (Type B)
+
+For Type B sources, **do not map `<pubDate>` (or `item.isoDate` from
+`rss-parser`) to `startAt`**. `pubDate` is the publication timestamp of the
+newsletter issue; using it as the event start silently shifts every event onto
+the day the newsletter was published.
+
+For Type B, leave `startAt` undefined and let downstream normalisation either
+extract a date from the post body (Tier 4 enrichment, out of scope for the
+connector) or route the item to the moderation queue with `time_tba = true` and
+`visibility = 'draft'`.
+
+For Type A, `<pubDate>` **is** the event start by definition — parse it into
+ISO 8601 and emit it as `startAt`. If a Type A item has no parseable date,
+emit `startAt: undefined` (do not fabricate, do not skip — the item is still a
+RawEvent).
+
+### 6.3 Worked example: Type A connector (The Glad Cafe)
+
+The Glad Cafe is the first Phase 1 RSS source. Its `<item>` shape is one event
+per item with `title`, `link`, `guid`, `pubDate`, and a `<category>` tag. The
+connector hand-rolls a small RSS 2.0 parser (no new runtime dependency) and is
+wired from a config-driven URL so the source row in `sources` controls whether
+it runs.
+
+See `packages/connectors/src/rss/glad-cafe/` for the full implementation. The
+shape:
+
+```ts
+// packages/connectors/src/rss/glad-cafe/index.ts
+export const gladCafeConnector: Connector = {
+  slug: 'glad-cafe',
+  type: 'rss',
+  async run(): Promise<IngestResult> {
+    /* fetch URL from env, parseRssFeed(xml), return IngestResult */
+  },
+};
+```
+
+### 6.4 Worked example: Type B connector (newsletter)
 
 A complete connector for a Substack RSS feed. This can be used as a starting template
-for any RSS source.
+for any Type B / newsletter RSS source.
 
 ```ts
 // packages/connectors/src/rss/glasgow-art-map/index.ts

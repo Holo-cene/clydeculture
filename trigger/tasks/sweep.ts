@@ -7,8 +7,10 @@ import {
 import { normaliseExternalEventsForSource } from '@clydeculture/ingestion';
 import {
   createDataThistleConnector,
+  createGladCafeConnector,
   createTicketmasterConnector,
   dataThistleConfigFromEnv,
+  gladCafeConfigFromEnv,
 } from '@clydeculture/connectors';
 import { createClient, upsertExternalEvents } from '@clydeculture/shared';
 import type {
@@ -39,6 +41,14 @@ export const sweepTask = schedules.task({
     const dataThistleConfig = dataThistleConfigFromEnv(process.env);
     if (dataThistleConfig) {
       connectors['datathistle'] = createDataThistleConnector(dataThistleConfig);
+    }
+
+    // RSS Type A — runs only when GLAD_CAFE_RSS_URL is set AND the glad-cafe
+    // sources row is enabled. Seeded disabled by the migration; operator opts
+    // in after URL verification.
+    const gladCafeConfig = gladCafeConfigFromEnv(process.env);
+    if (gladCafeConfig) {
+      connectors['glad-cafe'] = createGladCafeConnector(gladCafeConfig);
     }
 
     return runSweepIntegration({
