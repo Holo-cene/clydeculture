@@ -234,3 +234,128 @@ to a blank Postgres instance is a matter of running `supabase db push` against t
 target project, then restoring data from the most recent dump. The Astro frontend is
 disposable — if it is lost, redeploying `apps/web` from the Supabase source of truth
 rebuilds it. No data is held in the frontend layer.
+
+---
+
+## Data Protection (UK GDPR)
+
+This section is the platform's internal record of how submitter PII is handled. It
+is a **launch blocker** for any public submission or claim form: the lawful basis,
+retention schedule, and DSAR process below must be in place — and a public-facing
+privacy notice published — before either form goes live (see "Pre-launch checklist"
+at the end of this section).
+
+Until that point, the only PII path is direct operator input or manual data fixes;
+the `event_submissions` and `venue_claims` tables are not yet exposed to anonymous
+users via a UI even though the RLS gate exists
+(`supabase/migrations/20260608000000_event_submissions_public_gate.sql`). This
+section will be the reference for the worker that ships with the form.
+
+### Personal data the platform holds
+
+| Table | PII fields | Optional? | Source |
+|---|---|---|---|
+| `event_submissions` | `submitter_email` | Yes (column is nullable) | Public submission form |
+| `venue_claims` | `claimant_email` | No (currently `not null` in schema) | Public claim form |
+| `moderation_log` | `performed_by` (auth user UUID) | n/a | Internal moderation action |
+
+Community submissions may also include incidental PII inside `description` or
+`venue_name` — typically a home address when a gig is hosted in a flat. That is
+covered by the link-first / source-policy rules
+(`docs/source-policy.md`, `docs/SUBMISSIONS.md`) and the moderation queue, not by
+this section.
+
+### Lawful basis
+
+**Legitimate interests** (UK GDPR Article 6(1)(f)) is the platform's lawful basis
+for processing `submitter_email` and `claimant_email`.
+
+- **Legitimate interest pursued.** Operating the moderation queue: contacting
+  submitters/claimants to verify their submission, request clarification, or
+  follow up on a rejection. Without an email channel the moderation flow cannot
+  function and the community noticeboard cannot accept user contributions.
+- **Necessity.** The platform asks for the minimum PII required (email only —
+  no name, address, or phone). For event submissions the field is optional; a
+  submission can be made without an email at the cost of losing the
+  clarification channel.
+- **Balancing test.** Submitters and claimants are self-selecting adults
+  choosing to contact a community platform with a specific, narrow purpose.
+  The data is held in a private, RLS-default-deny table, never published, and
+  retained only as long as needed for the moderation decision and a short
+  post-decision window for appeal.
+
+This basis must be reviewed by someone with legal expertise before the public
+form launches. If that review concludes contract (Article 6(1)(b)) is the
+better fit, update this section and the privacy notice together.
+
+### Retention schedule
+
+| State | Action | Window |
+|---|---|---|
+| `event_submissions.status = 'pending'` | Retain until moderated | Target moderation SLA: 7 days. Rows older than 30 days are flagged for operator review (stale queue, not auto-deleted). |
+| `event_submissions.status = 'rejected'` | Delete the row (including `submitter_email`) | 30 days after `reviewed_at` |
+| `event_submissions.status = 'approved'` | Anonymise `submitter_email` (set to `null`); retain the row because `event_id` links it to a canonical event | 30 days after the event's `end_at` (or `start_at` if `end_at` is null). Approved submissions without a future date are anonymised 30 days after `reviewed_at`. |
+| `venue_claims.status = 'pending'` | Retain until moderated | Same 7-day target / 30-day flag as event submissions |
+| `venue_claims.status = 'rejected'` | Delete the row | 30 days after `reviewed_at` |
+| `venue_claims.status = 'approved'` | Anonymise `claimant_email` once the claim is no longer needed for write-access verification | 1 year after `reviewed_at` (revisit when the venue write-access model is built) |
+| `moderation_log` | Retain | Indefinitely. Append-only audit trail; the `performed_by` UUID is not directly identifying. Erasure requests against an admin user are handled per "DSAR" below. |
+
+The 30-day post-rejection window exists so a rejected submitter can appeal or
+correct their submission while their email is still on file. No record is held
+longer than necessary for the documented purpose.
+
+### Retention automation (build deferred to form launch)
+
+When the public submission form ships, a daily Trigger.dev task — running after
+the ingestion sweep — calls four SQL functions:
+
+- `delete_rejected_submissions()` — `delete from event_submissions where status = 'rejected' and reviewed_at < now() - interval '30 days'`.
+- `delete_rejected_venue_claims()` — equivalent on `venue_claims`.
+- `anonymise_approved_submission_emails()` — `update event_submissions set submitter_email = null where status = 'approved' and submitter_email is not null and ...` per the table above.
+- `anonymise_approved_venue_claim_emails()` — `update venue_claims set claimant_email = null where status = 'approved' and claimant_email is not null and reviewed_at < now() - interval '1 year'`. Revisit the 1-year window when the venue write-access model lands; the claim email is the verification key for that access.
+
+These functions and the Trigger.dev task do **not** exist yet; they ship with
+the public form, not before. The functions live in `supabase/migrations/`
+behind a Phase-2 marker and get pgTAP coverage in `supabase/tests/` plus unit
+tests on the Trigger.dev task before going live.
+
+### Data subject access and erasure (DSAR) process
+
+Contact: **hello@jamiecoop.com**. Response SLA: **30 days** (UK GDPR Article 12).
+
+When a request arrives:
+
+1. **Identify** the data subject. Match the email in the request against
+   `event_submissions.submitter_email` and `venue_claims.claimant_email`. If
+   the request is from an admin user (right of access against
+   `moderation_log.performed_by`), resolve the UUID against Supabase Auth.
+2. **Subject access (Article 15).** Export the matching rows (the email, the
+   submitted content, status, and timestamps) to the requester. Do not export
+   internal moderation reasons that name third parties.
+3. **Erasure (Article 17).** For each match:
+   - If `status` is `pending` or `rejected`, delete the row.
+   - If `status` is `approved` and an `event_id` is linked, set
+     `submitter_email = null` (or `claimant_email = null`) via UPDATE. The
+     canonical event is editorial content, not personal data, and is not
+     deleted.
+   - If the request is against `moderation_log` for an admin user, anonymise
+     `performed_by` to `null` on rows older than the audit-retention window;
+     do not delete the row (append-only audit integrity).
+4. **Log** the action in `moderation_log` with `action = 'created'` and
+   `reason = 'DSAR erasure request'` (use the entity type that matched).
+5. **Confirm** completion to the requester within the 30-day SLA.
+
+Until the public form ships there is no incoming DSAR volume; the process is
+documented now so it is ready when the form goes live.
+
+### Pre-launch checklist (before any public submission or claim form ships)
+
+- [ ] Privacy notice published on the public site and linked from every form.
+- [ ] Form copy names the lawful basis, the retention schedule, and the DSAR
+      contact in plain language.
+- [ ] `delete_rejected_submissions()`, `delete_rejected_venue_claims()`,
+      `anonymise_approved_submission_emails()`, and
+      `anonymise_approved_venue_claim_emails()` migrations applied.
+- [ ] Trigger.dev retention task scheduled and observed running on staging.
+- [ ] pgTAP + unit tests cover the retention functions and the task.
+- [ ] This section reviewed by someone with UK data-protection expertise.
