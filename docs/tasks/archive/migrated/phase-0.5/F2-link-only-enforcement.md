@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Migrated to issue #13 (Link-only source enforcement). Consolidated with SEC-05. See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # F2 — Link-Only Source Enforcement
 
 ## Status

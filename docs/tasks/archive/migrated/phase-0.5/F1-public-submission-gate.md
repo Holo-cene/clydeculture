@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Migrated — COVERED-BY issue #15 (Submission model design, ADR 0005 A6). F1's anon-INSERT hardening is part of that design. See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # F1 — Public Event Submission Gate
 
 ## Status

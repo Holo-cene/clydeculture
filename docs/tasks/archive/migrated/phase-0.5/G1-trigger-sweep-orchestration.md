@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** COVERED-BY issue #5 (Thread #1 daily scheduled Ticketmaster sweep — CLOSED). See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # G1 — Define and Implement Trigger.dev Sweep Orchestration
 
 ## Status

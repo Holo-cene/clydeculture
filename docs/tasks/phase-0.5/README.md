@@ -11,10 +11,6 @@ Do not run these task files automatically during backlog review.
 
 | File | Status | Needed? | Missing or blocker |
 |---|---|---|---|
-| [F1-public-submission-gate.md](F1-public-submission-gate.md) | Open | Phase 2 | Public submission scope is gated; missing final security/rate-limit implementation plan. |
-| [F2-link-only-enforcement.md](F2-link-only-enforcement.md) | Open | Yes | Link-only storage is documented, but typed source enforcement and tests are missing. |
-| [F3-gdpr-retention.md](F3-gdpr-retention.md) | Open | Phase 2 | Retention policy and deletion/anonymisation implementation remain unresolved. |
-| [G1-trigger-sweep-orchestration.md](G1-trigger-sweep-orchestration.md) | Partial | Yes | Core sweep tests/code exist, but source `last_*` stamps, source status updates, deletion handling, and Trigger schedule wiring need review. |
 
 ## Completed In Archive
 

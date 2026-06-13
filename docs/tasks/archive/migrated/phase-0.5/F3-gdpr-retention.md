@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Migrated to issue #14 (GDPR retention). Consolidated with SEC-06. See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # F3 — GDPR / Retention Documentation
 
 ## Status
