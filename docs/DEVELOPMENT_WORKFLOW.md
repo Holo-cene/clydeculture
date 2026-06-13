@@ -63,15 +63,16 @@ deterministic (CI), not self-reported by an agent.
    on green (`.sandcastle/verify-prompt.md`, `.sandcastle/main.mts` Phase 3.5). This is a
    fast local pre-check: it runs in the maintainer's environment and trusts the agent, so it
    is **not** the safety boundary.
-2. **CI — authoritative.** A branch ruleset on `main` requires the GitHub Actions `check`
-   job (`.github/workflows/ci.yml`) to pass before a PR can merge. The agent cannot fabricate
-   this — CI runs install · test · typecheck · lint · Astro build on a clean runner.
-   **Do not merge to `main` until `check` is green.**
+2. **CI — authoritative.** A branch ruleset on `main` requires the GitHub Actions jobs
+   in `.github/workflows/ci.yml` to pass before a PR can merge. The agent cannot fabricate
+   this — CI runs on a clean runner:
+   - `check`: install · test · typecheck · lint · Astro build.
+   - `supabase`: `supabase start` · `db reset` · `db test` (pgTAP) · `*.integration.test.ts`
+     against an ephemeral local Supabase (issue #31).
 
-**Currently outside the CI gate.** `ci.yml` defers the Supabase pgTAP tests
-(`supabase db test`) and the `*.integration.test.ts` suite — they need a live local Supabase
-(tracked in issue #31). Until those run in CI, run the full local sequence before opening a
-PR to `main`:
+   **Do not merge to `main` until both jobs are green.**
+
+The local sequence is still useful as a pre-push check (faster feedback than CI):
 
 ```text
 supabase start && supabase db reset && supabase db test
