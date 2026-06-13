@@ -1,4 +1,5 @@
 import { deriveDedupeKey } from '../dedupe/dedupe.js';
+import { stripHtml } from '../sanitise/sanitise.js';
 
 export type SourceTier = 1 | 2 | 3 | 4;
 export type TypeSource = 'map' | 'keyword' | 'fallback';
@@ -258,7 +259,9 @@ export function buildCanonicalEventDraft(input: {
     }
   }
 
-  const title = input.externalEvent.title.trim().slice(0, 500);
+  // stripHtml trims and returns null for empty input, so it subsumes the prior
+  // `.trim()`; `?? ''` keeps the contract that title is always a string.
+  const title = (stripHtml(input.externalEvent.title) ?? '').slice(0, 500);
   const eventTypeResolution = mapSourceCategoryToEventType({
     sourceSlug: input.externalEvent.sourceSlug,
     sourceCategory: input.externalEvent.eventTypeGuess,
