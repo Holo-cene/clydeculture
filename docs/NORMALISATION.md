@@ -383,6 +383,98 @@ confidence threshold.
    `updated_at`. Do not overwrite higher-confidence field values.
 3. Write back `external_events.event_id = existing events.id`.
 
+### Field-level merge priority table
+
+This table is the authoritative contract for `mergeExternalEventIntoCanonicalEvent()`
+in `packages/core`. It governs which value wins, field by field, when an incoming
+external event collides (same `dedupe_key`) with an existing canonical event.
+
+Universal rules (apply unless a row in the table says otherwise):
+
+- **Tier comparison.** A lower tier number is a better source (Tier 1 > Tier 2 > Tier 3 > Tier 4).
+- **Better tier wins.** If the incoming source has a strictly lower tier than the
+  canonical's `primary_source_id` tier, the incoming non-null value replaces the
+  canonical value for that field.
+- **Null never overwrites non-null.** An incoming `null` for a field is treated as
+  "no information" and leaves the existing canonical value untouched, regardless of
+  tier. The only way to clear a field is an editorial override (out of scope here).
+- **Same-tier tiebreak: latest fetch wins.** If incoming and canonical share a tier,
+  the value from the record with the more recent `fetchedAt` wins (per field, only
+  when the incoming value is non-null).
+- **Worse-tier incoming.** If the incoming tier is worse (numerically larger), the
+  incoming value is ignored for canonical content fields. Only `availability`,
+  `availability_note`, and `updated_at` may be refreshed from a worse-tier source
+  (most-recently-verified availability — see row below).
+- **Field-locks (ADR 0007, planned).** A locked field is never overwritten by any
+  merge, regardless of tier or fetch order. Field-locking is tracked separately;
+  the merge function must respect it once it ships.
+
+| Field | Better tier wins | Null overwrites non-null | Same-tier tiebreak | Notes |
+|---|---|---|---|---|
+| `id` | n/a | n/a | n/a | Identity preserved across merges |
+| `title` | yes | no | latest fetch | Re-derive `normalised_title` and `dedupe_key` |
+| `normalised_title` | derived | n/a | derived | Recomputed from merged `title` |
+| `slug` | n/a | n/a | n/a | Immutable once written (preserves external links) |
+| `summary` | yes | no | latest fetch | Forced `null` for link-only sources (see Link-first enforcement) |
+| `description` | yes | no | latest fetch | Forced `null` for link-only sources |
+| `source_url` | yes | no (never null) | latest fetch | Link-first contract — at least one record must carry a non-null value |
+| `ticket_url` | yes | no | latest fetch | Ticketing source preferred when present at any tier |
+| `ticket_url_label` | yes | no | latest fetch | Tracks `ticket_url` — merge as a pair when both supplied |
+| `image_url` | yes | no | latest fetch | Must pass `normaliseImageUrl()` HTTPS check; fail → null and ignore |
+| `has_image` | n/a | n/a | n/a | Generated column |
+| `price_min` | yes | no | latest fetch | Ticketing source preferred |
+| `price_max` | yes | no | latest fetch | Ticketing source preferred |
+| `is_free` | yes | n/a (boolean) | latest fetch | Treat incoming `false` as "not asserted" if canonical is `true` from a better/same tier |
+| `price_display` | derived | n/a | derived | Recomputed from `price_min`/`price_max`/`is_free` after merge |
+| `start_at` | yes | no (NOT NULL) | latest fetch | If merged value differs from canonical, treat as reschedule (see below) |
+| `end_at` | yes | no | latest fetch | |
+| `doors_at` | yes | no | latest fetch | |
+| `timezone` | yes | no | latest fetch | Default `'Europe/London'` if neither side provides one |
+| `time_tba` | yes | n/a (boolean) | latest fetch | If `true` after merge → forces `needs_review = true` (Step 7) |
+| `event_type_id` | yes | n/a (NOT NULL) | latest fetch | If incoming resolves to `other` and canonical is more specific, **keep canonical** (do not downgrade classification) |
+| `venue_id` | yes (if resolved) | no | latest fetch | An auto-created venue does not displace a resolved one |
+| `festival_id` | yes | no | latest fetch | |
+| `is_festival_event` | n/a | n/a | n/a | Generated column |
+| `series_id` | yes | no | latest fetch | |
+| `event_type_label` | derived | n/a | derived | Mirrors `event_type_id` |
+| `venue_name_display` | derived | n/a | derived | Mirrors `venue_id` |
+| `venue_slug_display` | derived | n/a | derived | Mirrors `venue_id` |
+| `festival_name_display` | derived | n/a | derived | Mirrors `festival_id` |
+| `festival_slug_display` | derived | n/a | derived | Mirrors `festival_id` |
+| `tags_display` | derived | n/a | derived | Recomputed from merged `event_tags` |
+| `location_display` | derived | n/a | derived | Mirrors venue/location resolution |
+| `is_online` | yes | n/a (boolean) | latest fetch | |
+| `age_restriction` | yes | no | latest fetch | |
+| `availability` | most-recently-verified wins | no | latest fetch | Worse-tier records may still refresh this; incoming `'rescheduled'` or `'postponed'` always sets `needs_review = true` |
+| `availability_note` | tracks `availability` | no | tracks `availability` | Merged as a pair with `availability` |
+| `is_sold_out` | n/a | n/a | n/a | Generated from `availability` |
+| `primary_source_id` | yes | n/a (NOT NULL) | latest fetch | Reassigned to the incoming source when incoming is the better tier and supplies title/dates |
+| `visibility` | recomputed | n/a | recomputed | Re-evaluated after merge from confidence + `needs_review` (Steps 4, 7, 8 auto-publish) |
+| `confidence` | recomputed | n/a | recomputed | Re-derived from merged fields with `corroborated = true` when ≥ 2 sources have resolved to this `events.id` |
+| `confidence_inputs` | recomputed | n/a | recomputed | Mirrors `confidence` |
+| `needs_review` | OR-merge | n/a | OR-merge | Merge sets it to `true` if any of: pre-existing `true`, incoming reasons, `availability` resolves to `rescheduled` / `postponed`, `start_at` changed |
+| `dedupe_key` | recomputed | n/a | recomputed | Recomputed from merged `venue_id`, `start_at`, `title` |
+| `created_at` | n/a | n/a | n/a | Preserved from the existing canonical row |
+| `updated_at` | recomputed | n/a | recomputed | Set to `now()` at write time |
+
+**Reschedule detection during merge.** If the merged `start_at` differs from the
+canonical `start_at`, the merge MUST:
+
+1. Set `availability = 'rescheduled'` (unless the incoming `availability` is a more
+   specific terminal state like `'cancelled'`, which wins).
+2. Set `needs_review = true`.
+3. Recompute `dedupe_key` from the new `start_at`. If the new `dedupe_key` would
+   collide with a different existing canonical event, fall through to the unsafe
+   reschedule path below — the merge function returns the rescheduled draft and the
+   caller is responsible for writing a `event_merge_candidates` row instead of
+   updating in place.
+
+**Link-first hard rule still applies.** Even on the better-tier path, the merge
+function MUST enforce `summary = null`, `description = null`, and `image_url = null`
+when the *incoming* source is link-only — regardless of what the canonical already
+held. This prevents a previously richer canonical record from being inherited
+verbatim when a link-only source becomes the new primary.
+
 **Auto-publish path:**
 
 If `confidence >= 60 AND needs_review = false AND visibility = 'draft'`, set

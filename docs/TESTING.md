@@ -37,7 +37,7 @@ A regression here silently corrupts the canonical event index.
 | `mapSourceCategoryToEventType()` | `packages/core/src/normalise/normalise.ts` | `packages/core/src/normalise/normalise.test.ts` | Category mapping governs taxonomy; wrong mappings misclassify events permanently |
 | `calculateConfidence()` | `packages/core/src/normalise/normalise.ts` | `packages/core/src/normalise/normalise.test.ts` | Confidence gates frontend visibility — an off-by-one here hides or shows the wrong events |
 | `detectFestival()` | `packages/core/src/festivals/festivals.ts` | `packages/core/src/festivals/festivals.test.ts` | Festival detection affects grouping and display |
-| `mergeExternalEventIntoCanonicalEvent()` | `packages/core/src/dedupe/dedupe.ts` | `packages/core/src/dedupe/dedupe.test.ts` | Merge logic governs which source wins when records collide — must prefer API over scrape |
+| `mergeExternalEventIntoCanonicalEvent()` | `packages/core/src/normalise/normalise.ts` | `packages/core/src/normalise/mergeExternalEventIntoCanonicalEvent.test.ts` | Field-by-field merge per `docs/NORMALISATION.md` Step 8 — better tier wins, null never overwrites non-null, `rescheduled` forces `needs_review` |
 
 ### Example Step 1 prompt — `deriveDedupeKey`
 

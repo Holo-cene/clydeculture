@@ -8,6 +8,7 @@ export {
   mapSourceCategoryToEventType,
   buildCanonicalEventDraft,
   mapAvailabilityGuessToCanonical,
+  mergeExternalEventIntoCanonicalEvent,
   type SourceTier,
   type TypeSource,
   type CanonicalAvailability,
@@ -18,6 +19,8 @@ export {
   type ConfidenceResult,
   type ExternalEventDraft,
   type CanonicalEventDraft,
+  type MergeableCanonicalEvent,
+  type MergeResult,
 } from './normalise/normalise.js';
 export { runSweepIntegration } from './ingest/sweep.js';
 export type { SweepIntegrationInput } from './ingest/sweep.js';

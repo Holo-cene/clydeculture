@@ -293,3 +293,156 @@ export function buildCanonicalEventDraft(input: {
 
   return draft;
 }
+
+export interface MergeableCanonicalEvent {
+  title: string;
+  normalisedTitle: string;
+  summary: string | null;
+  description: string | null;
+  sourceUrl: string;
+  ticketUrl: string | null;
+  ticketUrlLabel: string | null;
+  imageUrl: string | null;
+  startAt: string;
+  endAt: string | null;
+  doorsAt: string | null;
+  timezone: string;
+  timeTba: boolean;
+  availability: CanonicalAvailability | null;
+  availabilityNote: string | null;
+  eventTypeSlug: string;
+  venueId: string | null;
+  primarySourceId: string;
+  sourceTier: SourceTier;
+  fetchedAt: string;
+  needsReview: boolean;
+}
+
+export interface MergeResult {
+  title: string;
+  normalisedTitle: string;
+  summary: string | null;
+  description: string | null;
+  sourceUrl: string;
+  ticketUrl: string | null;
+  ticketUrlLabel: string | null;
+  imageUrl: string | null;
+  startAt: string;
+  endAt: string | null;
+  doorsAt: string | null;
+  timezone: string;
+  timeTba: boolean;
+  availability: CanonicalAvailability | null;
+  availabilityNote: string | null;
+  eventTypeSlug: string;
+  venueId: string | null;
+  primarySourceId: string;
+  sourceTier: SourceTier;
+  fetchedAt: string;
+  needsReview: boolean;
+  reviewReasons: string[];
+  dedupeKey: string;
+}
+
+// mergeExternalEventIntoCanonicalEvent applies docs/NORMALISATION.md Step 8's
+// field-level merge priority table. Pure: no I/O.
+//
+// Picks the per-field winner using tier (lower = better) and fetchedAt as the
+// same-tier tiebreaker. Never lets null overwrite non-null. Treats availability
+// specially: 'rescheduled' / 'postponed' always force needs_review and may
+// refresh from a worse-tier source.
+export function mergeExternalEventIntoCanonicalEvent(input: {
+  canonical: MergeableCanonicalEvent;
+  incoming: MergeableCanonicalEvent;
+}): MergeResult {
+  const { canonical, incoming } = input;
+  const incomingIsBetterTier = incoming.sourceTier < canonical.sourceTier;
+  const incomingIsSameTier = incoming.sourceTier === canonical.sourceTier;
+  const incomingFetchedLater =
+    Date.parse(incoming.fetchedAt) > Date.parse(canonical.fetchedAt);
+  const incomingWinsContent =
+    incomingIsBetterTier || (incomingIsSameTier && incomingFetchedLater);
+
+  const pickContent = <T>(
+    incomingValue: T | null,
+    canonicalValue: T | null,
+  ): T | null => {
+    if (!incomingWinsContent) return canonicalValue;
+    if (incomingValue === null || incomingValue === undefined) {
+      return canonicalValue;
+    }
+    return incomingValue;
+  };
+
+  const title = pickContent(incoming.title, canonical.title) ?? canonical.title;
+  const normalisedTitle =
+    title === incoming.title
+      ? incoming.normalisedTitle
+      : canonical.normalisedTitle;
+
+  const startAt = incomingWinsContent ? incoming.startAt : canonical.startAt;
+  const startAtChanged = startAt !== canonical.startAt;
+
+  const venueId = pickContent(incoming.venueId, canonical.venueId);
+
+  // Availability is most-recently-verified: incoming wins if it's non-null and
+  // either better-or-same tier, OR it's a state-change signal ('rescheduled' /
+  // 'postponed' / 'cancelled') which always refreshes regardless of tier.
+  const stateChangeIncoming =
+    incoming.availability === 'rescheduled' ||
+    incoming.availability === 'postponed' ||
+    incoming.availability === 'cancelled';
+  let availability: CanonicalAvailability | null = canonical.availability;
+  let availabilityNote: string | null = canonical.availabilityNote;
+  if (incoming.availability !== null) {
+    const availabilityIncomingWins =
+      incomingIsBetterTier ||
+      incomingIsSameTier ||
+      stateChangeIncoming ||
+      incomingFetchedLater;
+    if (availabilityIncomingWins) {
+      availability = incoming.availability;
+      availabilityNote = incoming.availabilityNote;
+    }
+  }
+
+  const reviewReasons: string[] = [];
+  if (canonical.needsReview) reviewReasons.push('canonical_needs_review');
+  if (incoming.needsReview) reviewReasons.push('incoming_needs_review');
+  if (availability === 'rescheduled') reviewReasons.push('availability_rescheduled');
+  if (availability === 'postponed') reviewReasons.push('availability_postponed');
+  if (startAtChanged) reviewReasons.push('start_at_changed');
+
+  const result: MergeResult = {
+    title,
+    normalisedTitle,
+    summary: pickContent(incoming.summary, canonical.summary),
+    description: pickContent(incoming.description, canonical.description),
+    sourceUrl: pickContent(incoming.sourceUrl, canonical.sourceUrl) ?? canonical.sourceUrl,
+    ticketUrl: pickContent(incoming.ticketUrl, canonical.ticketUrl),
+    ticketUrlLabel: pickContent(incoming.ticketUrlLabel, canonical.ticketUrlLabel),
+    imageUrl: pickContent(incoming.imageUrl, canonical.imageUrl),
+    startAt,
+    endAt: pickContent(incoming.endAt, canonical.endAt),
+    doorsAt: pickContent(incoming.doorsAt, canonical.doorsAt),
+    timezone: incomingWinsContent ? incoming.timezone : canonical.timezone,
+    timeTba: incomingWinsContent ? incoming.timeTba : canonical.timeTba,
+    availability,
+    availabilityNote,
+    eventTypeSlug:
+      incomingWinsContent && incoming.eventTypeSlug !== 'other'
+        ? incoming.eventTypeSlug
+        : canonical.eventTypeSlug,
+    venueId,
+    primarySourceId: incomingWinsContent
+      ? incoming.primarySourceId
+      : canonical.primarySourceId,
+    sourceTier: incomingWinsContent ? incoming.sourceTier : canonical.sourceTier,
+    fetchedAt: incomingFetchedLater ? incoming.fetchedAt : canonical.fetchedAt,
+    needsReview: reviewReasons.length > 0,
+    reviewReasons,
+    dedupeKey: deriveDedupeKey(venueId, startAt, title),
+  };
+
+  return result;
+}

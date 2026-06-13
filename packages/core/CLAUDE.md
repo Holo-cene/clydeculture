@@ -61,7 +61,7 @@ Rules:
 | `normaliseTitle()` | `src/normalise/normalise.ts` | Must match SQL `normalise_title()` |
 | `normaliseVenueName()` | `src/normalise/normalise.ts` | Used for venue alias matching |
 | `deriveDedupeKey()` | `src/dedupe/dedupe.ts` | Must match SQL `compute_dedupe_key()` |
-| `mergeExternalEventIntoCanonicalEvent()` | `src/dedupe/dedupe.ts` | API wins over scrape |
+| `mergeExternalEventIntoCanonicalEvent()` | `src/normalise/normalise.ts` | API wins over scrape; full table in `docs/NORMALISATION.md` Step 8 |
 | `mapSourceCategoryToEventType()` | `src/normalise/normalise.ts` | Governs taxonomy |
 | `calculateConfidence()` | `src/normalise/normalise.ts` | Gates frontend visibility |
 | `detectFestival()` | `src/festivals/festivals.ts` | Affects grouping and display |
@@ -72,8 +72,9 @@ Framework: **Vitest v2**. Run with `pnpm --filter @clydeculture/core test`.
 
 | Test file | Covers |
 |---|---|
-| `src/dedupe/dedupe.test.ts` | `deriveDedupeKey`, `mergeExternalEventIntoCanonicalEvent` |
+| `src/dedupe/dedupe.test.ts` | `deriveDedupeKey` |
 | `src/normalise/normalise.test.ts` | `normaliseTitle`, `normaliseVenueName` |
+| `src/normalise/mergeExternalEventIntoCanonicalEvent.test.ts` | `mergeExternalEventIntoCanonicalEvent` |
 | `src/festivals/festivals.test.ts` | `detectFestival` |
 
 Before implementing any function in this package, write the test first per the
