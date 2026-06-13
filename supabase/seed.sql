@@ -261,7 +261,7 @@ insert into public.events (
   price_display,
   start_at,
   timezone,
-  event_type_id,
+  primary_event_type_id,
   venue_id,
   availability,
   primary_source_id,
@@ -320,7 +320,7 @@ on conflict (id) do update set
   price_display = excluded.price_display,
   start_at = excluded.start_at,
   timezone = excluded.timezone,
-  event_type_id = excluded.event_type_id,
+  primary_event_type_id = excluded.primary_event_type_id,
   venue_id = excluded.venue_id,
   availability = excluded.availability,
   primary_source_id = excluded.primary_source_id,
@@ -370,7 +370,7 @@ select
   e.venue_id,
   e.id
 from public.events e
-join public.event_types et on et.id = e.event_type_id
+join public.event_types et on et.id = e.primary_event_type_id
 join public.venues v on v.id = e.venue_id
 where e.primary_source_id = '00000000-0600-4000-8000-000000000001'::uuid
 on conflict (source_id, external_id) do update set

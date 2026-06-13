@@ -188,12 +188,16 @@ describe('public Supabase query helpers', () => {
     expect(query.order).toMatchObject({ column: 'start_at' });
   });
 
-  it('getPublishedEvents filters by canonical event type, venue, and festival joins', async () => {
+  it('getPublishedEvents filters by canonical event type via the multi-category join, plus venue and festival joins (ADR 0005 A2)', async () => {
     const { getPublishedEvents } = await loadApi();
     const client = new FakeSupabaseClient({
       event_types: [{ id: 1, slug: 'live_music' }],
       venues: [{ id: 'venue-1', slug: 'barrowland-ballroom', status: 'active' }],
       festivals: [{ id: 'festival-1', slug: 'celtic-connections' }],
+      event_event_types: [
+        { event_id: 'event-primary', event_type_id: 1 },
+        { event_id: 'event-secondary', event_type_id: 1 },
+      ],
     });
 
     await getPublishedEvents(client, {
@@ -203,12 +207,34 @@ describe('public Supabase query helpers', () => {
     });
 
     const query = lastQuery(client);
-    expect(query.select).toEqual(expect.stringContaining('event_types'));
+    // PUBLIC_EVENT_SELECT must surface every type the event sits in, not just
+    // the primary badge — the multi-category contract is "primary + all
+    // secondary", read via the event_event_types join.
+    expect(query.select).toEqual(expect.stringContaining('event_event_types'));
     expect(query.select).toEqual(expect.stringContaining('venues'));
     expect(query.select).toEqual(expect.stringContaining('festivals'));
-    expectFilter(query, 'eq', 'event_type_id', 1);
+    // The eventTypeSlug filter MUST match membership (primary OR secondary),
+    // not just primary_event_type_id, so it reads from the join.
+    expectFilter(query, 'in', 'id', ['event-primary', 'event-secondary']);
+    expect(
+      query.filters.some(
+        (filter) => filter.op === 'eq' && filter.column === 'primary_event_type_id',
+      ),
+    ).toBe(false);
     expectFilter(query, 'eq', 'venue_id', 'venue-1');
     expectFilter(query, 'eq', 'festival_id', 'festival-1');
+  });
+
+  it('getPublishedEvents returns no events when the event-type slug has no membership rows (ADR 0005 A2)', async () => {
+    const { getPublishedEvents } = await loadApi();
+    const client = new FakeSupabaseClient({
+      event_types: [{ id: 7, slug: 'workshop' }],
+      event_event_types: [],
+    });
+
+    const result = await getPublishedEvents(client, { eventTypeSlug: 'workshop' });
+
+    expect(result).toEqual([]);
   });
 
   it('getPublishedEvents searches by title and source-facing label', async () => {
@@ -256,10 +282,11 @@ describe('public Supabase query helpers', () => {
     );
   });
 
-  it('getPublishedEvents combines search with event type filters', async () => {
+  it('getPublishedEvents combines search with event type membership filters', async () => {
     const { getPublishedEvents } = await loadApi();
     const client = new FakeSupabaseClient({
       event_types: [{ id: 8, slug: 'film' }],
+      event_event_types: [{ event_id: 'event-film-1', event_type_id: 8 }],
     });
 
     await getPublishedEvents(client, {
@@ -268,7 +295,7 @@ describe('public Supabase query helpers', () => {
     });
 
     const query = lastQuery(client);
-    expectFilter(query, 'eq', 'event_type_id', 8);
+    expectFilter(query, 'in', 'id', ['event-film-1']);
     expect(query.filters.some((filter) => filter.op === 'or')).toBe(true);
   });
 

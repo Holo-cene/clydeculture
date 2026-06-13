@@ -39,6 +39,7 @@ export interface PublicQueryClient {
 const PUBLIC_EVENT_SELECT = [
   '*',
   'event_types(*)',
+  'event_event_types(event_types(*))',
   'venues(*)',
   'festivals(*)',
 ].join(',');
@@ -81,6 +82,16 @@ export async function getPublishedEvents(
     return [];
   }
 
+  // ADR 0005 A2: "show me workshops" matches membership in the
+  // event_event_types join, not just primary_event_type_id, so events whose
+  // secondary type is `workshop` still appear.
+  const eventTypeMatchingIds = eventTypeId !== null
+    ? await getEventIdsForType(client, eventTypeId)
+    : null;
+  if (eventTypeMatchingIds !== null && eventTypeMatchingIds.length === 0) {
+    return [];
+  }
+
   let query = applyPublicEventBoundary(client);
 
   if (filters.dateRange) {
@@ -89,8 +100,8 @@ export async function getPublishedEvents(
       .lt('start_at', filters.dateRange.endAt);
   }
 
-  if (filters.eventTypeSlug) {
-    query = query.eq('event_type_id', eventTypeId);
+  if (eventTypeMatchingIds !== null) {
+    query = query.in('id', eventTypeMatchingIds);
   }
 
   if (filters.venueSlug) {
@@ -119,6 +130,22 @@ export async function getPublishedEvents(
   throwIfQueryError(error);
 
   return data ?? [];
+}
+
+async function getEventIdsForType(
+  client: PublicQueryClient,
+  eventTypeId: number,
+): Promise<string[]> {
+  const { data, error } = await client
+    .from('event_event_types')
+    .select('event_id')
+    .eq('event_type_id', eventTypeId);
+
+  throwIfQueryError(error);
+
+  return (data ?? [])
+    .map((row) => (isRecord(row) && typeof row['event_id'] === 'string' ? row['event_id'] : null))
+    .filter((id): id is string => id !== null);
 }
 
 async function getEventTypeIdBySlug(

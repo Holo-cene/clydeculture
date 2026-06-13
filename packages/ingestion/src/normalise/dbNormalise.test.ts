@@ -761,7 +761,7 @@ describe('normaliseExternalEventsForSource', () => {
     });
   });
 
-  it('maps source_type_category_map semantics into event_type_id, writes canonical fields, and preserves link-first descriptions', async () => {
+  it('maps source_type_category_map semantics into primary_event_type_id, writes canonical fields, and preserves link-first descriptions', async () => {
     const client = makeClient({ autoPublish: true });
     const { normaliseExternalEventsForSource } = await loadApi();
 
@@ -778,7 +778,7 @@ describe('normaliseExternalEventsForSource', () => {
       start_at: '2026-07-15T20:45:00.000Z',
       timezone: 'Europe/London',
       venue_id: VENUE_ID,
-      event_type_id: EVENT_TYPE_ID,
+      primary_event_type_id: EVENT_TYPE_ID,
       primary_source_id: TICKETMASTER_SOURCE_ID,
       confidence: 90,
       confidence_inputs: {
@@ -1133,5 +1133,54 @@ describe('normaliseExternalEventsForSource', () => {
     );
     expect(eventUpserts).toHaveLength(1);
     expect(eventUpserts[0]?.options).toMatchObject({ onConflict: 'dedupe_key' });
+  });
+
+  it('mirrors the primary type into event_event_types on canonical create (ADR 0005 A2)', async () => {
+    // A2 contract: every canonical event must have at least its primary type
+    // present in the event_event_types join. The membership filter ("show me
+    // workshops") reads only from the join, so a missing row would silently
+    // hide events from their own primary category.
+    const client = makeClient({ autoPublish: true });
+    client.rows['external_events'] = (client.rows['external_events'] ?? []).filter(
+      (row) => row['id'] === 'external-1',
+    );
+    const { normaliseExternalEventsForSource } = await loadApi();
+
+    await normaliseExternalEventsForSource({ client, sourceId: TICKETMASTER_SOURCE_ID });
+
+    const event = eventRows(client)[0];
+    expect(event).toBeDefined();
+    const eventId = event?.['id'];
+    expect(typeof eventId).toBe('string');
+
+    const joinRows = client.rows['event_event_types'] ?? [];
+    expect(joinRows).toContainEqual({
+      event_id: eventId,
+      event_type_id: EVENT_TYPE_ID,
+    });
+
+    const joinUpserts = client.calls.filter(
+      (call) => call.table === 'event_event_types' && call.action === 'upsert',
+    );
+    expect(joinUpserts.length).toBeGreaterThanOrEqual(1);
+    expect(joinUpserts[0]?.options).toMatchObject({
+      onConflict: 'event_id,event_type_id',
+    });
+  });
+
+  it('mirrors the primary type into event_event_types on canonical update (ADR 0005 A2)', async () => {
+    // The linked-update path must also keep the join in sync — re-normalising
+    // an existing canonical event still has to assert the primary type is
+    // present in the join, even when no other fields changed.
+    const client = makeUpdateClient();
+    const { normaliseExternalEventsForSource } = await loadApi();
+
+    await normaliseExternalEventsForSource({ client, sourceId: TICKETMASTER_SOURCE_ID });
+
+    const joinRows = client.rows['event_event_types'] ?? [];
+    expect(joinRows).toContainEqual({
+      event_id: LINKED_CANONICAL_ID,
+      event_type_id: EVENT_TYPE_ID,
+    });
   });
 });

@@ -36,7 +36,7 @@
 -- =============================================================================
 
 BEGIN;
-SELECT plan(25);
+SELECT plan(28);
 
 
 -- =============================================================================
@@ -67,7 +67,7 @@ VALUES
 --   published + confidence 80  → should be visible  to anon
 --   published + confidence 50  → should be hidden    from anon (below threshold)
 --   draft     + confidence 90  → should be hidden    from anon (wrong visibility)
-INSERT INTO public.events (id, title, normalised_title, slug, start_at, event_type_id, visibility, confidence, dedupe_key)
+INSERT INTO public.events (id, title, normalised_title, slug, start_at, primary_event_type_id, visibility, confidence, dedupe_key)
 VALUES
   ('00000000-a200-0000-0000-000000000020'::uuid,
    'A2 High Confidence Published', 'a2 high confidence published',
@@ -478,6 +478,56 @@ SELECT ok(
     )
   $sql$),
   'anon: event_submissions insert rejects missing start_at'
+);
+
+RESET ROLE;
+
+
+-- =============================================================================
+-- SECTION 6: event_event_types — multi-category join confidence/visibility
+--            boundary (tests 26–28) — ADR 0005 A2.
+--
+-- Policy (this migration):
+--   EXISTS (
+--     SELECT 1 FROM events
+--     WHERE events.id = event_event_types.event_id
+--       AND events.visibility = 'published'
+--       AND events.confidence >= 60
+--   )
+--
+-- Fixture join rows mirror the events visibility matrix from SECTION 2:
+--   ...020  published + confidence 80 → row visible to anon
+--   ...021  published + confidence 50 → row hidden  from anon (below threshold)
+--   ...022  draft     + confidence 90 → row hidden  from anon (wrong visibility)
+-- =============================================================================
+
+INSERT INTO public.event_event_types (event_id, event_type_id)
+VALUES
+  ('00000000-a200-0000-0000-000000000020'::uuid, 1),
+  ('00000000-a200-0000-0000-000000000021'::uuid, 1),
+  ('00000000-a200-0000-0000-000000000022'::uuid, 1);
+
+SET ROLE anon;
+
+SELECT is(
+  (SELECT count(*)::int FROM public.event_event_types
+   WHERE event_id = '00000000-a200-0000-0000-000000000020'::uuid),
+  1,
+  'anon: event_event_types row visible for published event with confidence >= 60'
+);
+
+SELECT is(
+  (SELECT count(*)::int FROM public.event_event_types
+   WHERE event_id = '00000000-a200-0000-0000-000000000021'::uuid),
+  0,
+  'anon: event_event_types row hidden for published event with confidence < 60'
+);
+
+SELECT is(
+  (SELECT count(*)::int FROM public.event_event_types
+   WHERE event_id = '00000000-a200-0000-0000-000000000022'::uuid),
+  0,
+  'anon: event_event_types row hidden for draft event regardless of confidence'
 );
 
 RESET ROLE;

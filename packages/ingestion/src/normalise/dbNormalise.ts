@@ -144,7 +144,10 @@ export async function normaliseExternalEventsForSource(
 
       if (updateError) {
         await markNormalisationSkip(input.client, externalEvent, 'update_failed');
+        continue;
       }
+
+      await mirrorPrimaryTypeIntoJoin(input.client, externalEvent.event_id, mappedType.id);
     } else {
       const { data: canonicalEvent, error: upsertError } = await input.client
         .from('events')
@@ -162,12 +165,27 @@ export async function normaliseExternalEventsForSource(
         continue;
       }
 
+      await mirrorPrimaryTypeIntoJoin(input.client, eventId, mappedType.id);
+
       await input.client
         .from('external_events')
         .update({ event_id: eventId })
         .eq('id', externalEvent.id);
     }
   }
+}
+
+async function mirrorPrimaryTypeIntoJoin(
+  client: NormaliseDbClient,
+  eventId: string,
+  primaryEventTypeId: number,
+): Promise<void> {
+  await client
+    .from('event_event_types')
+    .upsert(
+      { event_id: eventId, event_type_id: primaryEventTypeId },
+      { onConflict: 'event_id,event_type_id' },
+    );
 }
 
 async function getSource(client: NormaliseDbClient, sourceId: string): Promise<SourceRow> {
@@ -357,7 +375,7 @@ function buildEventRow(input: {
     price_max: pricesAllowed && externalEvent.price_max_guess != null ? externalEvent.price_max_guess : undefined,
     availability: mapAvailabilityGuessToCanonical(externalEvent.availability_guess),
     timezone: source.config?.timezone ?? 'Europe/London',
-    event_type_id: mappedType.id,
+    primary_event_type_id: mappedType.id,
     venue_id: venue.id,
     primary_source_id: source.id,
     confidence: confidence.score,
