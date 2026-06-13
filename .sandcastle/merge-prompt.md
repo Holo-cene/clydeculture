@@ -6,21 +6,14 @@ Merge the following branches into the current branch:
 
 For each branch:
 
-1. Run `git merge <branch> --no-edit`
-2. If there are merge conflicts, resolve them intelligently by reading both sides and choosing the correct resolution
-3. After resolving conflicts, run `npm run typecheck` and `npm run test` to verify everything works
-4. If tests fail, fix the issues before proceeding to the next branch
+1. Run `git merge <branch> --no-edit`.
+2. If there are merge conflicts, resolve them intelligently by reading both sides and choosing the correct resolution, then complete the merge.
 
-After all branches are merged, make a single commit summarizing the merge.
+After all branches are merged, ensure the merge is committed (a summarising commit if the merges did not already create one).
 
-# CLOSE ISSUES
+# DO NOT
 
-For each branch that was merged, close its issue using the following command:
-
-`gh issue close <ID> --comment "Completed by Sandcastle"`
-
-Here are all the issues:
-
-{{ISSUES}}
+- Do **not** run the test suite or typecheck here. This sandbox is bind-mounted onto the host checkout, whose `node_modules` carries the host platform's native binaries, so `pnpm install` no-ops and the suite cannot run reliably in this container. A dedicated verifier runs the tests in a clean worktree immediately after this step.
+- Do **not** close any issues. The verifier closes them only if the merged integration is green.
 
 Once you've merged everything you can, output <promise>COMPLETE</promise>.

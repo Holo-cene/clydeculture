@@ -24,6 +24,8 @@
 import * as sandcastle from "@ai-hero/sandcastle";
 import { docker } from "@ai-hero/sandcastle/sandboxes/docker";
 import { z } from "zod";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 
 // The planner emits its plan as JSON inside <plan> tags; Output.object extracts
 // and validates it against this schema. We use Zod here, but any Standard
@@ -33,6 +35,13 @@ const planSchema = z.object({
   issues: z.array(
     z.object({ id: z.string(), title: z.string(), branch: z.string() }),
   ),
+});
+
+// The verifier emits its outcome as JSON inside <result> tags after running the
+// test suite against the freshly-merged integration branch in a clean worktree.
+const verifySchema = z.object({
+  passed: z.boolean(),
+  summary: z.string(),
 });
 
 // ---------------------------------------------------------------------------
@@ -201,11 +210,13 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   // -------------------------------------------------------------------------
   // Phase 3: Merge
   //
-  // One agent merges all completed branches into the current branch,
-  // resolving any conflicts and running tests to confirm everything works.
+  // One agent merges all completed branches into the current branch, resolving
+  // any conflicts. It does NOT run tests or close issues — that is the job of
+  // the verifier below, which runs in a clean worktree where the test suite
+  // can actually execute. The merger's sandbox bind-mounts the host checkout,
+  // whose node_modules carries the host platform's native binaries.
   //
-  // The {{BRANCHES}} and {{ISSUES}} prompt arguments are lists that the agent
-  // uses to know which branches to merge and which issues to close.
+  // The {{BRANCHES}} prompt argument is the list of branches to merge.
   // -------------------------------------------------------------------------
   await sandcastle.run({
     hooks,
@@ -217,12 +228,70 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
     promptArgs: {
       // A markdown list of branch names, one per line.
       BRANCHES: completedBranches.map((b) => `- ${b}`).join("\n"),
-      // A markdown list of issue IDs and titles, one per line.
-      ISSUES: completedIssues.map((i) => `- ${i.id}: ${i.title}`).join("\n"),
     },
   });
 
-  console.log("\nBranches merged.");
+  console.log("\nBranches merged. Verifying the integration in a clean worktree…");
+
+  // -------------------------------------------------------------------------
+  // Phase 3.5: Verify (gate issue-closing on a green integration build)
+  //
+  // The merger runs against the host checkout, so it cannot reliably run the
+  // suite (its node_modules holds the host platform's native binaries — e.g. a
+  // darwin rollup binary inside a linux container — so `pnpm install` no-ops
+  // and vitest/astro-check fail to start). Verify the *merged* result in a
+  // FRESH git worktree instead, where the onSandboxReady `pnpm install` does a
+  // clean, platform-correct install (the same mode the implementer/reviewer
+  // use successfully). The verifier closes each issue only on a green run; a
+  // red run leaves them open and halts the loop for a human to investigate.
+  // -------------------------------------------------------------------------
+  const verifyBranch = `sandcastle/verify-${Date.now()}`;
+  const verifyBox = await sandcastle.createSandbox({
+    branch: verifyBranch,
+    sandbox: docker(),
+    hooks,
+    copyToWorktree,
+  });
+
+  let verifyPassed = false;
+  let verifySummary = "verifier did not report a result";
+  try {
+    await verifyBox.run({
+      name: "verifier",
+      maxIterations: 1,
+      agent: sandcastle.claudeCode("claude-opus-4-7"),
+      promptFile: "./.sandcastle/verify-prompt.md",
+      promptArgs: {
+        ISSUES: completedIssues.map((i) => `- ${i.id}: ${i.title}`).join("\n"),
+      },
+    });
+    // Worktree runs don't support structured `output`, so the verifier writes
+    // its outcome to verify-result.json at the workspace root; that workspace is
+    // bind-mounted on the host at verifyBox.worktreePath, so we read it back here
+    // and validate it. A missing/malformed file is treated as a failure (halt).
+    const resultRaw = await readFile(
+      join(verifyBox.worktreePath, "verify-result.json"),
+      "utf8",
+    );
+    const result = verifySchema.parse(JSON.parse(resultRaw));
+    verifyPassed = result.passed;
+    verifySummary = result.summary;
+  } catch (err) {
+    verifySummary = `could not confirm a green verification: ${err}`;
+  } finally {
+    await verifyBox.close();
+  }
+
+  if (!verifyPassed) {
+    console.error(
+      `\n✗ Integration verification FAILED: ${verifySummary}\n` +
+        `  The merge commits are on the integration branch, but the issues were left OPEN.\n` +
+        `  Halting the loop so a human can investigate the merged state.`,
+    );
+    break;
+  }
+
+  console.log(`\n✓ Integration verified: ${verifySummary}. Issues closed.`);
 }
 
 console.log("\nAll done.");
