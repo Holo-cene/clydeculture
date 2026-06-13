@@ -19,6 +19,12 @@ export {
   type ExternalEventDraft,
   type CanonicalEventDraft,
 } from './normalise/normalise.js';
+export {
+  stripHtml,
+  sanitiseTitle,
+  sanitiseSummary,
+  sanitiseDescription,
+} from './sanitise/sanitise.js';
 export { runSweepIntegration } from './ingest/sweep.js';
 export type { SweepIntegrationInput } from './ingest/sweep.js';
 export { SWEEP_TASK_ID, SWEEP_DAILY_SCHEDULE } from './ingest/sweepSchedule.js';

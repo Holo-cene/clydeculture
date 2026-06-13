@@ -1,4 +1,5 @@
 import { deriveDedupeKey } from '../dedupe/dedupe.js';
+import { stripHtml } from '../sanitise/sanitise.js';
 
 export type SourceTier = 1 | 2 | 3 | 4;
 export type TypeSource = 'map' | 'keyword' | 'fallback';
@@ -236,7 +237,7 @@ export function buildCanonicalEventDraft(input: {
   timezone?: string;
   corroborated?: boolean;
 }): CanonicalEventDraft {
-  const title = input.externalEvent.title.trim().slice(0, 500);
+  const title = (stripHtml(input.externalEvent.title) ?? '').slice(0, 500);
   const eventTypeResolution = mapSourceCategoryToEventType({
     sourceSlug: input.externalEvent.sourceSlug,
     sourceCategory: input.externalEvent.eventTypeGuess,

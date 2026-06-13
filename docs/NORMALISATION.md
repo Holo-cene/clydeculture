@@ -86,6 +86,39 @@ Source-specific availability strings map to the canonical `availability` enum:
 Unknown strings are mapped to `null` (no badge). Do not guess — unknown
 availability is safer than a wrong badge.
 
+### HTML sanitisation (stored-XSS contract)
+
+All user-supplied text — `title`, `summary`, and `description` from
+`event_submissions`, plus equivalent fields extracted by HTML and RSS
+connectors into `external_events` — is passed through the strip-all-HTML
+helpers in `packages/core/src/sanitise/sanitise.ts` before being written to
+`events`:
+
+- `events.title` ← `sanitiseTitle(source.title)` (max 300 chars)
+- `events.summary` ← `sanitiseSummary(source.summary)` (max 500 chars)
+- `events.description` ← `sanitiseDescription(source.description)` (max 2000 chars)
+
+`stripHtml()` removes `<script>` and `<style>` blocks (tag *and* content),
+HTML comments, all remaining tags (iteratively, to defeat obfuscation like
+`<<script>script>`), and stray angle brackets. Entities are **not** decoded —
+re-decoding `&lt;script&gt;` would reintroduce the very payload we just
+stripped.
+
+The normaliser runs sanitisation **before** the dedupe key is computed,
+because the SQL `normalise_title()` used by `compute_dedupe_key()` operates
+on an already-clean title; an unstripped tag would shift the hash and split
+otherwise-duplicate events across two canonical rows.
+
+API sources (Ticketmaster, Skiddle) are still passed through `stripHtml()`
+in `buildCanonicalEventDraft()` — defence in depth costs nothing and the
+contract stays uniform — but the realistic XSS risk lives on the submission
+and RSS/HTML paths.
+
+Render-side: Astro escapes interpolated values by default, so the frontend
+double-protects the title and (if ever rendered) the summary. The contract
+in this section is what keeps a Supabase Studio table editor or a future
+admin panel safe even before any frontend escaping.
+
 ### Link-first enforcement
 
 Some sources are designated link-only (Resident Advisor, and any source where the

@@ -294,6 +294,30 @@ describe('buildCanonicalEventDraft', () => {
     expect(Object.values(canonical)).not.toContain(externalEvent.raw);
   });
 
+  it('strips HTML from the title before computing the dedupe key (XSS contract — issue #21)', () => {
+    const externalEvent: ExternalEventDraft = {
+      sourceId,
+      sourceSlug: 'rss-source',
+      sourceTier: 2,
+      externalId: 'rss-event-1',
+      externalUrl: 'https://example.com/event/rss-event-1',
+      title: '<script>alert(1)</script>Funk Night',
+      startAt: '2026-07-15T20:00:00.000Z',
+      venueId,
+      eventTypeGuess: 'unknown',
+      raw: {},
+    };
+
+    const canonical = normaliseApi.buildCanonicalEventDraft({
+      externalEvent,
+      sourceCategoryMappings: ticketmasterMappings,
+    });
+
+    expect(canonical.title).toBe('Funk Night');
+    expect(canonical.normalisedTitle).toBe('funk night');
+    expect(canonical.dedupeKey).toBe(deriveDedupeKey(venueId, externalEvent.startAt, 'Funk Night'));
+  });
+
   it('derives the dedupe key from the stored canonical title', () => {
     const rawTitle = 'A'.repeat(501);
     const storedTitle = 'A'.repeat(500);
