@@ -55,6 +55,12 @@ const verifySchema = z.object({
 // Raise this if your backlog is large; lower it for a quick smoke-test run.
 const MAX_ITERATIONS = 10;
 
+// Maximum issues worked concurrently per iteration. Running every unblocked
+// issue at once swamps the Claude session/rate limit and produces too many
+// simultaneous merges; the rest are picked up on later iterations. Tune to your
+// plan's headroom.
+const MAX_PARALLEL = 3;
+
 // Hooks run inside the sandbox before the agent starts each iteration.
 // pnpm install ensures the sandbox always has fresh workspace dependencies.
 const hooks = {
@@ -100,16 +106,20 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
     output: sandcastle.Output.object({ tag: "plan", schema: planSchema }),
   });
 
-  const issues = plan.output.issues;
+  const planned = plan.output.issues;
 
-  if (issues.length === 0) {
+  if (planned.length === 0) {
     // No unblocked work — either everything is done or everything is blocked.
     console.log("No unblocked issues to work on. Exiting.");
     break;
   }
 
+  // Work at most MAX_PARALLEL issues this iteration; the rest are re-planned and
+  // picked up on the next iteration.
+  const issues = planned.slice(0, MAX_PARALLEL);
+
   console.log(
-    `Planning complete. ${issues.length} issue(s) to work in parallel:`,
+    `Planning complete. ${planned.length} unblocked; working ${issues.length} this iteration (cap ${MAX_PARALLEL}):`,
   );
   for (const issue of issues) {
     console.log(`  ${issue.id}: ${issue.title} → ${issue.branch}`);
