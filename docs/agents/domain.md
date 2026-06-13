@@ -34,4 +34,7 @@ lazily when terms or decisions actually get resolved.
 - **Knowledge** lives in `docs/` (CONTEXT glossary, `decisions/` ADRs, reference specs).
 - **Work** lives as GitHub issues (vertical-slice, `ready-for-agent`), consumed by the
   `.sandcastle/` agent runtime. The legacy backlog in `docs/tasks/` and `docs/prompts/`
-  is being migrated into issues (ADR 0008).
+  has been migrated into issues (ADR 0008, issue #8); see
+  [`../tasks/MIGRATION_TRIAGE.md`](../tasks/MIGRATION_TRIAGE.md) for the classification
+  table. `docs/tasks/` and `docs/prompts/` now hold reference only (utility prompts,
+  design docs, and archived evidence). Do not run archived files as instructions.

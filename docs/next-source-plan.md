@@ -1,5 +1,14 @@
 # Next Source Fixture Plan
 
+> **Superseded as the live plan by [ADR 0008](decisions/0008-tracer-bullet-delivery.md)
+> and the GitHub issue tracker.** The active source-priority ordering and per-source
+> preflights are now tracked as issues (RSS preflight + connector: #29; DICE.fm Apify
+> preflight: #9; iCal: archived as DESIGN-DOC at
+> [`archive/migrated/phase-0.5/E5-ical-parser-preflight.md`](tasks/archive/migrated/phase-0.5/E5-ical-parser-preflight.md);
+> HTML: archived as DESIGN-DOC at
+> [`archive/migrated/phase-0.5/E7-html-scraper-preflight.md`](tasks/archive/migrated/phase-0.5/E7-html-scraper-preflight.md)).
+> This document is retained as reference for the source-comparison analysis it carries.
+>
 > Planning document only. No connector code, tests, fixtures, database rows, or live
 > ingestion are included here.
 
@@ -517,8 +526,8 @@ challenge page, do not build the connector without operator agreement.
 | 2 | `docs/prompts/12-rss-connector-fixture.md` | Generic RSS connector: synthetic venue and newsletter fixtures, parser red test, feedType config, connector contract test, fixture E2E |
 | 3 | `docs/prompts/13-meetup-api-preflight.md` | Meetup API pre-flight: ToS review, SPEC.md stub, field mapping, fixture capture, gate decision — no implementation |
 | 4 | `docs/prompts/14-venue-html-preflight.md` | Venue HTML pre-flight: robots.txt, ToS, JSON-LD check, static/JS test for SWG3 (or Mono/Flying Duck) — no implementation |
-| — | `docs/tasks/CC-NEW-2.md` | DICE.fm Apify pre-flight (already written; needs execution) |
-| — | `docs/tasks/API-03.md` | Skiddle written approval (already written; needs execution) |
+| — | issue #9 (archived [`CC-NEW-2.md`](tasks/archive/migrated/top-level/CC-NEW-2.md)) | DICE.fm Apify pre-flight (already written; needs execution) |
+| — | archived [`API-03.md`](tasks/archive/superseded/top-level/API-03.md) | Skiddle written approval (preflight; no active issue until approval lands) |
 
 ---
 

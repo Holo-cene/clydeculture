@@ -3,6 +3,15 @@
 Archived task files are retained for evidence and traceability. They are not active
 implementation prompts.
 
+## Migrated (2026-06-13, issue #8)
+
+Files in `migrated/{top-level,phase-0.5}/` were migrated into GitHub issues per
+[ADR 0008](../../decisions/0008-tracer-bullet-delivery.md) and issue
+[#8](https://github.com/Holo-cene/clydeculture/issues/8). Every migrated file
+carries a one-line `ARCHIVED 2026-06-13` pointer at the top to its target issue
+or to its retained DESIGN-DOC status. The classification table for the whole
+migration is [`../MIGRATION_TRIAGE.md`](../MIGRATION_TRIAGE.md).
+
 ## Completed
 
 These files moved to `completed/` because their requested outcome has landed in current
