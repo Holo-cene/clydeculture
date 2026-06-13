@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { detectFestival, type FestivalRecord, type FestivalEventOverride } from './festivals.js';
+import { detectFestival, type FestivalRecord } from './festivals.js';
 
 // Festival detection contract — see docs/FESTIVALS.md.
 //
@@ -392,7 +392,3 @@ describe('detectFestival', () => {
     });
   });
 });
-
-// Silence "unused" type-export warnings.
-type _T1 = FestivalRecord;
-type _T2 = FestivalEventOverride;
