@@ -307,7 +307,7 @@ longer than necessary for the documented purpose.
 ### Retention automation (build deferred to form launch)
 
 When the public submission form ships, a daily Trigger.dev task — running after
-the ingestion sweep — calls two SQL functions:
+the ingestion sweep — calls three SQL functions:
 
 - `delete_rejected_submissions()` — `delete from event_submissions where status = 'rejected' and reviewed_at < now() - interval '30 days'`.
 - `delete_rejected_venue_claims()` — equivalent on `venue_claims`.
