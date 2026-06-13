@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Migrated to issue #9 (Connector preflight: DICE.fm via Apify). See `docs/tasks/MIGRATION_TRIAGE.md` and ADR 0003.
+
 # E3 — DICE.fm Apify Connector Pre-flight
 
 ## Status

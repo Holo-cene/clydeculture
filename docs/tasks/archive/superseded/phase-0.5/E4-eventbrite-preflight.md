@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** SUPERSEDED by ADR 0003 — Eventbrite dropped from Phase 1 (ToS §5 blocks scraping; v3 API deprecated). See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # E4 — Eventbrite Connector Pre-flight
 
 ## Status

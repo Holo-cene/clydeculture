@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Migrated to issue #29 (RSS connector: preflight + first source + pipeline integration). See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # E6 — RSS Source Policy
 
 ## Status

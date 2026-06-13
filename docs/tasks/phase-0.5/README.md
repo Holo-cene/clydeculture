@@ -16,12 +16,6 @@ Do not run these task files automatically during backlog review.
 | [C4-venue-normalisation-red-tests.md](C4-venue-normalisation-red-tests.md) | Partial | Yes | Venue tests exist for most examples; the exact `"The Old Hairdresser's"` case and explanatory comment are still missing. |
 | [C5-merge-behaviour-red-tests.md](C5-merge-behaviour-red-tests.md) | Open | Yes | Merge priority rules and tests for API-preferred canonical fields are not implemented. |
 | [C6-festival-detection-red-tests.md](C6-festival-detection-red-tests.md) | Open | Yes | Festival detector tests, override assumptions, and alert coverage are missing. |
-| [E2-skiddle-preflight.md](E2-skiddle-preflight.md) | Open | Maybe | Needed only if Skiddle remains a desired source; missing legal approval and allowed-use decision. |
-| [E3-dice-apify-preflight.md](E3-dice-apify-preflight.md) | Open | Yes | DICE Apify actor choice, terms check, fixture, and source field mapping are missing. |
-| [E4-eventbrite-preflight.md](E4-eventbrite-preflight.md) | Open | Maybe | Needed only if Eventbrite remains in Phase 1; missing current API/Apify feasibility and outcome note. |
-| [E5-ical-parser-preflight.md](E5-ical-parser-preflight.md) | Open | Yes | iCal recurrence, timezone, all-day, cancellation, and parser contract decisions are missing. |
-| [E6-rss-source-policy.md](E6-rss-source-policy.md) | Open | Yes | RSS event-vs-article policy and field contract are missing. |
-| [E7-html-scraper-preflight.md](E7-html-scraper-preflight.md) | Open | Yes | Per-source ToS/robots checks, field completeness expectations, and HTML preflight doc are missing. |
 | [F1-public-submission-gate.md](F1-public-submission-gate.md) | Open | Phase 2 | Public submission scope is gated; missing final security/rate-limit implementation plan. |
 | [F2-link-only-enforcement.md](F2-link-only-enforcement.md) | Open | Yes | Link-only storage is documented, but typed source enforcement and tests are missing. |
 | [F3-gdpr-retention.md](F3-gdpr-retention.md) | Open | Phase 2 | Retention policy and deletion/anonymisation implementation remain unresolved. |

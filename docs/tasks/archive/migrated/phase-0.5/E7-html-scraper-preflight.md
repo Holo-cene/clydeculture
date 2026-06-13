@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Retained as DESIGN-DOC. Per-source ToS/robots checks deferred until first HTML connector is scheduled. See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # E7 — HTML Scraper Pre-flight
 
 ## Status

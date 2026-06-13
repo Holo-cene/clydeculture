@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Retained as DESIGN-DOC. iCal parser contract is durable design; no near-term Thread alignment. See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # E5 — iCal Parser Pre-flight and Parser Spec
 
 ## Status

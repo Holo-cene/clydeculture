@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Retained as DESIGN-DOC. Skiddle remains gated on written commercial approval (see ADR 0003 / hard rule #1). No active issue until approval lands. See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # E2 — Skiddle Connector Pre-flight
 
 ## Status
