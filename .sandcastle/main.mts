@@ -26,6 +26,7 @@ import { docker } from "@ai-hero/sandcastle/sandboxes/docker";
 import { z } from "zod";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { execSync } from "node:child_process";
 
 // The planner emits its plan as JSON inside <plan> tags; Output.object extracts
 // and validates it against this schema. We use Zod here, but any Standard
@@ -37,8 +38,10 @@ const planSchema = z.object({
   ),
 });
 
-// The verifier emits its outcome as JSON inside <result> tags after running the
-// test suite against the freshly-merged integration branch in a clean worktree.
+// The verifier writes its outcome to verify-result.json at the worktree root
+// after running the test suite against the freshly-merged integration branch in
+// a clean worktree; main.mts reads that file back and validates it against this
+// schema. (Worktree runs don't support sandcastle's structured `output`.)
 const verifySchema = z.object({
   passed: z.boolean(),
   summary: z.string(),
@@ -277,21 +280,33 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
     verifyPassed = result.passed;
     verifySummary = result.summary;
   } catch (err) {
-    verifySummary = `could not confirm a green verification: ${err}`;
+    verifySummary = `could not confirm a green verification: ${
+      err instanceof Error ? err.message : String(err)
+    }`;
   } finally {
     await verifyBox.close();
+    // close() removes the worktree but not the throwaway branch, so delete it
+    // here to stop sandcastle/verify-* branches accumulating across iterations.
+    try {
+      execSync(`git branch -D ${verifyBranch}`, { stdio: "ignore" });
+    } catch {
+      // Branch already gone or never created — nothing to clean up.
+    }
   }
 
   if (!verifyPassed) {
     console.error(
-      `\n✗ Integration verification FAILED: ${verifySummary}\n` +
-        `  The merge commits are on the integration branch, but the issues were left OPEN.\n` +
-        `  Halting the loop so a human can investigate the merged state.`,
+      `\n✗ Integration verification did not pass: ${verifySummary}\n` +
+        `  The merge commits are already on the integration branch — a human must\n` +
+        `  reset or revert it. The verifier parks the affected issues as ready-for-human.\n` +
+        `  Halting the loop.`,
     );
     break;
   }
 
-  console.log(`\n✓ Integration verified: ${verifySummary}. Issues closed.`);
+  // The verifier (not main.mts) closes the merged issues on a green run, so we
+  // only know here that verification passed — confirm closures on the tracker.
+  console.log(`\n✓ Integration verified green: ${verifySummary}.`);
 }
 
 console.log("\nAll done.");
