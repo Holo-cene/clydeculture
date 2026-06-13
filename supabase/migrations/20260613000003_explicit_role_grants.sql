@@ -47,3 +47,11 @@ revoke all on table
   public.venue_claims,
   public.source_type_category_map
 from anon, authenticated;
+
+-- service_role is the trusted backend identity (ingestion, normalisation, admin
+-- tasks; bypasses RLS). It must read/write every public table and use their
+-- sequences. Newer Supabase images do not auto-grant service_role on tables
+-- created by migrations after a schema reset, so grant it explicitly rather than
+-- relying on the image's default-privilege behaviour.
+grant all on all tables in schema public to service_role;
+grant all on all sequences in schema public to service_role;
