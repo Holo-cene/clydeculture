@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** SUPERSEDED. Audit prompt whose output drove the post-Audit-2 state; do not re-run. See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # 11 — Normalisation Gap Audit
 
 ## Purpose

@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Migrated — COVERED-BY issue #23. TDD-step-2 reference. See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # 18b — All Links per Event + Public RLS (ADR 0005 A1) — Implementation
 
 ## Purpose

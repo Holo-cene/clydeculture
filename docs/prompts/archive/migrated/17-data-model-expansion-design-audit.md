@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Retained as DESIGN-DOC. ADR 0005 gate-prompt — reference design that informs issues #23/#24/#25/#26/#27/#28. See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # 17 — Data-Model Expansion Design & Gap Audit (ADR 0005)
 
 ## Purpose

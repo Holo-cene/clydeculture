@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Migrated — COVERED-BY issue #11 (Cross-source merge behaviour). Kept as TDD-step-1 implementation reference. See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # 13a — Merge Behaviour — Docs Update + Red Tests
 
 ## Purpose

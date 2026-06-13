@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** SUPERSEDED. Findings-driven remediate — no open gaps drive ongoing work; venue parity covered by issue #10. See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # 12 — Remediate Confirmed Normalisation Gaps
 
 ## Purpose

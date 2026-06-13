@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Migrated to issue #25 (ADR 0006 confidence trust × completeness split). See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # 20 — Confidence: Trust × Completeness Split (ADR 0006)
 
 ## Purpose

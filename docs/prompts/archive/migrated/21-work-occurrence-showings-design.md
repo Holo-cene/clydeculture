@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Migrated to issue #27 (ADR 0005 B1: work/occurrence design — design-only). See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # 21 — Work / Occurrence (Showings) Model — Design Preflight (ADR 0005 B1)
 
 ## Purpose

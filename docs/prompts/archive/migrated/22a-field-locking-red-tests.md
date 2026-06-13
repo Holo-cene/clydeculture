@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Migrated — COVERED-BY issue #26 (ADR 0007 field-locking). TDD-step-1 reference. See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # 22a — Editorial Override & Field-Locking (ADR 0007) — Red Tests
 
 ## Purpose

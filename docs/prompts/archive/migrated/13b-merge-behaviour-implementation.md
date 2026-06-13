@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Migrated — COVERED-BY issue #11. TDD-step-2 reference. See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # 13b — Merge Behaviour — Implementation
 
 ## Purpose

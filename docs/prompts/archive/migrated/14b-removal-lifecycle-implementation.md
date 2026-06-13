@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Migrated — COVERED-BY issue #16. TDD-step-2 reference. See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # 14b — Removal / Cancellation Lifecycle (BE-02 / A2-006) — Implementation
 
 ## Purpose

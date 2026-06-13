@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Migrated — COVERED-BY issue #29 (RSS connector consolidated). Preflight stage reference. See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # 15 — RSS Source Preflight
 
 ## Purpose

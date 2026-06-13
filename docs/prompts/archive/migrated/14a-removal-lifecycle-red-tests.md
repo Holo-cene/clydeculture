@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Migrated — COVERED-BY issue #16 (Removal/cancellation lifecycle). TDD-step-1 reference. See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # 14a — Removal / Cancellation Lifecycle (BE-02 / A2-006) — Red Tests
 
 ## Purpose

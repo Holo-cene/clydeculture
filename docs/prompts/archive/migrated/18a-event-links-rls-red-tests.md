@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Migrated — COVERED-BY issue #23 (ADR 0005 A1: event_links + public RLS). TDD-step-1 reference. See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # 18a — All Links per Event + Public RLS (ADR 0005 A1) — Red Tests
 
 ## Purpose

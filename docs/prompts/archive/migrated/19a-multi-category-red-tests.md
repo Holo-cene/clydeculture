@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Migrated — COVERED-BY issue #24 (ADR 0005 A2: multi-category events). TDD-step-1 reference. See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # 19a — Multi-Category Events (ADR 0005 A2) — Red Tests
 
 ## Purpose

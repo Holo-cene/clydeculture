@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Migrated to issue #28 (ADR 0005 B2a: entities design — design-only). See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # 24 — Cultural Entities (Organisers / Collectives / Artists) — Design Preflight (ADR 0005 B2)
 
 ## Purpose

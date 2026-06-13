@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Migrated — COVERED-BY issue #26. TDD-step-2 reference. See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # 22b — Editorial Override & Field-Locking (ADR 0007) — Implementation
 
 ## Purpose

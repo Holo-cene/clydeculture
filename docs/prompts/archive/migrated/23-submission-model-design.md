@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Migrated to issue #15 (ADR 0005 A6: submission model design — design-only). See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # 23 — Community Submission & Moderation Model — Design Preflight (ADR 0005 A6)
 
 ## Purpose

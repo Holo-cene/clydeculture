@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Migrated — COVERED-BY issue #24. TDD-step-2 reference. See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # 19b — Multi-Category Events (ADR 0005 A2) — Implementation
 
 ## Purpose
