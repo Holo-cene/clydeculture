@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** SUPERSEDED. `mapSourceCategoryToEventType` is implemented; see `docs/LESSONS.md` re-scope note 2026-06-11. See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # C3 — Pin Category Mapping with Red Tests
 
 ## Status

@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Migrated to issue #11 (Cross-source merge behaviour). See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # C5 — Pin Merge Behaviour with Red Tests
 
 ## Status

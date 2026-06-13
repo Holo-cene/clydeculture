@@ -11,11 +11,6 @@ Do not run these task files automatically during backlog review.
 
 | File | Status | Needed? | Missing or blocker |
 |---|---|---|---|
-| [C2-confidence-red-tests.md](C2-confidence-red-tests.md) | Partial | Yes | Some confidence tests exist, but the full Step 4 formula and additive weight regression coverage are not pinned. |
-| [C3-category-mapping-red-tests.md](C3-category-mapping-red-tests.md) | Partial | Yes | Direct/fallback coverage exists; keyword fallback and documented Ticketmaster classification cases still need tests. |
-| [C4-venue-normalisation-red-tests.md](C4-venue-normalisation-red-tests.md) | Partial | Yes | Venue tests exist for most examples; the exact `"The Old Hairdresser's"` case and explanatory comment are still missing. |
-| [C5-merge-behaviour-red-tests.md](C5-merge-behaviour-red-tests.md) | Open | Yes | Merge priority rules and tests for API-preferred canonical fields are not implemented. |
-| [C6-festival-detection-red-tests.md](C6-festival-detection-red-tests.md) | Open | Yes | Festival detector tests, override assumptions, and alert coverage are missing. |
 | [F1-public-submission-gate.md](F1-public-submission-gate.md) | Open | Phase 2 | Public submission scope is gated; missing final security/rate-limit implementation plan. |
 | [F2-link-only-enforcement.md](F2-link-only-enforcement.md) | Open | Yes | Link-only storage is documented, but typed source enforcement and tests are missing. |
 | [F3-gdpr-retention.md](F3-gdpr-retention.md) | Open | Phase 2 | Retention policy and deletion/anonymisation implementation remain unresolved. |

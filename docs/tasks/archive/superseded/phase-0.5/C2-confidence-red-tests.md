@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** SUPERSEDED. `calculateConfidence` is implemented; see `docs/LESSONS.md` re-scope note 2026-06-11. ADR 0006 (trust × completeness split) drives any *new* confidence tests via issue #25. See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # C2 — Pin Confidence Scoring with Red Tests
 
 ## Status

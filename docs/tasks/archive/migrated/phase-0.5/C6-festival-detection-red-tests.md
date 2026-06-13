@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Migrated to issue #12 (Festival detection + override table + window-mismatch alert). See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # C6 — Pin Festival Detection with Red Tests
 
 ## Status

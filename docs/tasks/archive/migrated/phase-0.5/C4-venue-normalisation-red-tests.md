@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Migrated to issue #10 (Venue normalisation: pin TS ↔ SQL parity). See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # C4 — Pin Venue Normalisation Consistency
 
 ## Status
