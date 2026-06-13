@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** SUPERSEDED. Meetup is Phase-2-only; GraphQL feasibility is not a near-Thread concern. See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # API-09: SPIKE — Verify Meetup GraphQL API public event search for Phase 2
 
 **Priority:** P3  

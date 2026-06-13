@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Migrated — COVERED-BY issue #29 (RSS connector consolidated). See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # API-05: RSS connector policy — fix publication date bug and define article-vs-event rule
 
 **Priority:** P1  

@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Retained as DESIGN-DOC — iCal parser contract is durable design (see archived E5). See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # API-04: iCal connector specification — RRULE expansion, floating-time, and all-day events
 
 **Priority:** P2  

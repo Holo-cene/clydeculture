@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** Migrated — COVERED-BY issue #16 (Removal/cancellation lifecycle). Orphan expiry depends on the lifecycle step. See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # API-08: External ID stability — document hash instability and implement orphan expiry
 
 **Priority:** P2  

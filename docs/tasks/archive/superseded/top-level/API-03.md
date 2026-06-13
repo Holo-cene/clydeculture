@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-06-13.** SUPERSEDED. Skiddle commercial approval is upstream of any code; preflight retained via archived E2 design-doc. See `docs/tasks/MIGRATION_TRIAGE.md`.
+
 # API-03: Skiddle API — obtain commercial approval before connector build
 
 **Priority:** P1  
