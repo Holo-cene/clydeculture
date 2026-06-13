@@ -100,3 +100,32 @@ describe('normaliseVenueName', () => {
     expect(a).toBe(b);
   });
 });
+
+// SQL ↔ TS parity (issue #10):
+// `normaliseVenueName()` here and `resolve_venue()` in
+// supabase/migrations/20260603000000_cc_new_1_schema_corrections.sql must
+// produce identical canonical forms for the same input. A drift between the
+// two sides silently breaks venue deduplication because the TS connector
+// path and the SQL trigger path would map the same venue name to different
+// matchable strings.
+//
+// The same input/expected table is mirrored in
+// supabase/tests/venue_normalisation_parity_test.sql, which asserts the SQL
+// side. If you change one, change the other.
+const VENUE_PARITY_CASES: ReadonlyArray<readonly [string, string]> = [
+  ["The Old Hairdresser's", 'the old hairdressers'],
+  ['SWG3 (Glasgow)', 'swg3 glasgow'],
+  ["St Luke's", 'st lukes'],
+  ["The Flying Duck's Bar", 'the flying ducks bar'],
+  ['  The Barrowlands  ', 'the barrowlands'],
+  ['Mono   Bar', 'mono bar'],
+];
+
+describe('normaliseVenueName — SQL parity canonical cases', () => {
+  it.each(VENUE_PARITY_CASES)(
+    'normalises %j to %j (must match SQL resolve_venue normalisation)',
+    (input, expected) => {
+      expect(normaliseVenueName(input)).toBe(expected);
+    },
+  );
+});
