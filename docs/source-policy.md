@@ -77,6 +77,22 @@ Even then, link-first takes precedence: the `externalUrl` is the canonical conte
 - Setting `imageUrlGuess` for any source whose image display terms have not been reviewed
   and documented.
 
+### Schema enforcement: `sources.is_link_only`
+
+The `sources.is_link_only` boolean column (added by migration
+`20260613000000_sources_is_link_only.sql`, issue #13) makes the link-only
+constraint a typed property of the source row rather than a prose rule. The
+orchestrator hydrates this flag onto every `ExternalEventDraft` it hands to
+the normaliser. `buildCanonicalEventDraft` then refuses to copy `descriptionGuess`,
+`summaryGuess`, or `imageUrlGuess` from a link-only source and throws a
+`link-only source "..." emitted forbidden field(s) ...` error if a connector
+emits any of them — failing loud rather than silently dropping content. The
+raw upstream payload is still stored in `external_events.raw` for debug/reparse.
+
+Set `is_link_only = true` in the same migration that inserts the source row
+for Resident Advisor, Instagram, and any future source whose ToS prohibits
+content reproduction.
+
 ---
 
 ## 2. Per-Source Policy

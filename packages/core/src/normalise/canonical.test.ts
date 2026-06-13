@@ -63,6 +63,7 @@ interface ExternalEventDraft {
   imageUrlGuess?: string;
   summaryGuess?: string;
   descriptionGuess?: string;
+  isLinkOnly?: boolean;
   raw: unknown;
 }
 
@@ -292,6 +293,107 @@ describe('buildCanonicalEventDraft', () => {
     expect(Object.values(canonical)).not.toContain(externalEvent.summaryGuess);
     expect(Object.values(canonical)).not.toContain(externalEvent.descriptionGuess);
     expect(Object.values(canonical)).not.toContain(externalEvent.raw);
+  });
+
+  describe('link-only enforcement (CLAUDE.md hard rule #1)', () => {
+    // The schema-level guard is sources.is_link_only (migration in this issue).
+    // The orchestrator hydrates this flag onto every ExternalEventDraft it passes
+    // to the normaliser. The normaliser is the last line of defence: if a connector
+    // for a link-only source still emits a description, summary, or image URL, the
+    // normaliser must fail loud — silently dropping the content would let a future
+    // refactor expose it without noticing.
+
+    function linkOnlyDraft(overrides: Partial<ExternalEventDraft> = {}): ExternalEventDraft {
+      return {
+        sourceId,
+        sourceSlug: 'resident-advisor',
+        sourceTier: 3,
+        externalId: 'ra-event-1',
+        externalUrl: 'https://ra.co/events/12345',
+        title: 'Optimo at Sub Club',
+        startAt: '2026-07-15T22:00:00.000Z',
+        venueId,
+        eventTypeGuess: 'club_night',
+        isLinkOnly: true,
+        raw: { id: 12345 },
+        ...overrides,
+      };
+    }
+
+    it('strips imageUrl to null on a link-only source even when the source provided one indirectly', () => {
+      const canonical = normaliseApi.buildCanonicalEventDraft({
+        externalEvent: linkOnlyDraft(),
+        sourceCategoryMappings: [],
+      });
+
+      expect(canonical.imageUrl).toBeNull();
+      expect(canonical.description).toBeNull();
+      expect(canonical.summary).toBeNull();
+    });
+
+    it('throws when a link-only connector emits descriptionGuess (fail loud, do not silently drop)', () => {
+      expect(() =>
+        normaliseApi.buildCanonicalEventDraft({
+          externalEvent: linkOnlyDraft({ descriptionGuess: 'Full RA copy that we are not licensed to republish.' }),
+          sourceCategoryMappings: [],
+        }),
+      ).toThrow(/link-only/i);
+    });
+
+    it('throws when a link-only connector emits summaryGuess', () => {
+      expect(() =>
+        normaliseApi.buildCanonicalEventDraft({
+          externalEvent: linkOnlyDraft({ summaryGuess: 'A short blurb scraped from RA.' }),
+          sourceCategoryMappings: [],
+        }),
+      ).toThrow(/link-only/i);
+    });
+
+    it('throws when a link-only connector emits imageUrlGuess', () => {
+      expect(() =>
+        normaliseApi.buildCanonicalEventDraft({
+          externalEvent: linkOnlyDraft({ imageUrlGuess: 'https://ra.co/images/event-12345.jpg' }),
+          sourceCategoryMappings: [],
+        }),
+      ).toThrow(/link-only/i);
+    });
+
+    it('names the offending source slug in the error so log triage points at the right connector', () => {
+      expect(() =>
+        normaliseApi.buildCanonicalEventDraft({
+          externalEvent: linkOnlyDraft({
+            sourceSlug: 'instagram',
+            descriptionGuess: 'A caption.',
+          }),
+          sourceCategoryMappings: [],
+        }),
+      ).toThrow(/instagram/);
+    });
+
+    it('leaves non-link-only sources unaffected — descriptionGuess does not throw and imageUrl is normalised as before', () => {
+      const externalEvent: ExternalEventDraft = {
+        sourceId,
+        sourceSlug: 'ticketmaster',
+        sourceTier: 1,
+        externalId: 'tm-1',
+        externalUrl: 'https://www.ticketmaster.co.uk/event/tm-1',
+        title: 'Mogwai Live',
+        startAt: '2026-07-15T20:45:00.000Z',
+        venueId,
+        eventTypeGuess: 'kzfzniwnsyzfz7v7nj',
+        imageUrlGuess: 'https://s1.ticketm.net/dam/a/image.jpg',
+        descriptionGuess: 'Permitted upstream description.',
+        isLinkOnly: false,
+        raw: {},
+      };
+
+      const canonical = normaliseApi.buildCanonicalEventDraft({
+        externalEvent,
+        sourceCategoryMappings: ticketmasterMappings,
+      });
+
+      expect(canonical.imageUrl).toBe('https://s1.ticketm.net/dam/a/image.jpg');
+    });
   });
 
   it('derives the dedupe key from the stored canonical title', () => {
