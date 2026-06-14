@@ -12,7 +12,7 @@ const fixture = JSON.parse(
   readFileSync(join(__dirname, 'fixtures/response.json'), 'utf-8')
 ) as { _embedded: { events: unknown[] } };
 
-// All 17 fields from the RawEvent interface — used to verify no extraneous keys
+// All 19 fields from the RawEvent interface — used to verify no extraneous keys
 const RAW_EVENT_KEYS: ReadonlyArray<keyof RawEvent> = [
   'externalId',
   'externalUrl',
@@ -30,8 +30,47 @@ const RAW_EVENT_KEYS: ReadonlyArray<keyof RawEvent> = [
   'ticketUrlLabelGuess',
   'imageUrlGuess',
   'availabilityGuess',
+  'timeTba',
+  'isAllDay',
   'raw',
 ];
+
+function makeParserResponse(...events: Array<Record<string, unknown>>): {
+  _embedded: { events: unknown[] };
+} {
+  return { _embedded: { events } };
+}
+
+function makeParserEvent(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    id: 'contract-event-001',
+    name: 'Contract Event',
+    url: 'https://www.ticketmaster.co.uk/event/contract-event-001',
+    images: [],
+    dates: {
+      start: {
+        dateTime: '2026-07-10T19:00:00Z',
+        localDate: '2026-07-10',
+        localTime: '20:00:00',
+        dateTBD: false,
+        dateTBA: false,
+        timeTBA: false,
+        noSpecificTime: false,
+      },
+      timezone: 'Europe/London',
+      status: { code: 'onsale' },
+    },
+    classifications: [
+      {
+        primary: true,
+        segment: { id: 'KZFzniwnSyZfZ7v7nJ', name: 'Music' },
+        genre: { name: 'Alternative Rock' },
+      },
+    ],
+    _embedded: { venues: [{ name: 'Example Venue' }] },
+    ...overrides,
+  };
+}
 
 describe('parseTicketmasterEvents', () => {
   describe('event count', () => {
@@ -74,6 +113,132 @@ describe('parseTicketmasterEvents', () => {
       for (const item of result) {
         expect(item.startAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
       }
+    });
+  });
+
+  describe('startAt fallback chain', () => {
+    it('uses localDate + localTime when dateTime is absent, converting Europe/London time to UTC', () => {
+      const response = makeParserResponse(
+        makeParserEvent({
+          dates: {
+            start: {
+              localDate: '2026-07-10',
+              localTime: '20:30:00',
+              dateTBD: false,
+              dateTBA: false,
+              timeTBA: false,
+              noSpecificTime: false,
+            },
+            timezone: 'Europe/London',
+            status: { code: 'onsale' },
+          },
+        })
+      );
+
+      const result = parseTicketmasterEvents(response);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]?.startAt).toBe('2026-07-10T19:30:00Z');
+    });
+
+    it('uses Europe/London midnight when only localDate is present and timeTBA=true', () => {
+      const response = makeParserResponse(
+        makeParserEvent({
+          dates: {
+            start: {
+              localDate: '2026-07-10',
+              dateTBD: false,
+              dateTBA: false,
+              timeTBA: true,
+              noSpecificTime: false,
+            },
+            timezone: 'Europe/London',
+            status: { code: 'onsale' },
+          },
+        })
+      );
+
+      const result = parseTicketmasterEvents(response);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]?.startAt).toBe('2026-07-09T23:00:00Z');
+    });
+  });
+
+  describe('timeTba flag', () => {
+    it('preserves Ticketmaster timeTBA as RawEvent.timeTba', () => {
+      // Arrangement: TBA event — known localDate but timeTBA=true, no reliable time.
+      // The placeholder convention: localDate + midnight in Europe/London → UTC.
+      // The flag is what prevents this midnight timestamp from being treated as a real event time.
+      const response = makeParserResponse(
+        makeParserEvent({
+          dates: {
+            start: {
+              localDate: '2026-07-10',
+              dateTBD: false,
+              dateTBA: false,
+              timeTBA: true,
+              noSpecificTime: false,
+            },
+            timezone: 'Europe/London',
+            status: { code: 'onsale' },
+          },
+        })
+      );
+
+      const result = parseTicketmasterEvents(response);
+
+      expect(result).toHaveLength(1);
+      // startAt uses the midnight placeholder convention
+      expect(result[0]?.startAt).toBe('2026-07-09T23:00:00Z');
+      // timeTba flag must be set to true — not absent, not false
+      expect(result[0]?.timeTba).toBe(true);
+    });
+
+    it('does not set timeTba when timeTBA is false (no extraneous flag on normal events)', () => {
+      const response = makeParserResponse(
+        makeParserEvent({
+          dates: {
+            start: {
+              dateTime: '2026-07-10T19:00:00Z',
+              localDate: '2026-07-10',
+              localTime: '20:00:00',
+              timeTBA: false,
+            },
+            timezone: 'Europe/London',
+            status: { code: 'onsale' },
+          },
+        })
+      );
+
+      const result = parseTicketmasterEvents(response);
+
+      expect(result).toHaveLength(1);
+      // timeTba must be absent (undefined) — not false — consistent with optional-field pattern
+      expect(result[0]?.timeTba).toBeUndefined();
+    });
+
+    it('timeTba events still pass the recognised-keys contract', () => {
+      const response = makeParserResponse(
+        makeParserEvent({
+          dates: {
+            start: {
+              localDate: '2026-07-10',
+              timeTBA: true,
+            },
+            timezone: 'Europe/London',
+            status: { code: 'onsale' },
+          },
+        })
+      );
+
+      const result = parseTicketmasterEvents(response);
+      expect(result).toHaveLength(1);
+
+      const unknownKeys = Object.keys(result[0]!).filter(
+        k => !RAW_EVENT_KEYS.includes(k as keyof RawEvent)
+      );
+      expect(unknownKeys).toHaveLength(0);
     });
   });
 
@@ -184,6 +349,87 @@ describe('parseTicketmasterEvents', () => {
         'https://s1.ticketimg.com/dam/a/f9c/9f8e7d6c-5b4a-3c2d-1e0f-9a8b7c6d5e4f_EVENT_DETAIL_PAGE_16_9.jpg'
       );
       expect(ballet?.imageUrlGuess).toMatch(/^https:\/\//);
+    });
+  });
+
+  describe('tagsGuess from primary classification genre', () => {
+    it('maps a useful primary genre name to tagsGuess and omits undefined genre names', () => {
+      const response = makeParserResponse(
+        makeParserEvent({
+          id: 'genre-good',
+          classifications: [
+            {
+              primary: false,
+              segment: { id: 'KZFzniwnSyZfZ7v7na', name: 'Arts & Theatre' },
+              genre: { name: 'Ignored Genre' },
+            },
+            {
+              primary: true,
+              segment: { id: 'KZFzniwnSyZfZ7v7nJ', name: 'Music' },
+              genre: { name: 'Alternative Rock' },
+            },
+          ],
+        }),
+        makeParserEvent({
+          id: 'genre-undefined',
+          classifications: [
+            {
+              primary: true,
+              segment: { id: 'KZFzniwnSyZfZ7v7nJ', name: 'Music' },
+              genre: { name: 'Undefined' },
+            },
+          ],
+        })
+      );
+
+      const result = parseTicketmasterEvents(response);
+      const usefulGenre = result.find(item => item.externalId === 'genre-good');
+      const undefinedGenre = result.find(item => item.externalId === 'genre-undefined');
+
+      expect(usefulGenre?.tagsGuess).toEqual(['Alternative Rock']);
+      expect('tagsGuess' in (undefinedGenre ?? {})).toBe(false);
+    });
+  });
+
+  describe('image selection fallback', () => {
+    it('selects the widest HTTPS image at or above 640px when no suitable 16:9 image exists', () => {
+      const response = makeParserResponse(
+        makeParserEvent({
+          images: [
+            {
+              ratio: '16_9',
+              url: 'https://s1.ticketimg.com/too-small-16-9.jpg',
+              width: 320,
+              height: 180,
+            },
+            {
+              ratio: '4_3',
+              url: 'https://s1.ticketimg.com/fallback-narrow.jpg',
+              width: 800,
+              height: 600,
+            },
+            {
+              ratio: '3_2',
+              url: 'https://s1.ticketimg.com/fallback-wide.jpg',
+              width: 1600,
+              height: 1067,
+            },
+            {
+              ratio: '1_1',
+              url: 'http://s1.ticketimg.com/not-https.jpg',
+              width: 2400,
+              height: 2400,
+            },
+          ],
+        })
+      );
+
+      const result = parseTicketmasterEvents(response);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]?.imageUrlGuess).toBe(
+        'https://s1.ticketimg.com/fallback-wide.jpg'
+      );
     });
   });
 

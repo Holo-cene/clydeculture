@@ -1,0 +1,30 @@
+[
+  {
+    "event_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    "status": "live",
+    "name": "Synthetic Comedy Listing",
+    "website": "https://example.test/events/synthetic-comedy-listing",
+    "tags": ["comedy", "fixture-only-tag"],
+    "schedules": [
+      {
+        "place_id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+        "place": {
+          "place_id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+          "name": "Example Basement"
+        },
+        "performances": [
+          {
+            "ts": "2026-12-04T21:00:00Z",
+            "tickets": [
+              {
+                "currency": "GBP",
+                "min_price": 0,
+                "max_price": 0
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

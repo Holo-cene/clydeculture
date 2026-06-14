@@ -4,6 +4,10 @@
 # Claude Code local settings (project-level — user-specific)
 .claude/settings.local.json
 
+# Agent skills installed via `npx skills add` (local, not shared)
+.agents/
+.claude/skills/
+
 # Environment secrets — never commit
 .env
 .env.local
@@ -16,6 +20,11 @@ scratch/**
 
 # Generated files
 packages/shared/src/database.types.ts
+.astro/
+apps/*/.astro/
+
+# Sandcastle verifier output (written in the verify worktree, never committed)
+verify-result.json
 
 # Dependencies
 node_modules/

@@ -1,0 +1,20 @@
+---
+import { getPublishedEvents, getThisWeekendDateRange } from '@clydeculture/shared';
+import EventList from '../components/EventList.astro';
+import Layout from '../components/Layout.astro';
+import { getPublicQueryClient } from '../lib/supabase';
+import { asEventViews } from '../lib/viewData';
+
+export const prerender = false;
+
+const dateRange = getThisWeekendDateRange(new Date());
+const events = asEventViews(await getPublishedEvents(getPublicQueryClient(), { dateRange }));
+---
+
+<Layout title="This Weekend">
+  <section class="page-heading">
+    <h1>This weekend</h1>
+    <p class="lede">Published events listed from Friday to Sunday.</p>
+  </section>
+  <EventList events={events} />
+</Layout>

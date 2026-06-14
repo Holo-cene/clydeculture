@@ -1,36 +1,142 @@
+# CI — unit/fixture checks + Supabase pgTAP & integration tests
+#
+# Jobs:
+#   check    — install · unit/fixture tests · typecheck · lint · Astro build
+#   supabase — supabase start · db reset · db test (pgTAP) · integration tests
+#
+# Both jobs must be green before merging to main (see the branch ruleset on main,
+# issue #30). Together they cover the public/internal RLS boundary, link-first
+# storage limits, and visibility/confidence invariants — the rules most dangerous
+# to regress (issue #31).
+#
+# No live credentials are used. No live third-party API calls are made.
+# The `supabase` job runs against an ephemeral local Supabase stack on the runner.
+#
+# Full local validation sequence (still useful before pushing, see docs/TESTING.md
+# and docs/DEVELOPMENT_WORKFLOW.md):
+#   supabase start && supabase db reset && supabase db test
+#   pnpm test
+#   pnpm typecheck
+#   pnpm lint
+#   pnpm --filter @clydeculture/web build
+
 name: CI
 
 on:
   push:
-    branches: [main]
   pull_request:
     branches: [main]
 
 jobs:
   check:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: latest
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm typecheck
-      - run: pnpm lint
-      - run: pnpm test
 
-  db-test:
-    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: supabase/setup-cli@v1
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        # Reads pnpm version from the packageManager field in package.json (pnpm@9)
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Test
+        run: pnpm test
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Astro build
+        # PUBLIC_* env vars are inlined at build time by Vite. All pages use
+        # output: 'server' with prerender: false, so no Supabase calls happen
+        # at build time — placeholder values are safe here.
+        run: pnpm --filter @clydeculture/web build
+        env:
+          PUBLIC_SUPABASE_URL: http://localhost:54321
+          PUBLIC_SUPABASE_ANON_KEY: dummy-anon-key-for-build-only
+
+  supabase:
+    # Runs the Supabase pgTAP suite and the *.integration.test.ts suite against an
+    # ephemeral local Supabase brought up by the CLI on the runner. Separate from
+    # `check` because `supabase start` pulls several Docker images and is slow;
+    # keeping them parallel avoids serialising the fast path.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
         with:
           version: latest
-      - name: Start local Supabase (applies migrations + seed)
+
+      - name: Start Supabase (local stack)
+        # ubuntu-latest has Docker pre-installed; `supabase start` pulls and runs
+        # the Postgres, Auth, Storage, and Edge Runtime containers.
         run: supabase start
-      - name: Run pgTAP DB tests
+
+      - name: Reset database (apply migrations + seed)
+        run: supabase db reset
+
+      - name: Run pgTAP tests
+        # Runs every supabase/tests/*_test.sql file (RLS deny tests, link-first
+        # storage limits, visibility/confidence boundary, ingestion health views).
         run: supabase db test
+
+      - name: Export Supabase env for integration tests
+        # The locally-issued anon/service-role keys are derived from a publicly
+        # known dev signing key — they are not secrets, but mask them in logs
+        # anyway so the job's output stays clean.
+        run: |
+          set -euo pipefail
+          STATUS=$(supabase status -o env)
+          API_URL=$(echo "$STATUS" | grep '^API_URL=' | cut -d'=' -f2- | tr -d '"')
+          ANON_KEY=$(echo "$STATUS" | grep '^ANON_KEY=' | cut -d'=' -f2- | tr -d '"')
+          SERVICE_ROLE_KEY=$(echo "$STATUS" | grep '^SERVICE_ROLE_KEY=' | cut -d'=' -f2- | tr -d '"')
+          if [ -z "$API_URL" ] || [ -z "$ANON_KEY" ] || [ -z "$SERVICE_ROLE_KEY" ]; then
+            echo "Failed to extract Supabase env from 'supabase status -o env'" >&2
+            exit 1
+          fi
+          echo "::add-mask::$ANON_KEY"
+          echo "::add-mask::$SERVICE_ROLE_KEY"
+          {
+            echo "SUPABASE_URL=$API_URL"
+            echo "SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+          } >> "$GITHUB_ENV"
+
+      - name: Run integration tests
+        # Uses vitest.integration.config.ts so the default `pnpm test` (which
+        # excludes *.integration.test.ts) does not need to change. New
+        # integration suites added under packages/ingestion/**/*.integration.test.ts
+        # are picked up automatically.
+        run: pnpm --filter @clydeculture/ingestion run test:integration
+
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop --no-backup || true

@@ -88,6 +88,28 @@ rather than independently managed state, so there is no risk of them diverging.
 
 If no festival match is found, both fields remain null / false. No default is applied.
 
+## Planned: festival → work/group → occurrence hierarchy (ADR 0005 B1)
+
+> **Direction, not current state.** Today a festival is a flat grouping: events carry a
+> `festival_id`. The cultural-graph model adds a parent-child **programme** hierarchy.
+
+A festival is the top of a programme hierarchy, distinct from simple recurrence:
+
+```
+Festival / Programme           (Glasgow International, Celtic Connections)
+  → Production / Work / Series  (an exhibition, a concert series, a touring show)
+    → Occurrence                (a dated instance at a venue — an events row)
+      → source links            (every way to read / book / RSVP)
+```
+
+This is **different from recurrence**: a monthly market is one work with recurring
+occurrences; a festival is a programme containing many distinct works, each with its own
+occurrences. The work/occurrence layer (ADR 0005 B1, `docs/prompts/21`) sits between the
+festival and the occurrence so that, e.g., a Glasgow Film Festival screening is *an
+occurrence of a film work, within the festival programme* — not a flat festival-tagged
+row. `festival_id` continues to group; the work layer adds the missing middle. Build is
+deferred until the work/occurrence model lands (see `docs/DATA_MODEL.md`).
+
 ## Festival Pages
 
 Festival pages on the frontend are not manually authored. They are populated directly

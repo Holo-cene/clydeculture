@@ -1,3 +1,7 @@
 export * from './connector.js';
 export * from './validate.js';
 export * from './api/ticketmaster/index.js';
+export * from './api/datathistle/index.js';
+export * from './api/datathistle/client.js';
+export * from './api/datathistle/categories.js';
+export * from './api/datathistle/parse.js';

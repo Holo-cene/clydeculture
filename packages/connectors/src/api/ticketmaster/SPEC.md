@@ -184,11 +184,10 @@ Ticketmaster serves images via their CDN (`https://s1.ticketimg.com/`) as absolu
 URLs. All valid TM image entries should pass `isValidHttpsUrl()`. The check still runs
 because scraped or unexpected API fields can contain relative paths or malformed values.
 
-**Display permissions:** The Ticketmaster API Terms of Use permit displaying event images
-alongside event information when a link to the Ticketmaster event page is provided. Phase
-1 stores only the URL (no binary download), which is within permitted use. Do not cache
-image binaries. CDN URLs are stable within an event's lifecycle but may change across
-sweeps — re-check on each ingest run.
+**Display permissions:** ADR 0004 resolves Ticketmaster image handling for Phase 1:
+store only the HTTPS image URL, do not cache image binaries, and display the event with
+the labelled Ticketmaster link (`ticketUrlLabelGuess = "Buy on Ticketmaster"`). CDN URLs
+may change across sweeps, so the connector re-checks the selected URL on each ingest run.
 
 ---
 
@@ -208,7 +207,7 @@ The normalisation pipeline (Step 3) looks this up in `source_type_category_map`.
 | `kzfzniwnsyzfz7v7na` | Arts & Theatre | `arts_exhibition` | not seen in smoke sample |
 | `kzfzniwnsyzfz7v7n1` | Miscellaneous | unmapped (expected) | observed in smoke sample |
 
-**CRITICAL — B5 seed has incorrect segment IDs (typo: `szy` should be `syz`):**
+**B5 seed correction — completed:**
 
 The smoke run (2026-06-07) returned segment ID `kzfzniwnsyzfz7v7nj` for Music.
 The B5 migration seeded `kzfzniwnszyfz7v7nj` — positions 10–11 are transposed (`zy` vs `yz`).
@@ -226,10 +225,10 @@ Corrected ID table (all four affected):
 `knvzfz7vavf` (Undefined/Club) does not follow the `kzfzniwnS...` pattern and may be correct — verify
 when a club/undefined event appears in the result set.
 
-**Action required before first production sweep:**
-A corrective migration must UPDATE `source_type_category_map` to replace the four wrong IDs with
-the live-verified ones. Do not modify `20260606000000_source_category_map_seed.sql` directly —
-write a new migration file.
+Migration `20260607000000_fix_ticketmaster_segment_ids.sql` updates
+`source_type_category_map` to replace the four wrong IDs with the live-verified ones.
+Do not edit `20260606000000_source_category_map_seed.sql` directly; keep future
+corrections in follow-up migrations.
 
 **Comedy ID status:** `kzfzniwnsyzfz7v7ne` (corrected) — not seen in smoke sample (size=20, Music-heavy).
 Still unconfirmed but the structure is consistent with the verified Music ID. Validate before relying
@@ -286,20 +285,15 @@ Review this if Clyde Culture gains significant traffic or Ticketmaster raises an
 
 ---
 
-## 9. Remaining Risks and Blockers Before Fixture Parsing Red Test
+## 9. Remaining Risks Before First Enabled Sweep
 
 | Risk | Severity | Resolution |
 |---|---|---|
-| No real API key — fixture is synthetic | Medium | Fixture is accurate to known API structure; unblocks test writing. Validate live before first production sweep. |
-| Comedy segment ID (`kzfzniwnsyzfz7v7ne`) unconfirmed | Low | Flag in test; verify with API Explorer or live key before first sweep |
-| `timeTBA` fallback path — connector must handle gracefully | Medium | Contract defined above; implementation must cover the 4-step `startAt` fallback chain |
-| `priceRanges` absent — must NOT infer free | Low | Documented; enforced in test fixture |
-| `_embedded.venues` absent — must not throw | Low | Defensive optional chaining required |
-| `countryCode=GB` + `latlong` combination | Low | Standard supported combination; verify response shape in API Explorer |
-| CDN image URL TTL | Low | Acceptable for Phase 1; re-check on each sweep rather than caching |
-
-**Nothing above blocks writing the fixture parsing red test.** The synthetic fixture covers
-all the field paths the connector will parse; the test does not need a live API key.
+| Source remains disabled | Medium | Intentional. Enable only via migration/seed update after normalisation/orchestration are ready. |
+| Live API coverage still needs operational validation | Medium | Tests use fixtures and mocked fetch. Run a controlled smoke path with a Vault/env API key before enabling scheduled sweeps. |
+| Comedy segment ID (`kzfzniwnsyzfz7v7ne`) unconfirmed | Low | Verify with API Explorer or live key before relying on comedy mapping in production. |
+| CDN image URL TTL | Low | Accepted by ADR 0004; re-check on each sweep rather than caching. |
+| High-volume windows may truncate | Low | Connector logs non-fatal truncation warnings at the page cap; narrow to 7-day windows if observed. |
 
 ---
 
@@ -312,8 +306,9 @@ INSERT INTO sources (name, slug, source_type, tier, config, status, enabled)
 VALUES ('Ticketmaster', 'ticketmaster', 'api', 1, '{}', 'ok', false);
 ```
 
-`enabled = false` until E1 pre-flight is complete and the connector is implemented. The
-connector implementation task (Wave 5) must:
+`enabled = false` remains intentional even though the pre-flight, parser, and connector
+runner are implemented. The source should be enabled only after the downstream
+normalisation and Trigger sweep path are ready. The enablement task must:
 1. Set `enabled = true` via a migration or seed update
 2. Populate `config` with non-secret connector settings (e.g., `{"timezone": "Europe/London", "lookahead_days": 60}`)
 3. Store the API key in Supabase Vault, not in `config`

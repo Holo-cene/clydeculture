@@ -188,6 +188,48 @@ Full reschedule path implementation detail is in `docs/NORMALISATION.md` Step 8.
 
 ---
 
+## Planned: survivor pointer, reconciliation, work identity (ADR 0005/0007)
+
+> **Direction, not current state.** These extend dedup as the cultural-graph model
+> lands. Verified gap: there is **no survivor pointer** on merged events today
+> (audit A1-007) — `event_merge_candidates` records pairs but `events` has no
+> canonical-survivor reference. None of the below is implemented.
+
+### Survivor pointer and merged lifecycle (A1-007)
+
+When duplicates merge, record a **survivor pointer** on the non-surviving event (e.g.
+`events.merged_into_id`) so the platform can:
+- redirect the merged event's stable slug to the survivor instead of 404'ing
+  (`docs/PUBLISHING.md` — canonical URL/slug stability), and
+- preserve provenance (which records were merged, when, by whom — `moderation_log`).
+A merged event is a **state transition**, never a hard delete.
+
+### Editorial canonical-survivor & duplicate decisions (ADR 0007)
+
+A human can mark the canonical survivor and reject a bad duplicate; those decisions are
+**locked** ([ADR 0007](decisions/0007-editorial-override-and-field-locking.md)) and
+override automatic merge candidates. "This is the canonical one, ignore that duplicate"
+must persist across sweeps.
+
+### Submission ↔ ingestion reconciliation (ADR 0005 A6)
+
+A community submission may duplicate an ingested event (someone submits their own gig
+that is also on Skiddle). At submission time, run the same dedupe signals against
+canonical `events`; on a match, **enrich** the canonical event (adding the organiser,
+accessibility, or correct venue the API lacked) rather than creating a twin. Respect
+field-locks. See `docs/SUBMISSIONS.md`.
+
+### Work-level identity vs occurrence dedup (ADR 0005 B1)
+
+Occurrence dedup (the `(venue, hour, title)` key) is distinct from **work-level
+identity** — "is this the same *film*/production across GFT and Cineworld?". Matching a
+showing to a film work (e.g. normalised film title + year) or a performance to a
+production (title + company) is a separate, harder reconciliation that must avoid false
+merges (two different works sharing a title). Cinema is the stress case. See
+`docs/prompts/21` and ADR 0005 B1.
+
+---
+
 ## Worked examples
 
 ### Example 1 — Exact cross-source match (hash collision)

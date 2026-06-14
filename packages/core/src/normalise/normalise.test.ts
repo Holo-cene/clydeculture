@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normaliseTitle, normaliseVenueName } from './normalise.js';
+import { normaliseTitle, normaliseVenueName, mapAvailabilityGuessToCanonical } from './normalise.js';
 
 // normaliseTitle must produce identical output to the SQL normalise_title() function:
 //   regexp_replace(lower(input), '[^[:alnum:][:space:]]', '', 'g') → collapse spaces
@@ -46,6 +46,32 @@ describe('normaliseTitle', () => {
   });
 });
 
+describe('mapAvailabilityGuessToCanonical', () => {
+  it('maps upstream availability guesses to canonical availability values', () => {
+    expect(mapAvailabilityGuessToCanonical('onsale')).toBe('on_sale');
+    expect(mapAvailabilityGuessToCanonical('offsale')).toBe('not_on_sale');
+    expect(mapAvailabilityGuessToCanonical('cancelled')).toBe('cancelled');
+    expect(mapAvailabilityGuessToCanonical('canceled')).toBe('cancelled');
+    expect(mapAvailabilityGuessToCanonical('rescheduled')).toBe('rescheduled');
+    expect(mapAvailabilityGuessToCanonical('postponed')).toBe('postponed');
+    expect(mapAvailabilityGuessToCanonical('soldout')).toBe('sold_out');
+    expect(mapAvailabilityGuessToCanonical('sold_out')).toBe('sold_out');
+  });
+
+  it('returns undefined for unknown, empty, or absent values', () => {
+    expect(mapAvailabilityGuessToCanonical('unknown_value')).toBeUndefined();
+    expect(mapAvailabilityGuessToCanonical('')).toBeUndefined();
+    expect(mapAvailabilityGuessToCanonical(null)).toBeUndefined();
+    expect(mapAvailabilityGuessToCanonical(undefined)).toBeUndefined();
+  });
+
+  it('is case-insensitive', () => {
+    expect(mapAvailabilityGuessToCanonical('ONSALE')).toBe('on_sale');
+    expect(mapAvailabilityGuessToCanonical('OnSale')).toBe('on_sale');
+    expect(mapAvailabilityGuessToCanonical('SOLDOUT')).toBe('sold_out');
+  });
+});
+
 describe('normaliseVenueName', () => {
   it('lowercases and strips punctuation', () => {
     expect(normaliseVenueName('SWG3 (Glasgow)')).toBe('swg3 glasgow');
@@ -73,4 +99,33 @@ describe('normaliseVenueName', () => {
     const b = normaliseVenueName('The Barrowland Ballroom');
     expect(a).toBe(b);
   });
+});
+
+// SQL ↔ TS parity (issue #10):
+// `normaliseVenueName()` here and `resolve_venue()` in
+// supabase/migrations/20260603000000_cc_new_1_schema_corrections.sql must
+// produce identical canonical forms for the same input. A drift between the
+// two sides silently breaks venue deduplication because the TS connector
+// path and the SQL trigger path would map the same venue name to different
+// matchable strings.
+//
+// The same input/expected table is mirrored in
+// supabase/tests/venue_normalisation_parity_test.sql, which asserts the SQL
+// side. If you change one, change the other.
+const VENUE_PARITY_CASES: ReadonlyArray<readonly [string, string]> = [
+  ["The Old Hairdresser's", 'the old hairdressers'],
+  ['SWG3 (Glasgow)', 'swg3 glasgow'],
+  ["St Luke's", 'st lukes'],
+  ["The Flying Duck's Bar", 'the flying ducks bar'],
+  ['  The Barrowlands  ', 'the barrowlands'],
+  ['Mono   Bar', 'mono bar'],
+];
+
+describe('normaliseVenueName — SQL parity canonical cases', () => {
+  it.each(VENUE_PARITY_CASES)(
+    'normalises %j to %j (must match SQL resolve_venue normalisation)',
+    (input, expected) => {
+      expect(normaliseVenueName(input)).toBe(expected);
+    },
+  );
 });

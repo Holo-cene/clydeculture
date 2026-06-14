@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "paths": {
+      "@clydeculture/core": ["../core/src/index.ts"],
+      "@clydeculture/shared": ["../shared/src/index.ts"]
+    }
+  },
+  "include": ["src"],
+  "exclude": ["src/**/*.integration.test.ts"]
+}

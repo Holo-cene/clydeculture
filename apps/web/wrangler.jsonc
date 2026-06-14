@@ -1,0 +1,16 @@
+{
+  // Cloudflare Workers config for the Astro SSR app (@astrojs/cloudflare).
+  // Paths are relative to this file (apps/web/). Deploy from the repo root with:
+  //   npx wrangler deploy --config apps/web/wrangler.jsonc
+  // The adapter emits the worker entry at dist/_worker.js/ and static client
+  // assets into dist/; _routes.json (also emitted) routes static vs. SSR.
+  "name": "clydeculture",
+  "main": "./dist/_worker.js/index.js",
+  "compatibility_date": "2024-11-01",
+  // supabase-js / its deps touch a few Node built-ins; nodejs_compat covers them.
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "./dist"
+  }
+}

@@ -22,7 +22,7 @@ const TEST_API_KEY = 'test-api-key-12345';
 // Fixed "today" injected via startDate config so window dates are deterministic.
 const START_DATE = new Date('2026-07-01T00:00:00Z');
 
-// All 17 RawEvent keys — used to verify link-first compliance (no extra fields).
+// All 19 RawEvent keys — used to verify link-first compliance (no extra fields).
 const RAW_EVENT_KEYS: ReadonlyArray<keyof RawEvent> = [
   'externalId',
   'externalUrl',
@@ -40,6 +40,8 @@ const RAW_EVENT_KEYS: ReadonlyArray<keyof RawEvent> = [
   'ticketUrlLabelGuess',
   'imageUrlGuess',
   'availabilityGuess',
+  'timeTba',
+  'isAllDay',
   'raw',
 ];
 
@@ -523,6 +525,37 @@ describe('ticketmasterConnector — partial failure resilience', () => {
     expect(ids).toContain('good-b');
     expect(ids).not.toContain('bad');
   });
+
+  it('adds a diagnostic error when a no-date/dateTBA event is skipped', async () => {
+    const noDateEvent = makeTmEvent('date-tba', {
+      dates: {
+        start: {
+          dateTBA: true,
+          dateTBD: true,
+          timeTBA: true,
+          noSpecificTime: true,
+        },
+        status: { code: 'onsale' },
+      },
+    });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(
+        okResponse(makeTmPage([makeTmEvent('good'), noDateEvent], 0, 1))
+      )
+      .mockResolvedValue(okResponse(makeTmPage([], 0, 1)));
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const c = createTicketmasterConnector({ apiKey: TEST_API_KEY, startDate: START_DATE, pageSleepMs: 0 });
+    const result = await c.run();
+
+    expect(result.items.map((item) => item.externalId)).not.toContain('date-tba');
+    expect(
+      result.errors.some((error) =>
+        /date-tba/i.test(error) && /dateTBA|missing start|no date/i.test(error)
+      )
+    ).toBe(true);
+  });
 });
 
 // ============================================================================
@@ -726,7 +759,7 @@ describe('ticketmasterConnector — image URL handling (ADR 0004)', () => {
 // ============================================================================
 
 describe('ticketmasterConnector — link-first compliance', () => {
-  it('items contain only the 17 recognised RawEvent fields (no description, summary, or other extras)', async () => {
+  it('items contain only the 18 recognised RawEvent fields (no description, summary, or other extras)', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(okResponse(makeTmPage([makeTmEvent('e1'), makeTmEvent('e2')], 0, 1)))
       .mockResolvedValue(okResponse(makeTmPage([], 0, 1)));

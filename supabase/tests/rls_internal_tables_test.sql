@@ -8,8 +8,8 @@
 --   3. The venue_aliases parent-status policy is enforced correctly.
 --   4. The event_tags policy correctly inherits the confidence threshold
 --      via PostgreSQL recursive RLS (see Section 4 notes).
---   5. event_submissions blocks anon SELECT; the unrestricted INSERT policy
---      is documented (pending F1 tightening).
+--   5. event_submissions blocks anon SELECT, accepts only public-safe anon
+--      submissions, and rejects moderation/review fields.
 --
 -- How to run (local Supabase with A1 migration applied):
 --
@@ -36,7 +36,7 @@
 -- =============================================================================
 
 BEGIN;
-SELECT plan(19);
+SELECT plan(25);
 
 
 -- =============================================================================
@@ -122,76 +122,85 @@ INSERT INTO public.event_submissions (id, title, start_at)
 VALUES ('00000000-a200-0000-0000-000000000090'::uuid,
         'A2 Test Submission', now() + interval '7 days');
 
+CREATE OR REPLACE FUNCTION pg_temp.a2_rejects_insert(p_sql text)
+RETURNS boolean
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  EXECUTE p_sql;
+  RETURN false;
+EXCEPTION WHEN others THEN
+  RETURN true;
+END;
+$$;
+
 
 -- =============================================================================
--- SECTION 1: Internal tables — default deny (tests 1–8)
+-- SECTION 1: Internal tables — public roles hold no grant (tests 1–8)
 --
 -- Tables: sources, external_events, ingest_runs, ingest_alerts,
 --         event_merge_candidates, moderation_log, venue_claims,
 --         source_type_category_map.
 --
--- Each table has RLS enabled but no SELECT policy defined.
--- PostgreSQL default-deny: if no policy matches a row, it is invisible.
--- One fixture row was inserted above (or seed data already exists) to prove
--- the deny is from RLS, not simply an empty table.
+-- Least privilege: anon and authenticated have NO privilege on these internal
+-- operational/config tables (20260613000003_explicit_role_grants revokes all);
+-- ingestion runs as service_role, which bypasses RLS. RLS is also enabled with
+-- no SELECT policy as a backstop.
 --
--- Note: source_type_category_map relies on the 5 rows committed by the B5
--- seed migration (20260606000000_source_category_map_seed.sql) rather than a
--- dedicated fixture insert, since it requires source_id and event_type_id FKs
--- that resolve via the seed data.
+-- We assert the absence of any SELECT grant via the catalog (as the test
+-- postgres role) rather than `SET ROLE anon; SELECT count(*)`. The grant model
+-- is the deterministic, image-independent contract: on Supabase images that do
+-- not grant anon by default, a `SET ROLE anon; SELECT` raises "permission
+-- denied" rather than returning 0, so a count-based check is not portable.
 -- =============================================================================
 
-SET ROLE anon;
-
-SELECT is(
-  (SELECT count(*)::int FROM public.sources),
-  0,
-  'anon: sources is default-deny (0 rows despite 1 fixture row)'
+SELECT ok(
+  NOT has_table_privilege('anon', 'public.sources', 'SELECT')
+    AND NOT has_table_privilege('authenticated', 'public.sources', 'SELECT'),
+  'anon/authenticated: no SELECT grant on sources (internal)'
 );
 
-SELECT is(
-  (SELECT count(*)::int FROM public.external_events),
-  0,
-  'anon: external_events is default-deny (0 rows despite 1 fixture row)'
+SELECT ok(
+  NOT has_table_privilege('anon', 'public.external_events', 'SELECT')
+    AND NOT has_table_privilege('authenticated', 'public.external_events', 'SELECT'),
+  'anon/authenticated: no SELECT grant on external_events (internal)'
 );
 
-SELECT is(
-  (SELECT count(*)::int FROM public.ingest_runs),
-  0,
-  'anon: ingest_runs is default-deny (0 rows despite 1 fixture row)'
+SELECT ok(
+  NOT has_table_privilege('anon', 'public.ingest_runs', 'SELECT')
+    AND NOT has_table_privilege('authenticated', 'public.ingest_runs', 'SELECT'),
+  'anon/authenticated: no SELECT grant on ingest_runs (internal)'
 );
 
-SELECT is(
-  (SELECT count(*)::int FROM public.ingest_alerts),
-  0,
-  'anon: ingest_alerts is default-deny (0 rows despite 1 fixture row)'
+SELECT ok(
+  NOT has_table_privilege('anon', 'public.ingest_alerts', 'SELECT')
+    AND NOT has_table_privilege('authenticated', 'public.ingest_alerts', 'SELECT'),
+  'anon/authenticated: no SELECT grant on ingest_alerts (internal)'
 );
 
-SELECT is(
-  (SELECT count(*)::int FROM public.event_merge_candidates),
-  0,
-  'anon: event_merge_candidates is default-deny (0 rows despite 1 fixture row)'
+SELECT ok(
+  NOT has_table_privilege('anon', 'public.event_merge_candidates', 'SELECT')
+    AND NOT has_table_privilege('authenticated', 'public.event_merge_candidates', 'SELECT'),
+  'anon/authenticated: no SELECT grant on event_merge_candidates (internal)'
 );
 
-SELECT is(
-  (SELECT count(*)::int FROM public.moderation_log),
-  0,
-  'anon: moderation_log is default-deny (0 rows despite 1 fixture row)'
+SELECT ok(
+  NOT has_table_privilege('anon', 'public.moderation_log', 'SELECT')
+    AND NOT has_table_privilege('authenticated', 'public.moderation_log', 'SELECT'),
+  'anon/authenticated: no SELECT grant on moderation_log (internal)'
 );
 
-SELECT is(
-  (SELECT count(*)::int FROM public.venue_claims),
-  0,
-  'anon: venue_claims is default-deny (0 rows despite 1 fixture row)'
+SELECT ok(
+  NOT has_table_privilege('anon', 'public.venue_claims', 'SELECT')
+    AND NOT has_table_privilege('authenticated', 'public.venue_claims', 'SELECT'),
+  'anon/authenticated: no SELECT grant on venue_claims (internal)'
 );
 
-SELECT is(
-  (SELECT count(*)::int FROM public.source_type_category_map),
-  0,
-  'anon: source_type_category_map is default-deny (0 rows despite 5 B5 seed rows)'
+SELECT ok(
+  NOT has_table_privilege('anon', 'public.source_type_category_map', 'SELECT')
+    AND NOT has_table_privilege('authenticated', 'public.source_type_category_map', 'SELECT'),
+  'anon/authenticated: no SELECT grant on source_type_category_map (internal)'
 );
-
-RESET ROLE;
 
 
 -- =============================================================================
@@ -360,31 +369,115 @@ SELECT ok(
 
 
 -- =============================================================================
--- SECTION 5: event_submissions — SELECT deny and INSERT gate (tests 16–17)
+-- SECTION 5: event_submissions — SELECT deny and INSERT gate (tests 18–25)
 --
 -- No SELECT policy exists → default-deny for anon.
--- INSERT policy "Public insert submissions" exists with WITH CHECK (true):
---   any anon INSERT is permitted without validation or rate limiting.
--- This is a known open gate; F1 will replace WITH CHECK (true) with a
--- restrictive check (honeypot field, required field validation, rate limiting).
+-- INSERT policy must allow minimal public submissions while preventing anon
+-- callers from setting moderation/review linkage fields.
 -- =============================================================================
 
 SET ROLE anon;
 
-SELECT is(
-  (SELECT count(*)::int FROM public.event_submissions),
-  0,
-  'anon: event_submissions is SELECT-deny (no SELECT policy exists)'
+INSERT INTO public.event_submissions (id, title, start_at)
+VALUES (
+  '00000000-a200-0000-0000-000000000091'::uuid,
+  'A2 Public Submission',
+  now() + interval '8 days'
 );
 
 RESET ROLE;
 
--- Informational test: document the unrestricted INSERT gate.
--- This passes to record the current state; it is not a security guarantee.
--- F1 must tighten the INSERT policy before event_submissions is opened to users.
-SELECT pass(
-  'event_submissions INSERT gate documented: WITH CHECK (true) is unrestricted — F1 will add validation'
+SELECT is(
+  (SELECT status FROM public.event_submissions
+   WHERE id = '00000000-a200-0000-0000-000000000091'::uuid),
+  'pending',
+  'anon: minimal valid event_submissions insert succeeds and remains pending'
 );
+
+SELECT ok(
+  NOT has_table_privilege('anon', 'public.event_submissions', 'SELECT')
+    AND NOT has_table_privilege('authenticated', 'public.event_submissions', 'SELECT'),
+  'anon/authenticated: event_submissions is SELECT-deny (no SELECT grant)'
+);
+
+SET ROLE anon;
+
+SELECT ok(
+  pg_temp.a2_rejects_insert($sql$
+    INSERT INTO public.event_submissions (id, title, start_at, status)
+    VALUES (
+      '00000000-a200-0000-0000-000000000092'::uuid,
+      'A2 Forbidden Status',
+      now() + interval '8 days',
+      'approved'
+    )
+  $sql$),
+  'anon: event_submissions insert cannot set status'
+);
+
+SELECT ok(
+  pg_temp.a2_rejects_insert($sql$
+    INSERT INTO public.event_submissions (id, title, start_at, reviewed_at)
+    VALUES (
+      '00000000-a200-0000-0000-000000000093'::uuid,
+      'A2 Forbidden Reviewed At',
+      now() + interval '8 days',
+      now()
+    )
+  $sql$),
+  'anon: event_submissions insert cannot set reviewed_at'
+);
+
+SELECT ok(
+  pg_temp.a2_rejects_insert($sql$
+    INSERT INTO public.event_submissions (id, title, start_at, reviewed_by)
+    VALUES (
+      '00000000-a200-0000-0000-000000000094'::uuid,
+      'A2 Forbidden Reviewed By',
+      now() + interval '8 days',
+      '00000000-a200-0000-0000-000000000099'::uuid
+    )
+  $sql$),
+  'anon: event_submissions insert cannot set reviewed_by'
+);
+
+SELECT ok(
+  pg_temp.a2_rejects_insert($sql$
+    INSERT INTO public.event_submissions (id, title, start_at, event_id)
+    VALUES (
+      '00000000-a200-0000-0000-000000000095'::uuid,
+      'A2 Forbidden Event Link',
+      now() + interval '8 days',
+      '00000000-a200-0000-0000-000000000020'::uuid
+    )
+  $sql$),
+  'anon: event_submissions insert cannot set event_id'
+);
+
+SELECT ok(
+  pg_temp.a2_rejects_insert($sql$
+    INSERT INTO public.event_submissions (id, title, start_at)
+    VALUES (
+      '00000000-a200-0000-0000-000000000096'::uuid,
+      '   ',
+      now() + interval '8 days'
+    )
+  $sql$),
+  'anon: event_submissions insert rejects blank title'
+);
+
+SELECT ok(
+  pg_temp.a2_rejects_insert($sql$
+    INSERT INTO public.event_submissions (id, title)
+    VALUES (
+      '00000000-a200-0000-0000-000000000097'::uuid,
+      'A2 Missing Start'
+    )
+  $sql$),
+  'anon: event_submissions insert rejects missing start_at'
+);
+
+RESET ROLE;
 
 
 -- =============================================================================

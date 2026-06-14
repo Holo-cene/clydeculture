@@ -45,6 +45,43 @@ Only after the user says:
 
 ---
 
+## Branching, integration, and the merge gate
+
+Work reaches `main` through layered gates so the **authoritative** quality check is
+deterministic (CI), not self-reported by an agent.
+
+**Branch flow**
+
+- AI agents (the `.sandcastle/` loop) work each issue on its own `sandcastle/issue-<id>` branch.
+- Completed branches are merged into the integration branch **`codex/mvp-public-vertical-slice`**.
+- Code reaches **`main` only via a pull request** from the integration branch — direct pushes to `main` are blocked by a branch ruleset.
+
+**Two gates, by authority**
+
+1. **Sandcastle verify — advisory.** After the loop merges branches, a verifier runs
+   `pnpm -r typecheck` + `pnpm -r test` in a clean git worktree and closes the issues only
+   on green (`.sandcastle/verify-prompt.md`, `.sandcastle/main.mts` Phase 3.5). This is a
+   fast local pre-check: it runs in the maintainer's environment and trusts the agent, so it
+   is **not** the safety boundary.
+2. **CI — authoritative.** A branch ruleset on `main` requires the GitHub Actions jobs
+   in `.github/workflows/ci.yml` to pass before a PR can merge. The agent cannot fabricate
+   this — CI runs on a clean runner:
+   - `check`: install · test · typecheck · lint · Astro build.
+   - `supabase`: `supabase start` · `db reset` · `db test` (pgTAP) · `*.integration.test.ts`
+     against an ephemeral local Supabase (issue #31).
+
+   **Do not merge to `main` until both jobs are green.**
+
+The local sequence is still useful as a pre-push check (faster feedback than CI):
+
+```text
+supabase start && supabase db reset && supabase db test
+pnpm test && pnpm typecheck && pnpm lint
+pnpm --filter @clydeculture/web build
+```
+
+---
+
 ## Standard implementation prompt
 
 Use this template when assigning an implementation task to Claude:

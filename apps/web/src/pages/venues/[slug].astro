@@ -1,0 +1,43 @@
+---
+import { getPublishedEvents, getVenueBySlug } from '@clydeculture/shared';
+import EventList from '../../components/EventList.astro';
+import Layout from '../../components/Layout.astro';
+import { getPublicQueryClient } from '../../lib/supabase';
+import { asEventViews, asVenueView } from '../../lib/viewData';
+
+export const prerender = false;
+
+const slug = Astro.params.slug ?? '';
+const client = getPublicQueryClient();
+const venue = asVenueView(await getVenueBySlug(client, slug));
+const events = venue.name
+  ? asEventViews(await getPublishedEvents(client, { venueSlug: slug }))
+  : [];
+
+if (!venue.name) {
+  Astro.response.status = 404;
+}
+---
+
+<Layout title={venue.name ?? 'Venue not found'}>
+  {
+    venue.name ? (
+      <>
+        <section class="page-heading">
+          <h1>{venue.name}</h1>
+          {venue.area && <p class="lede">{venue.area}</p>}
+          {venue.website && (
+            <p>
+              <a class="button button--secondary" href={venue.website} rel="noreferrer">
+                Venue website
+              </a>
+            </p>
+          )}
+        </section>
+        <EventList events={events} />
+      </>
+    ) : (
+      <p class="notice">This venue is not available.</p>
+    )
+  }
+</Layout>

@@ -1,0 +1,95 @@
+---
+import Layout from '../components/Layout.astro';
+import { getPublicSupabaseClient } from '../lib/supabase';
+
+export const prerender = false;
+
+let message = '';
+let error = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const title = String(form.get('title') ?? '').trim();
+  const startAt = String(form.get('start_at') ?? '').trim();
+
+  if (!title || !startAt) {
+    error = 'Title and start time are required.';
+  } else {
+    const row = {
+      title,
+      description: optionalText(form.get('description')),
+      start_at: new Date(startAt).toISOString(),
+      end_at: optionalDate(form.get('end_at')),
+      venue_name: optionalText(form.get('venue_name')),
+      event_type_slug: optionalText(form.get('event_type_slug')),
+      source_url: optionalText(form.get('source_url')),
+      submitter_email: optionalText(form.get('submitter_email')),
+    };
+    const { error: insertError } = await getPublicSupabaseClient()
+      .from('event_submissions')
+      .insert(row);
+
+    if (insertError) {
+      error = 'The submission could not be saved.';
+    } else {
+      message = 'Submission received.';
+    }
+  }
+}
+
+function optionalText(value: FormDataEntryValue | null): string | null {
+  const text = String(value ?? '').trim();
+  return text ? text : null;
+}
+
+function optionalDate(value: FormDataEntryValue | null): string | null {
+  const text = String(value ?? '').trim();
+  return text ? new Date(text).toISOString() : null;
+}
+---
+
+<Layout title="Submit Your Event">
+  <section class="page-heading">
+    <h1>Submit your event</h1>
+    <p class="lede">Send a listing for review. Approved submissions appear after moderation.</p>
+  </section>
+
+  {message && <p class="notice">{message}</p>}
+  {error && <p class="notice">{error}</p>}
+
+  <form class="form-panel" method="post">
+    <label>
+      Title
+      <input name="title" required />
+    </label>
+    <label>
+      Start
+      <input name="start_at" type="datetime-local" required />
+    </label>
+    <label>
+      End
+      <input name="end_at" type="datetime-local" />
+    </label>
+    <label>
+      Venue
+      <input name="venue_name" />
+    </label>
+    <label>
+      Event type
+      <input name="event_type_slug" placeholder="live_music" />
+    </label>
+    <label>
+      Source URL
+      <input name="source_url" type="url" />
+    </label>
+    <label>
+      Contact email
+      <input name="submitter_email" type="email" />
+    </label>
+    <label>
+      Short description
+      <textarea name="description"></textarea>
+    </label>
+    <button type="submit">Submit your event</button>
+  </form>
+</Layout>

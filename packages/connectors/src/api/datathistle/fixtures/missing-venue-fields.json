@@ -1,0 +1,23 @@
+[
+  {
+    "event_id": "77777777-7777-4777-8777-777777777777",
+    "status": "live",
+    "name": "Synthetic Minimal Venue",
+    "website": "https://example.test/events/synthetic-minimal-venue",
+    "tags": ["workshops"],
+    "schedules": [
+      {
+        "place_id": "88888888-8888-4888-8888-888888888888",
+        "place": {
+          "name": "Example Workshop Room"
+        },
+        "performances": [
+          {
+            "ts": "2026-10-05T11:00:00+01:00",
+            "duration": "60"
+          }
+        ]
+      }
+    ]
+  }
+]

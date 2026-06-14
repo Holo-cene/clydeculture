@@ -109,4 +109,42 @@ describe('deriveDedupeKey', () => {
       expect(day1).not.toBe(day2);
     });
   });
+
+  describe('offset-less datetime rejection', () => {
+    it('rejects ISO datetime without timezone offset (T separator, seconds)', () => {
+      expect(() => deriveDedupeKey('v', '2026-06-12T19:00:00', 'Show')).toThrow(
+        /timezone offset/,
+      );
+    });
+
+    it('rejects ISO datetime without timezone offset (T separator, no seconds)', () => {
+      expect(() => deriveDedupeKey('v', '2026-06-12T19:00', 'Show')).toThrow(
+        /timezone offset/,
+      );
+    });
+
+    it('rejects space-separated datetime without offset', () => {
+      expect(() => deriveDedupeKey('v', '2026-06-12 19:00:00', 'Show')).toThrow(
+        /timezone offset/,
+      );
+    });
+
+    it('accepts Z-suffixed ISO datetime', () => {
+      expect(() =>
+        deriveDedupeKey('v', '2026-06-12T19:00:00.000Z', 'Show'),
+      ).not.toThrow();
+    });
+
+    it('accepts ISO datetime with positive explicit offset', () => {
+      expect(() =>
+        deriveDedupeKey('v', '2026-06-12T20:00:00+01:00', 'Show'),
+      ).not.toThrow();
+    });
+
+    it('accepts ISO datetime with negative explicit offset', () => {
+      expect(() =>
+        deriveDedupeKey('v', '2026-06-12T14:00:00-05:00', 'Show'),
+      ).not.toThrow();
+    });
+  });
 });

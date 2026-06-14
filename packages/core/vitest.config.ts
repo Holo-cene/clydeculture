@@ -2,6 +2,10 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
+    // Integration tests require a live local Supabase instance. Exclude them from
+    // the default run so CI and `pnpm test` don't fail without Supabase env vars.
+    // Run them separately with: vitest run --include '**/*.integration.test.ts'
+    exclude: ['**/node_modules/**', '**/dist/**', '**/*.integration.test.ts'],
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],

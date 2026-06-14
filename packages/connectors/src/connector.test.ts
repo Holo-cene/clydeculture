@@ -200,6 +200,135 @@ describe('validateIngestResult', () => {
   });
 });
 
+describe('validateIngestResult — startAt timezone validation', () => {
+  it('rejects item with startAt missing a timezone offset and adds a clear error', () => {
+    const result: IngestResult = {
+      fetchedCount: 1,
+      parsedCount: 1,
+      items: [
+        {
+          externalId: 'bad-tz',
+          externalUrl: 'https://example.com/event',
+          title: 'Bad TZ Event',
+          startAt: '2026-06-12T19:00:00',
+          raw: {},
+        },
+      ],
+      errors: [],
+    };
+
+    const validated = validateIngestResult(result);
+    expect(validated.items).toHaveLength(0);
+    expect(validated.errors).toHaveLength(1);
+    expect(validated.errors[0]).toMatch(/startAt/);
+    expect(validated.errors[0]).toMatch(/timezone|offset/i);
+  });
+
+  it('rejects space-separated offset-less startAt', () => {
+    const result: IngestResult = {
+      fetchedCount: 1,
+      parsedCount: 1,
+      items: [
+        {
+          externalId: 'bad-space',
+          externalUrl: 'https://example.com/event',
+          title: 'Bad Space Event',
+          startAt: '2026-06-12 19:00:00',
+          raw: {},
+        },
+      ],
+      errors: [],
+    };
+
+    const validated = validateIngestResult(result);
+    expect(validated.items).toHaveLength(0);
+    expect(validated.errors).toHaveLength(1);
+  });
+
+  it('passes through item with Z-suffixed startAt', () => {
+    const result: IngestResult = {
+      fetchedCount: 1,
+      parsedCount: 1,
+      items: [
+        {
+          externalId: 'ok-z',
+          externalUrl: 'https://example.com/event',
+          title: 'OK Z Event',
+          startAt: '2026-06-12T19:00:00.000Z',
+          raw: {},
+        },
+      ],
+      errors: [],
+    };
+
+    const validated = validateIngestResult(result);
+    expect(validated.items).toHaveLength(1);
+    expect(validated.errors).toHaveLength(0);
+  });
+
+  it('passes through item with explicit positive offset startAt', () => {
+    const result: IngestResult = {
+      fetchedCount: 1,
+      parsedCount: 1,
+      items: [
+        {
+          externalId: 'ok-plus',
+          externalUrl: 'https://example.com/event',
+          title: 'OK Plus Offset Event',
+          startAt: '2026-06-12T20:00:00+01:00',
+          raw: {},
+        },
+      ],
+      errors: [],
+    };
+
+    const validated = validateIngestResult(result);
+    expect(validated.items).toHaveLength(1);
+    expect(validated.errors).toHaveLength(0);
+  });
+
+  it('passes through item with explicit negative offset startAt', () => {
+    const result: IngestResult = {
+      fetchedCount: 1,
+      parsedCount: 1,
+      items: [
+        {
+          externalId: 'ok-neg',
+          externalUrl: 'https://example.com/event',
+          title: 'OK Neg Offset Event',
+          startAt: '2026-06-12T14:00:00-05:00',
+          raw: {},
+        },
+      ],
+      errors: [],
+    };
+
+    const validated = validateIngestResult(result);
+    expect(validated.items).toHaveLength(1);
+    expect(validated.errors).toHaveLength(0);
+  });
+
+  it('passes through item where startAt is undefined (not set)', () => {
+    const result: IngestResult = {
+      fetchedCount: 1,
+      parsedCount: 1,
+      items: [
+        {
+          externalId: 'no-start',
+          externalUrl: 'https://example.com/event',
+          title: 'No Start Event',
+          raw: {},
+        },
+      ],
+      errors: [],
+    };
+
+    const validated = validateIngestResult(result);
+    expect(validated.items).toHaveLength(1);
+    expect(validated.errors).toHaveLength(0);
+  });
+});
+
 // isValidHttpsUrl — used by validateIngestResult and can be used by individual connectors
 
 describe('isValidHttpsUrl', () => {

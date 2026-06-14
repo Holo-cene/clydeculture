@@ -386,3 +386,34 @@ Check off the following before opening a PR:
 
 Once the connector passes the smoke test, open a pull request. The review will check the
 above list and verify the `sources` row is included in a migration or seed file.
+
+---
+
+## 10. Planned: cultural-graph connector responsibilities (ADR 0005)
+
+> **Direction, not current state.** As the cultural-graph model lands, connector
+> authors take on a few more responsibilities. None of the fields below exist yet —
+> verify against `supabase/migrations/`.
+
+**Per-source media-rights classification (required).** Record, in the connector source
+header / SPEC and in `docs/source-policy.md`, whether the source's media may be
+displayed. Default is **not permitted** until reviewed. See `docs/MEDIA_POLICY.md`. Set
+`imageUrlGuess` only for sources whose image-display terms are reviewed and documented.
+
+**Source capability checklist (on registration).** Declare what the source can supply so
+field-level provenance and source priority are principled (`docs/INGESTION.md` — source
+capability matrix): times/doors, venue identity, ticket/booking link, price,
+availability/cancellation, media (display-permitted?), organiser/artist.
+
+**Source trust class (on registration).** Classify the source as
+`api / feed / scrape / partner / community / editor` (`docs/INGESTION.md`). Class feeds
+the **trust** signal (ADR 0006), separate from the quality `tier`.
+
+**Entity extraction (link-first, provisional).** Where the source exposes organiser /
+promoter / artist names, emit them as provisional entity links — a name + canonical link
+only, never biographies (`docs/ENTITIES.md`). Organisers/collectives are prioritised
+over artists (B2a before B2b).
+
+**Idempotent re-ingest.** For high-frequency sources (e.g. cinema showings), ensure
+stable per-occurrence `externalId`s so daily re-pulls are no-op upserts, not row churn
+(`docs/INGESTION.md` — high-frequency re-ingest idempotency).

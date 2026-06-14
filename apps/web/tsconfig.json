@@ -1,0 +1,10 @@
+{
+  "extends": "astro/tsconfigs/strict",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@clydeculture/shared": ["../../packages/shared/src/index.ts"]
+    }
+  },
+  "include": [".astro/types.d.ts", "src/**/*"]
+}

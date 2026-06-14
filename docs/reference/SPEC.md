@@ -32,6 +32,15 @@ outbound links to original sources — ticket pages, venue websites, and so on �
 than republishing third-party content in full. The goal is to become the central
 discovery layer for Glasgow culture, combining automated ingestion with community input.
 
+> **Evolving data model.** To house *all* events well — from DIY gigs, community groups,
+> and markets to festivals, galleries, and cinema showings — Clyde Culture is evolving
+> from a single event/source/venue/category/ticket-link table toward a **cultural graph**
+> (events/occurrences, all source links, venues/places, organisers/collectives/artists,
+> types/tags, submissions, provenance/trust, media rights), and later Scotland-wide
+> coverage. This is phased (NOW / DESIGN-NOW BUILD-LATER / DEFER); details are in
+> [ADR 0005](../decisions/0005-event-data-model-for-all-event-coverage.md) and the
+> planned-expansion section of [DATA_MODEL.md](../DATA_MODEL.md).
+
 **Platform focus areas**
 
 - Underground arts and exhibitions
@@ -262,9 +271,10 @@ consistent event listing pages, and some expose iCal feeds.
 
 ## 8. Data Model
 
-> Illustrative. The authoritative schema is `SCHEMA_v5.sql` (20 tables), which extends
-> and supersedes the tables described here. Where this section and the v5 schema differ,
-> the v5 schema wins. `DATA_MODEL.md` documents the v5 schema in full.
+> Illustrative. **Canonical source: `supabase/migrations/`** — the applied migration
+> stack (starting from `SCHEMA_v5.sql`) defines the live schema. `DATA_MODEL.md` is the
+> human-readable companion. Where this section and those sources differ, those sources
+> win; fix the drift here.
 
 ### `events` — canonical event record
 
@@ -281,15 +291,18 @@ The primary table. It is what gets published to the frontend and displayed on th
 | start_at | timestamptz | Required |
 | end_at | timestamptz | Optional |
 | timezone | text | Default: Europe/London |
-| event_type | enum | See taxonomy in Section 4 |
-| tags | text[] | Granular tags: techno, improv, sculpture, etc. |
+| event_type_id | smallint FK | References `event_types`; see taxonomy in Section 4 |
 | venue_id | uuid FK | References `venues` |
 | festival_id | uuid FK | Null if not a festival event |
-| is_festival_event | boolean | Derived from `festival_id` |
-| visibility | enum | draft / published / hidden / cancelled |
+| is_festival_event | boolean | Generated from `festival_id IS NOT NULL` |
+| availability | text | on_sale / sold_out / low_stock / postponed / rescheduled / cancelled / not_on_sale; null = unknown. Separate from `visibility` — a cancelled event stays `visibility='published'` with `availability='cancelled'` |
+| visibility | text | draft / published / hidden / archived |
 | confidence | smallint | 0–100; below threshold triggers `needs_review` |
 | needs_review | boolean | Manual moderation flag |
 | dedupe_key | text | SHA-256 of venue + date bucket + normalised title |
+
+Tags are stored via the `event_tags` junction table (`event_id`, `tag_id`) referencing
+the `tags` reference table — not as a `text[]` column on `events`.
 
 ### `external_events` — per-source raw records
 
@@ -338,9 +351,9 @@ One row per upstream connector. Tracks operational state alongside configuration
 | Field | Notes |
 | --- | --- |
 | id, name, slug | Identifiers |
-| type | api / rss / ical / html / manual |
+| source_type | api / rss / ical / html / manual / apify |
 | config (jsonb) | Connector-specific configuration — secrets in Supabase Vault / env |
-| status | ok / partial / broken / disabled |
+| status | ok / degraded / broken / disabled |
 | last_run_at, last_success_at | Operational timestamps |
 | last_error_at, last_error | Error tracking for break detection |
 | enabled | Toggle connector on/off without deletion |

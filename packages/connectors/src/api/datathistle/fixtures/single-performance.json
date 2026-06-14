@@ -1,0 +1,39 @@
+[
+  {
+    "event_id": "11111111-1111-4111-8111-111111111111",
+    "status": "live",
+    "name": "Synthetic Music Night",
+    "website": "https://example.test/events/synthetic-music-night",
+    "tags": ["music"],
+    "schedules": [
+      {
+        "place_id": "22222222-2222-4222-8222-222222222222",
+        "place": {
+          "place_id": "22222222-2222-4222-8222-222222222222",
+          "name": "Example Hall",
+          "town": "Glasgow"
+        },
+        "performances": [
+          {
+            "ts": "2026-07-10T19:00:00+01:00",
+            "duration": "120",
+            "links": [
+              {
+                "type": "booking",
+                "url": "https://example.test/tickets/synthetic-music-night"
+              }
+            ],
+            "tickets": [
+              {
+                "type": "Standard",
+                "currency": "GBP",
+                "min_price": 10,
+                "max_price": 15
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]
